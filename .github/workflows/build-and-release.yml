@@ -1,0 +1,46 @@
+name: Build and Release Go Binaries
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+      - name: Build
+        run: |
+          mkdir -p build/${{ matrix.goos }}-${{ matrix.goarch }}
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/${{ matrix.goos }}-${{ matrix.goarch }}/xcontrol ./cmd/api
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcontrol-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: build/${{ matrix.goos }}-${{ matrix.goarch }}/xcontrol
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: daily-${{ github.run_number }}
+          name: Daily Build ${{ github.run_number }}
+          files: release-artifacts/**/xcontrol
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
