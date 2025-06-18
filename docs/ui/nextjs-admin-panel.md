@@ -55,3 +55,17 @@ styles/
 
 ## 示例代码结构
 本仓库 `ui/nextjs` 目录提供了一套最简参考实现，可直接 `npm run build && npx next export` 编译到 `ui/dist` 供 Go 服务嵌入。
+
+## macOS 本地开发调试
+`ui/nextjs` 目录下新增的 `Makefile` 可在 macOS 环境一键执行常见任务：
+
+```bash
+make init    # 安装依赖（若未检测到 yarn 会自动使用 Homebrew 安装）
+make run     # 启动开发服务
+make build   # 构建生产版本
+make export  # 导出静态页面到 out/
+make clean   # 清理构建产物
+```
+
+执行 `make info` 可查看当前 Node.js 版本，方便排查本地环境问题。
+
