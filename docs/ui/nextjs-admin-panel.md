@@ -46,3 +46,6 @@ styles/
   ```
 
 生成的 `out/` 目录即可作为纯静态网站部署。
+
+## 示例代码结构
+本仓库 `ui/nextjs` 目录提供了一套最简参考实现，可直接 `npm run build && npx next export` 编译到 `ui/dist` 供 Go 服务嵌入。
