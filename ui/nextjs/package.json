@@ -7,7 +7,7 @@
     "build": "next build && rm -rf ../dist && cp -r out ../dist"
   },
   "dependencies": {
-    "lucide-react": "^0.292.0",
+    "lucide-react": "^0.517.0",
     "next": "14.2.3",
     "react": "18.2.0",
     "react-dom": "18.2.0"
