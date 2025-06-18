@@ -42,10 +42,18 @@ styles/
   ```
 - 使用 `next export` 生成静态 HTML：
   ```bash
-  npm run build && npx next export
+ npm run build && npx next export
   ```
 
 生成的 `out/` 目录即可作为纯静态网站部署。
+
+## 响应式设计
+示例实现利用 Tailwind 的 `md:` 等断点完成移动端适配：
+
+- 小屏幕默认隐藏侧边栏，在 Header 内提供菜单按钮控制显示。
+- 大屏幕侧边栏常驻，内容区域使用 `md:ml-64` 留出宽度。
+
+布局组件 `layout.tsx` 中使用 React 状态切换侧边栏，可满足主流移动端浏览体验。
 
 ## 示例代码结构
 本仓库 `ui/nextjs` 目录提供了一套最简参考实现，可直接 `npm run build && npx next export` 编译到 `ui/dist` 供 Go 服务嵌入。
