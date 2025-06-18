@@ -14,8 +14,6 @@ app/
 │   └── page.tsx             # API 服务状态页
 ├── subscription/
 │   └── page.tsx             # 订阅管理页
-├── xray/
-│   └── page.tsx             # XRay 管理页
 components/
 ├── Sidebar.tsx              # 侧边栏
 ├── Header.tsx               # 顶部标题栏（可选）
