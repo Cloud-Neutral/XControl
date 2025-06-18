@@ -23,8 +23,8 @@ build:
 	yarn next build
 
 export:
-	@echo "📦 Exporting homepage static site to ./out ..."
-	yarn next build && yarn next export
+        @echo "📦 Exporting homepage static site to ./out ..."
+        yarn next build
 
 clean:
 	@echo "🧹 Cleaning .next and out directories..."
