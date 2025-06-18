@@ -1,10 +1,16 @@
 # XControl Overview
 
-XControl is a multi-tenant VLESS management system...
+XControl is a multi-tenant, multi-service management platform. The project integrates several open source components as optional extension modules to provide a modular and visual administration experience:
+
+- **PulumiGo** – Multi-cloud IaC engine built with Pulumi SDK and Go.
+- **KubeGuard** – Kubernetes cluster application and node-level backup system.
+- **CraftWeave** – Lightweight task execution & configuration orchestration engine.
+- **CodePRobot** – AI-driven GitHub Issue to Pull Request generator and code patching tool.
+- **OpsAgent** – AIOps-powered intelligent monitoring, anomaly detection and RCA.
+- **XStream** – Cross-border developer proxy accelerator for global accessibility.
 
 项目名称：XControl
-多租户 VLESS 节点与用户流量管理系统，支持配置控制、节点分流、使用统计与用户可视化界面。
-
+一个面向多租户、多服务设计，具备多节点控制、用户订阅配置导出、流量统计与模块化可视化管理面板的系统。
 
 📁 项目结构（Go）
 csharp
@@ -18,7 +24,6 @@ xcontrol/
 │   ├── model/          # GORM 模型
 │   ├── api/            # Gin 路由控制器
 │   ├── service/        # 核心业务逻辑
-│   ├── xray/           # 与 Xray 交互逻辑
 │   └── stats/          # 流量采集整合模块
 ├── webui/              # Vue 前端
 ├── deploy/
