@@ -1,0 +1,48 @@
+# Next.js Admin Panel
+
+本文档概述如何使用 Next.js App Router 和 Tailwind CSS 搭建 XControl 后台管理界面，并满足静态导出的要求。
+
+## 目录结构建议
+
+```text
+app/
+├── layout.tsx               # 全局布局：含侧边栏
+├── page.tsx                 # 首页
+├── agent/
+│   └── page.tsx             # Agent 管理页
+├── api/
+│   └── page.tsx             # API 服务状态页
+├── subscription/
+│   └── page.tsx             # 订阅管理页
+├── xray/
+│   └── page.tsx             # XRay 管理页
+components/
+├── Sidebar.tsx              # 侧边栏
+├── Header.tsx               # 顶部标题栏（可选）
+├── Card.tsx                 # 通用卡片组件
+lib/
+├── api.ts                   # 后端 API 请求封装
+styles/
+├── globals.css              # 全局样式
+```
+
+## 快速启动
+1. 初始化项目：
+   ```bash
+   npx create-next-app@latest xcontrol --ts --app --tailwind
+   ```
+2. 按上文目录创建页面与组件，使用 Tailwind 构建基础 UI。
+3. 将 Go 服务接口代理到 `/api/*` 路径，方便前后端联调。
+
+## 静态导出配置
+- 所有页面禁止使用 `getServerSideProps`，保持静态内容。
+- 每个页面或布局文件显式声明：
+  ```ts
+  export const dynamic = 'force-static'
+  ```
+- 使用 `next export` 生成静态 HTML：
+  ```bash
+  npm run build && npx next export
+  ```
+
+生成的 `out/` 目录即可作为纯静态网站部署。
