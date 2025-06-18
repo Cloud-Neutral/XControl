@@ -38,10 +38,10 @@ styles/
   ```ts
   export const dynamic = 'force-static'
   ```
-- 使用 `next export` 生成静态 HTML：
-  ```bash
- npm run build && npx next export
-  ```
+ - 在 `next.config.js` 中设置 `output: 'export'`，只需执行：
+   ```bash
+   npm run build
+   ```
 
 生成的 `out/` 目录即可作为纯静态网站部署。
 
@@ -54,7 +54,7 @@ styles/
 布局组件 `layout.tsx` 中使用 React 状态切换侧边栏，可满足主流移动端浏览体验。
 
 ## 示例代码结构
-本仓库 `ui/nextjs` 目录提供了一套最简参考实现，可直接 `npm run build && npx next export` 编译到 `ui/dist` 供 Go 服务嵌入。
+本仓库 `ui/nextjs` 目录提供了一套最简参考实现，只需 `npm run build` 即可编译到 `ui/dist` 供 Go 服务嵌入。
 
 ## macOS 本地开发调试
 `ui/nextjs` 目录下新增的 `Makefile` 可在 macOS 环境一键执行常见任务：
