@@ -8,7 +8,7 @@ export interface SidebarProps {
   onNavigate?: () => void
 }
 
-const menu = [
+const menuItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/agent', label: 'Agent', icon: ServerCog },
   { href: '/api', label: 'API', icon: Api },
@@ -21,17 +21,17 @@ export default function Sidebar({ className = '', onNavigate }: SidebarProps) {
 
   return (
     <nav className={`w-64 bg-gray-100 p-4 space-y-2 ${className}`}>
-      {menu.map(m => (
+      {menuItems.map(item => (
         <Link
-          key={m.href}
-          href={m.href}
-          className={`flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-200 ${
-            pathname === m.href ? 'bg-gray-300 font-semibold' : ''
-          }`}
+          key={item.href}
+          href={item.href}
           onClick={onNavigate}
+          className={`flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-200 ${
+            pathname === item.href ? 'bg-gray-300 font-semibold' : ''
+          }`}
         >
-          <m.icon className="w-4 h-4" />
-          <span>{m.label}</span>
+          <item.icon className="w-4 h-4" />
+          <span>{item.label}</span>
         </Link>
       ))}
     </nav>
