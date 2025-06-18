@@ -1,21 +1,30 @@
+'use client'
+
 export interface HeaderProps {
   onMenu?: () => void
 }
 
 export default function Header({ onMenu }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between p-4 border-b bg-white shadow md:ml-64">
+    <header className="flex items-center justify-between bg-white shadow px-4 py-3 border-b">
       <button
-        className="md:hidden p-2 text-gray-600"
+        className="md:hidden"
         onClick={onMenu}
         aria-label="Toggle navigation"
       >
-        {/* simple hamburger icon */}
-        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
-      <h1 className="text-lg font-bold flex-1 text-center md:text-left">XControl Admin</h1>
+
+      <div className="text-lg font-semibold">XControl Admin</div>
+
+      <div className="flex items-center space-x-4">
+        <span className="text-sm text-gray-600">admin@example.com</span>
+        <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center">
+          A
+        </div>
+      </div>
     </header>
   )
 }
