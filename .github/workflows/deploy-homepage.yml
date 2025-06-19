@@ -4,11 +4,11 @@ on:
   pull_request:
     paths:
       - 'ui/homepage/**'
-      - .github/workflows/deploy-homepage.yml
+      - '.github/workflows/deploy-homepage.yml'
   workflow_dispatch:
     paths:
       - 'ui/homepage/**'
-      - .github/workflows/deploy-homepage.yml
+      - '.github/workflows/deploy-homepage.yml'
     branches: [main]
 
 jobs:
@@ -30,16 +30,19 @@ jobs:
       - name: 📥 Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: 🛠️ Build homepage static site
-        run: yarn build
+      - name: 🛠️ Build & export static site
+        run: |
+          yarn build           # next build
+          yarn next export     # next export → outputs to ./out
 
       - name: 🚀 Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: homepage
-          directory: ./out
+          projectName: xcontrol   # 和 Pages 控制台里看到的项目名保持一致
+          directory: out           # 相对于 ui/homepage 的 ./out
+          wranglerVersion: '4'     # 升级到 Wrangler v4，避免 v2 大量警告
 
       - name: ✅ Confirm deployment complete
-        run: echo "✅ Homepage deployed to Cloudflare Pages. DNSPod Pro should map global-homepage.onwalk.net → pages.dev"
+        run: echo "✅ Homepage deployed to Cloudflare Pages (xcontrol)."
