@@ -1,0 +1,40 @@
+name: Deploy Homepage to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ui/homepage/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui/homepage
+
+    steps:
+      - name: 📦 Checkout source code
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: 📥 Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: 🛠️ Build homepage static site
+        run: yarn build
+
+      - name: 🚀 Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: homepage
+          directory: ./out
+
+      - name: ✅ Confirm deployment complete
+        run: echo "✅ Homepage deployed to Cloudflare Pages. DNSPod Pro should map global-homepage.onwalk.net → pages.dev"
