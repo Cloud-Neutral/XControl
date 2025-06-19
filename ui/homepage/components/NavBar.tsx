@@ -1,9 +1,13 @@
 'use client'
 import { useState } from 'react'
 import LanguageToggle from './LanguageToggle'
+import { useLanguage } from '../i18n/LanguageProvider'
+import { translations } from '../i18n/translations'
 
 export default function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { language } = useLanguage()
+  const nav = translations[language].nav
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-black/30 backdrop-blur border-b border-white/10">
@@ -15,10 +19,10 @@ export default function NavBar() {
 
         {/* 桌面导航 */}
         <div className="hidden md:flex items-center gap-6 text-sm text-white">
-          <a href="#features" className="hover:text-purple-300">Features</a>
-          <a href="#open-sources" className="hover:text-purple-300">Open Source</a>
-          <a href="#download" className="hover:text-purple-300">Download</a>
-          <a href="#contact" className="hover:text-purple-300">Contact</a>
+          <a href="#features" className="hover:text-purple-300">{nav.features}</a>
+          <a href="#open-sources" className="hover:text-purple-300">{nav.openSource}</a>
+          <a href="#download" className="hover:text-purple-300">{nav.download}</a>
+          <a href="#contact" className="hover:text-purple-300">{nav.contact}</a>
           <LanguageToggle />
         </div>
 
@@ -54,28 +58,28 @@ export default function NavBar() {
             onClick={() => setMenuOpen(false)}
             className="block py-2 text-white hover:text-purple-300"
           >
-            Features
+            {nav.features}
           </a>
           <a
             href="#open-sources"
             onClick={() => setMenuOpen(false)}
             className="block py-2 text-white hover:text-purple-300"
           >
-            Open Source
+            {nav.openSource}
           </a>
           <a
             href="#download"
             onClick={() => setMenuOpen(false)}
             className="block py-2 text-white hover:text-purple-300"
           >
-            Download
+            {nav.download}
           </a>
           <a
             href="#contact"
             onClick={() => setMenuOpen(false)}
             className="block py-2 text-white hover:text-purple-300"
           >
-            Contact
+            {nav.contact}
           </a>
           <div className="pt-2">
             <LanguageToggle />
