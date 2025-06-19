@@ -48,9 +48,9 @@ jobs:
           RSYNC_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
+          mkdir -p ~/.ssh
           echo "$RSYNC_SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          mkdir -p ~/.ssh
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           rsync -av out/ root@"$VPS_HOST":/mnt/data/website/ --delete
 
