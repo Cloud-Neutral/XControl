@@ -38,7 +38,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: homepage
+          projectName: xcontrol
           directory: ./out
 
       - name: ✅ Confirm deployment complete
