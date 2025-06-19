@@ -42,5 +42,17 @@ jobs:
           directory: ui/homepage/out # 指定到子目录 out
           wranglerVersion: '4'     # 升级到 Wrangler v4，避免 v2 大量警告
 
+
+      - name: 📤 Deploy to VPS via rsync
+        env:
+          RSYNC_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          echo "$RSYNC_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          rsync -av out/ root@"$VPS_HOST":/mnt/data/website/ --delete
+
       - name: ✅ Confirm deployment complete
-        run: echo "✅ Homepage deployed to Cloudflare Pages (xcontrol)."
+        run: echo "✅ Homepage deployed to Cloudflare & VPS Site."
