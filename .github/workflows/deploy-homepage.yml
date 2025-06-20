@@ -38,7 +38,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: xcontrol   # 和 Pages 控制台里看到的项目名保持一致
+          projectName: homepage   # 和 Pages 控制台里看到的项目名保持一致
           directory: ui/homepage/out # 指定到子目录 out
           wranglerVersion: '4'     # 升级到 Wrangler v4，避免 v2 大量警告
 
