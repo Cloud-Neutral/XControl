@@ -3,11 +3,11 @@ name: Deploy Xcontrol-panel to Cloudflare Pages
 on:
   pull_request:
     paths:
-      - 'ui/nextjs/**'
+      - 'ui/panel/**'
       - '.github/workflows/deploy-xcontrol-panel.yml'
   workflow_dispatch:
     paths:
-      - 'ui/nextjs/**'
+      - 'ui/panel/**'
       - '.github/workflows/deploy-xcontrol-panel.yml'
     branches: [main]
 
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ui/nextjs
+        working-directory: ui/panel/
 
     steps:
       - name: 📦 Checkout source code
@@ -39,7 +39,7 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           projectName: xcontrol-panel   # 和 Pages 控制台里看到的项目名保持一致
-          directory: ui/nextjs/out # 指定到子目录 out
+          directory: ui/panel/out # 指定到子目录 out
           wranglerVersion: '4'     # 升级到 Wrangler v4，避免 v2 大量警告
 
 #      - name: 📤 Deploy to VPS via rsync
