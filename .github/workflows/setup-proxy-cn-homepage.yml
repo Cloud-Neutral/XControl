@@ -14,8 +14,8 @@ jobs:
       - name: 🚀 Configure Nginx on proxy host
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.PROXY_HOST }}
-          username: ${{ secrets.PROXY_USER }}
+          host: ${{ secrets.CN_PROXY_HOST }}
+          username: ${{ secrets.CN_PROXY_HOST_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             apt-get update
