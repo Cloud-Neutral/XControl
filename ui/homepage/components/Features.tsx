@@ -6,8 +6,8 @@ const features = [
   {
     icon: '🛠️',
     title: {
-      en: 'PulumiGo - Multi-Cloud IaC',
-      zh: 'PulumiGo - 多云 IaC',
+      en: 'XCloudFlow - Multi-Cloud IaC',
+      zh: 'XCloudFlow - 多云 IaC',
     },
     desc: {
       en: 'Provision cloud resources across AWS, GCP, Azure, and Kubernetes using Golang with Pulumi SDK, fully integrated into CI/CD pipelines.',
@@ -28,8 +28,8 @@ const features = [
   {
     icon: '📦',
     title: {
-      en: 'CraftWeave - Configuration Orchestration',
-      zh: 'CraftWeave - 配置编排',
+      en: 'XConfig - Configuration Orchestration',
+      zh: 'XConfig - 配置编排',
     },
     desc: {
       en: 'YAML Playbook driven configuration delivery and task orchestration, optimized for bare metal, edge nodes and hybrid clusters.',

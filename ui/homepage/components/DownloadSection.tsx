@@ -3,9 +3,9 @@ import { useLanguage } from '../i18n/LanguageProvider'
 import { translations } from '../i18n/translations'
 
 const downloads = [
-  { name: 'PulumiGo', links: ['macOS', 'Windows', 'Linux'] },
+  { name: 'XCloudFlow', links: ['macOS', 'Windows', 'Linux'] },
   { name: 'KubeGuard', links: ['macOS', 'Windows', 'Linux'] },
-  { name: 'CraftWeave', links: ['macOS', 'Windows', 'Linux'] },
+  { name: 'XConfig', links: ['macOS', 'Windows', 'Linux'] },
   { name: 'CodePRobot', links: ['GitHub Only'] },
   { name: 'OpsAgent', links: ['macOS', 'Windows', 'Linux'] },
   {
