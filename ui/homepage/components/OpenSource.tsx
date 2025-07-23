@@ -4,12 +4,12 @@ import { translations } from '../i18n/translations'
 
 const projects = [
   {
-    name: 'PulumiGo',
+    name: 'XCloudFlow',
     desc: {
       en: 'Multi-cloud IaC engine built with Pulumi SDK and Go.',
       zh: '基于 Pulumi SDK 和 Go 构建的多云 IaC 引擎。',
     },
-    link: 'https://github.com/svc-design/PulumiGo',
+    link: 'https://github.com/svc-design/XCloudFlow',
   },
   {
     name: 'KubeGuard',
@@ -20,12 +20,12 @@ const projects = [
     link: 'https://github.com/svc-design/KubeGuard',
   },
   {
-    name: 'CraftWeave',
+    name: 'XConfig',
     desc: {
       en: 'Lightweight task execution & configuration orchestration engine.',
       zh: '轻量级任务执行与配置编排引擎。',
     },
-    link: 'https://github.com/svc-design/CraftWeave',
+    link: 'https://github.com/svc-design/XConfig',
   },
   {
     name: 'CodePRobot',
