@@ -6,6 +6,7 @@ import Terms from '@components/Terms'
 import Contact from '@components/Contact'
 import Footer from '@components/Footer'
 import NavBar from '@components/NavBar'
+import { AskAIButton } from '@components/AskAIButton'
 
 export default function Page() {
   return (
@@ -20,6 +21,7 @@ export default function Page() {
         <Contact />
       </main>
       <Footer />
+      <AskAIButton />
     </>
   )
 }
