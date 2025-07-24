@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Bot } from 'lucide-react'
 import { AskAIDialog } from './AskAIDialog'
 
 export function AskAIButton() {
@@ -10,9 +11,9 @@ export function AskAIButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-indigo-100 text-indigo-700 font-semibold rounded-xl p-4 shadow-md hover:shadow-lg"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-purple-600 text-white px-4 py-3 shadow-lg hover:bg-purple-500"
       >
-        <img src="/askai-icon.png" className="w-6 h-6 inline mr-2" />
+        <Bot className="w-5 h-5" />
         Ask AI
       </button>
 
