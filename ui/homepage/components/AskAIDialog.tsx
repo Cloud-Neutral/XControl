@@ -6,16 +6,19 @@ import { SourceHint } from './SourceHint'
 
 export function AskAIDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState<string | null>(null)
+  const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([])
 
   async function handleAsk() {
     if (!question) return
+    const userMessage = { sender: 'user' as const, text: question }
     const res = await fetch('/api/askai', {
       method: 'POST',
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, history: messages }),
     })
     const data = await res.json()
-    setAnswer(data.answer)
+    const aiMessage = { sender: 'ai' as const, text: data.answer as string }
+    setMessages((prev) => [...prev, userMessage, aiMessage])
+    setQuestion('')
   }
 
   if (!open) return null
@@ -46,11 +49,12 @@ export function AskAIDialog({ open, onClose }: { open: boolean; onClose: () => v
           Ask
         </button>
 
-        {answer && (
+        {messages.length > 0 && (
           <div className="mt-6 border-t pt-4 text-gray-800">
             <div className="text-sm font-bold mb-2">Conversation:</div>
-            <ChatBubble message={question} type="user" />
-            <ChatBubble message={answer} type="ai" />
+            {messages.map((m, idx) => (
+              <ChatBubble key={idx} message={m.text} type={m.sender} />
+            ))}
 
             <SourceHint />
           </div>
