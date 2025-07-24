@@ -39,8 +39,8 @@ const features = [
   {
     icon: '🤖',
     title: {
-      en: 'CodePRobot - AI Code Assistant',
-      zh: 'CodePRobot - AI 代码助手',
+      en: 'XCodeAgent - AI Code Assistant',
+      zh: 'XCodeAgent - AI 代码助手',
     },
     desc: {
       en: 'Automatically generate PRs from GitHub Issues via AI-powered patch generation, code review and testing automation.',
@@ -50,8 +50,8 @@ const features = [
   {
     icon: '📊',
     title: {
-      en: 'OpsAgent - AIOps Assistant',
-      zh: 'OpsAgent - AIOps 助手',
+      en: 'XOpsAgent - AIOps Assistant',
+      zh: 'XOpsAgent - AIOps 助手',
     },
     desc: {
       en: 'Monitor system metrics, detect anomalies, perform root cause analysis, and generate intelligent operational insights.',

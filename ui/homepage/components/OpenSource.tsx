@@ -28,20 +28,20 @@ const projects = [
     link: 'https://github.com/svc-design/XConfig',
   },
   {
-    name: 'CodePRobot',
+    name: 'XCodeAgent',
     desc: {
       en: 'AI-driven GitHub Issue to Pull Request generator and code patching tool.',
       zh: 'AI 驱动的 GitHub Issue 自动转 PR 与代码补丁工具。',
     },
-    link: 'https://github.com/svc-design/CodePRobot',
+    link: 'https://github.com/svc-design/XCodeAgent',
   },
   {
-    name: 'OpsAgent',
+    name: 'XOpsAgent',
     desc: {
       en: 'AIOps-powered intelligent monitoring, anomaly detection and RCA.',
       zh: 'AIOps 智能监控、异常检测与根因分析。',
     },
-    link: 'https://github.com/svc-design/OpsAgent',
+    link: 'https://github.com/svc-design/XOpsAgent',
   },
   {
     name: 'XStream',
