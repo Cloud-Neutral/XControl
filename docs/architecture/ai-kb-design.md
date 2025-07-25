@@ -78,7 +78,7 @@ func Embed(text string) ([]float32, error) { /* 调用 Embedding 模型 */ }
 ## 5. 项目代码规划
 
 ```
-markmind/
+modules/markmind/
 ├── ingest/
 │   ├── fetch_repo.go      # Git 克隆/更新
 │   ├── convert.go         # 文档转换

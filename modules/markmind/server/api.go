@@ -1,0 +1,48 @@
+package server
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+
+	"xcontrol/modules/markmind/db"
+	"xcontrol/modules/markmind/ingest"
+	"xcontrol/modules/markmind/llm"
+)
+
+// RegisterRoutes registers knowledge base endpoints.
+func RegisterRoutes(r *gin.Engine, conn *pgx.Conn) {
+	store := &db.Store{Conn: conn}
+	r.POST("/sync", func(c *gin.Context) {
+		var req struct {
+			RepoURL   string `json:"repo_url"`
+			LocalPath string `json:"local_path"`
+		}
+		if err := c.BindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := ingest.CloneOrPullRepo(req.RepoURL, req.LocalPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "synced"})
+	})
+
+	r.POST("/ask", func(c *gin.Context) {
+		var req struct {
+			Question string `json:"question"`
+		}
+		if err := c.BindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		answer, err := llm.Answer(c.Request.Context(), store, req.Question)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"answer": answer})
+	})
+}
