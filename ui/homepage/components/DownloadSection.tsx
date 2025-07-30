@@ -11,9 +11,10 @@ const downloads = [
   {
     name: 'XStream',
     links: [
-      ['macOS', 'https://artifact.onwalk.net/xstream-macos-stable/xstream-release-v0.1.4.dmg'],
-      ['Windows', 'https://artifact.onwalk.net/xstream-windows-latest/'],
-      ['Linux', 'https://artifact.onwalk.net/xstream-linux-latest/'],
+      ['macOS', 'https://artifact.svc.plus/xstream/macos/stable/xstream-release-v0.2.0.dmg'],
+      ['Docs', 'https://artifact.svc.plus/xstream/macos/docs/'],
+      ['Windows', 'https://artifact.svc.plus/xstream-windows-latest/'],
+      ['Linux', 'https://artifact.svc.plus/xstream-linux-latest/'],
       ['Android', '#'],
       ['iOS', '#'],
     ],
