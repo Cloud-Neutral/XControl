@@ -18,7 +18,9 @@ func Answer(ctx context.Context, store *db.Store, question string) (string, erro
 		return "", err
 	}
 	prompt := BuildPrompt(question, chunks)
-	// TODO: call real LLM model with the prompt
-	// For now just return the prompt for demonstration.
-	return prompt, nil
+	answer, err := callChutes(prompt)
+	if err != nil {
+		return "", err
+	}
+	return answer, nil
 }
