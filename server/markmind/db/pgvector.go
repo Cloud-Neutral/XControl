@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"xcontrol/server/markmind/ingest"
@@ -24,6 +25,9 @@ func NewStore(ctx context.Context, dsn string) (*Store, error) {
 
 // InsertChunk writes a chunk and its vector to the database.
 func (s *Store) InsertChunk(ctx context.Context, c ingest.Chunk, vec []float32) error {
+	if s.Conn == nil {
+		return errors.New("nil connection")
+	}
 	meta, _ := json.Marshal(c.Meta)
 	_, err := s.Conn.Exec(ctx,
 		"INSERT INTO chunks (doc_id, content, vector, metadata) VALUES ($1,$2,$3,$4)",
@@ -34,6 +38,9 @@ func (s *Store) InsertChunk(ctx context.Context, c ingest.Chunk, vec []float32) 
 
 // SearchSimilar returns chunks sorted by vector similarity.
 func (s *Store) SearchSimilar(ctx context.Context, vec []float32, limit int) ([]ingest.Chunk, error) {
+	if s.Conn == nil {
+		return nil, errors.New("nil connection")
+	}
 	rows, err := s.Conn.Query(ctx,
 		"SELECT doc_id, content, metadata FROM chunks ORDER BY vector <-> $1 LIMIT $2",
 		vec, limit,
