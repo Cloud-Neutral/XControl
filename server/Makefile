@@ -17,6 +17,7 @@ init:
 > echo "国内镜像不可用，使用默认: proxy.golang.org"; \
 > go env -w GOPROXY=https://proxy.golang.org,direct; \
 > fi
+> go install github.com/air-verse/air@latest
 > go mod tidy
 
 build:
@@ -30,7 +31,7 @@ run:
 dev:
 > @echo ">>> 开发模式运行 $(APP_NAME) (热重载) on port $(PORT)"
 > @if ! command -v air >/dev/null; then \
-> echo "未检测到 air，请先运行: go install github.com/cosmtrek/air@latest"; \
+> echo "未检测到 air，请先运行: go install github.com/air-verse/air@latest"; \
 > exit 1; \
 > fi
 > PORT=$(PORT) air -c .air.toml
