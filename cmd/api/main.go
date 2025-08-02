@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"xcontrol/internal/api"
-	kbserver "xcontrol/modules/markmind/server"
 	"xcontrol/server"
+	markmind "xcontrol/server/markmind"
 	"xcontrol/ui"
 )
 
@@ -27,7 +27,7 @@ func main() {
 
 	r := server.New(
 		api.RegisterRoutes,
-		func(r *gin.Engine) { kbserver.RegisterRoutes(r, conn) },
+		func(r *gin.Engine) { markmind.RegisterRoutes(r, conn) },
 		func(r *gin.Engine) { r.StaticFS("/", http.FS(ui.Assets)) },
 	)
 
