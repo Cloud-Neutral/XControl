@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/jackc/pgx/v5"
-	"xcontrol/modules/markmind/ingest"
+	"xcontrol/server/markmind/ingest"
 )
 
 // Store wraps a pgx connection for vector operations.
