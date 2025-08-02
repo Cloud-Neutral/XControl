@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -25,10 +27,24 @@ func main() {
 		}
 	}
 
+	uiFS, err := fs.Sub(ui.Assets, "dist")
+	if err != nil {
+		log.Fatalf("ui assets: %v", err)
+	}
+
 	r := server.New(
 		api.RegisterRoutes,
 		func(r *gin.Engine) { markmind.RegisterRoutes(r, conn) },
-		func(r *gin.Engine) { r.StaticFS("/", http.FS(ui.Assets)) },
+		func(r *gin.Engine) {
+			fileServer := http.FileServer(http.FS(uiFS))
+			r.NoRoute(func(c *gin.Context) {
+				if strings.HasPrefix(c.Request.URL.Path, "/api") {
+					c.AbortWithStatus(http.StatusNotFound)
+					return
+				}
+				fileServer.ServeHTTP(c.Writer, c.Request)
+			})
+		},
 	)
 
 	r.Run() // listen and serve on 0.0.0.0:8080
