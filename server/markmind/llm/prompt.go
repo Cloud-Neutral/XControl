@@ -3,7 +3,7 @@ package llm
 import (
 	"strings"
 
-	"xcontrol/modules/markmind/ingest"
+	"xcontrol/server/markmind/ingest"
 )
 
 // BuildPrompt constructs a simple prompt from retrieved chunks and a question.
