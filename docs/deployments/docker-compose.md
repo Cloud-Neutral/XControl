@@ -33,17 +33,24 @@ server {
     try_files $uri $uri/ /index.html;
   }
 
-  # 5. 静态资源缓存优化
-  location ~* \.(?:ico|css|js|gif|jpe?g|png|woff2?)$ {
-    expires 30d;
-    access_log off;
-    add_header Cache-Control "public";
-  }
+   # 5. 静态资源缓存优化
+   location ~* \.(?:ico|css|js|gif|jpe?g|png|woff2?)$ {
+     expires 30d;
+     access_log off;
+     add_header Cache-Control "public";
+   }
 
-  # 6. 隐藏 . 文件（如 .DS_Store）
-  location ~ /\. {
-    deny all;
-  }
+   # 6. 转发后端 API
+   location /api/ {
+     proxy_pass http://127.0.0.1:8080/api/;
+     proxy_set_header Host $host;
+     proxy_set_header X-Real-IP $remote_addr;
+   }
+
+   # 7. 隐藏 . 文件（如 .DS_Store）
+   location ~ /\. {
+     deny all;
+   }
 }
 
 # 7. HTTPS 独立下载服务 artifact.svc.plus

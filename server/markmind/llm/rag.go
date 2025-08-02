@@ -3,8 +3,8 @@ package llm
 import (
 	"context"
 
-	"xcontrol/modules/markmind/db"
-	"xcontrol/modules/markmind/ingest"
+	"xcontrol/server/markmind/db"
+	"xcontrol/server/markmind/ingest"
 )
 
 // Answer performs a minimal RAG workflow.

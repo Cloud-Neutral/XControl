@@ -1,4 +1,4 @@
-package server
+package markmind
 
 import (
 	"net/http"
@@ -6,15 +6,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 
-	"xcontrol/modules/markmind/db"
-	"xcontrol/modules/markmind/ingest"
-	"xcontrol/modules/markmind/llm"
+	"xcontrol/server/markmind/db"
+	"xcontrol/server/markmind/ingest"
+	"xcontrol/server/markmind/llm"
 )
 
 // RegisterRoutes registers knowledge base endpoints.
 func RegisterRoutes(r *gin.Engine, conn *pgx.Conn) {
 	store := &db.Store{Conn: conn}
-	r.POST("/sync", func(c *gin.Context) {
+	r.POST("/api/sync", func(c *gin.Context) {
 		var req struct {
 			RepoURL   string `json:"repo_url"`
 			LocalPath string `json:"local_path"`
@@ -30,7 +30,7 @@ func RegisterRoutes(r *gin.Engine, conn *pgx.Conn) {
 		c.JSON(http.StatusOK, gin.H{"status": "synced"})
 	})
 
-	r.POST("/ask", func(c *gin.Context) {
+	r.POST("/api/askai", func(c *gin.Context) {
 		var req struct {
 			Question string `json:"question"`
 		}
