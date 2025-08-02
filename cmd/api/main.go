@@ -11,12 +11,11 @@ import (
 
 	"xcontrol/internal/api"
 	kbserver "xcontrol/modules/markmind/server"
+	"xcontrol/server"
 	"xcontrol/ui"
 )
 
 func main() {
-	r := gin.Default()
-
 	var conn *pgx.Conn
 	if dsn := os.Getenv("KB_DSN"); dsn != "" {
 		var err error
@@ -26,11 +25,11 @@ func main() {
 		}
 	}
 
-	api.RegisterRoutes(r)
-	kbserver.RegisterRoutes(r, conn)
-
-	// serve embedded UI at root
-	r.StaticFS("/", http.FS(ui.Assets))
+	r := server.New(
+		api.RegisterRoutes,
+		func(r *gin.Engine) { kbserver.RegisterRoutes(r, conn) },
+		func(r *gin.Engine) { r.StaticFS("/", http.FS(ui.Assets)) },
+	)
 
 	r.Run() // listen and serve on 0.0.0.0:8080
 }
