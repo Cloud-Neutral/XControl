@@ -11,6 +11,9 @@ import (
 	"xcontrol/server/markmind/llm"
 )
 
+// answerFn is used to obtain an AI answer. It is replaceable in tests.
+var answerFn = llm.Answer
+
 // RegisterRoutes registers knowledge base endpoints.
 func RegisterRoutes(r *gin.Engine, conn *pgx.Conn) {
 	store := &db.Store{Conn: conn}
@@ -38,7 +41,7 @@ func RegisterRoutes(r *gin.Engine, conn *pgx.Conn) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		answer, err := llm.Answer(c.Request.Context(), store, req.Question)
+		answer, err := answerFn(c.Request.Context(), store, req.Question)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
