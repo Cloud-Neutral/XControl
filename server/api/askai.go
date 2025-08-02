@@ -8,8 +8,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
 )
 
 // askFn performs the chat completion request. It is replaceable in tests.
@@ -36,9 +38,43 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 
 const chutesURL = "https://llm.chutes.ai/v1/chat/completions"
 
+type serverConfig struct {
+	Env   map[string]string `yaml:"env"`
+	Model []string          `yaml:"model"`
+}
+
+// loadTokenAndModel attempts to read CHUTES_API_TOKEN and model from
+// environment variables, falling back to config/server.yaml.
+func loadTokenAndModel() (string, string) {
+	token := os.Getenv("CHUTES_API_TOKEN")
+	model := os.Getenv("CHUTES_API_MODEL")
+	if token != "" && model != "" {
+		return token, model
+	}
+	path := filepath.Join("server", "config", "server.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return token, model
+	}
+	var cfg serverConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return token, model
+	}
+	if token == "" {
+		token = cfg.Env["CHUTES_API_TOKEN"]
+	}
+	if model == "" && len(cfg.Model) > 0 {
+		model = cfg.Model[0]
+	}
+	if model == "" {
+		model = "deepseek-ai/DeepSeek-R1"
+	}
+	return token, model
+}
+
 // callChutes sends the question to the hosted LLM service and returns the reply.
 func callChutes(question string) (string, error) {
-	token := os.Getenv("CHUTES_API_TOKEN")
+	token, model := loadTokenAndModel()
 	if token == "" {
 		return "", errors.New("CHUTES_API_TOKEN not set")
 	}
@@ -48,7 +84,7 @@ func callChutes(question string) (string, error) {
 	}
 
 	reqBody := map[string]interface{}{
-		"model":       "deepseek-ai/DeepSeek-R1",
+		"model":       model,
 		"messages":    []interface{}{map[string]interface{}{"role": "user", "content": question}},
 		"stream":      false,
 		"max_tokens":  1024,
