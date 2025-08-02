@@ -11,9 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 
-	"xcontrol/internal/api"
 	"xcontrol/server"
-	markmind "xcontrol/server/markmind"
+	"xcontrol/server/api"
 	"xcontrol/ui"
 )
 
@@ -33,8 +32,7 @@ func main() {
 	}
 
 	r := server.New(
-		api.RegisterRoutes,
-		func(r *gin.Engine) { markmind.RegisterRoutes(r, conn) },
+		api.RegisterRoutes(conn),
 		func(r *gin.Engine) {
 			fileServer := http.FileServer(http.FS(uiFS))
 			r.NoRoute(func(c *gin.Context) {

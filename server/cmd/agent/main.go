@@ -1,6 +1,6 @@
 package main
 
-import "xcontrol/internal/agent"
+import "xcontrol/server/internal/agent"
 
 func main() {
 	agent.Run()

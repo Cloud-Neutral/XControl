@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"gorm.io/gorm"
-	"xcontrol/internal/model"
+	"xcontrol/server/internal/model"
 )
 
 var db *gorm.DB

@@ -1,31 +1,29 @@
-package markmind
+package api
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-
-	"xcontrol/server/markmind/db"
 )
 
 // TestAskAI verifies the /api/askai endpoint returns an answer.
 func TestAskAI(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+	register := RegisterRoutes(nil)
 
-	// stub answer function
-	old := answerFn
-	defer func() { answerFn = old }()
-	answerFn = func(ctx context.Context, store *db.Store, q string) (string, error) {
+	// stub ask function
+	old := askFn
+	defer func() { askFn = old }()
+	askFn = func(q string) (string, error) {
 		return "stub answer", nil
 	}
 
-	RegisterRoutes(r, nil)
+	register(r)
 
 	body, _ := json.Marshal(map[string]string{"question": "hello"})
 	req := httptest.NewRequest(http.MethodPost, "/api/askai", bytes.NewReader(body))
@@ -49,15 +47,16 @@ func TestAskAI(t *testing.T) {
 func TestAskAI_BadRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+	register := RegisterRoutes(nil)
 
-	// ensure answerFn is stubbed to avoid dependency
-	old := answerFn
-	defer func() { answerFn = old }()
-	answerFn = func(ctx context.Context, store *db.Store, q string) (string, error) {
+	// ensure askFn is stubbed to avoid dependency
+	old := askFn
+	defer func() { askFn = old }()
+	askFn = func(q string) (string, error) {
 		return "", nil
 	}
 
-	RegisterRoutes(r, nil)
+	register(r)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/askai", bytes.NewReader([]byte("{")))
 	req.Header.Set("Content-Type", "application/json")
