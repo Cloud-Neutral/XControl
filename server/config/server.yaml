@@ -1,4 +1,4 @@
 env:
   CHUTES_API_TOKEN: "r8_4em**********************************"
 model:
-  - "moonshotai/Kimi-K2-Instruct"
+  - "deepseek-ai/DeepSeek-R1"
