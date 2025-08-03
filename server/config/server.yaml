@@ -2,3 +2,6 @@ env:
   CHUTES_API_TOKEN: "r8_4em**********************************"
 model:
   - "deepseek-ai/DeepSeek-R1"
+askai:
+  timeout: 30
+  retries: 3
