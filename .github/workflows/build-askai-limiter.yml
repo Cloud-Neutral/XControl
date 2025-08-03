@@ -1,0 +1,46 @@
+name: Build and Release Askai Limiter
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'wasm/askai_limiter/**'
+      - '.github/workflows/build-askai-limiter.yml'
+      - 'Makefile'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-wasip1
+          profile: minimal
+          override: true
+      - name: Build Wasm Module
+        run: make wasm-askai-limiter
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: askai_limiter.wasm
+          path: build/askai_limiter.wasm
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: askai_limiter.wasm
+          path: release
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: askai-limiter-${{ github.run_number }}
+          name: Askai Limiter ${{ github.run_number }}
+          files: release/askai_limiter.wasm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
