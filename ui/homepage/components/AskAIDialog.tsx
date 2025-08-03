@@ -11,7 +11,8 @@ export function AskAIDialog({ open, onClose }: { open: boolean; onClose: () => v
   async function handleAsk() {
     if (!question) return
     const userMessage = { sender: 'user' as const, text: question }
-    const res = await fetch('/api/askai', {
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || ''
+    const res = await fetch(`${apiBase}/api/askai`, {
       method: 'POST',
       body: JSON.stringify({ question, history: messages }),
     })
