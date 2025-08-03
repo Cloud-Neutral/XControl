@@ -1,11 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export', // 开启静态导出
+  output: 'export', // 静态导出
   reactStrictMode: true,
-  // 移除 experimental.appDir
-  // experimental: {
-  //   appDir: true
-  // }
+
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:3002/api/:path*', // 后端服务
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig
