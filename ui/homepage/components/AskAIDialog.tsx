@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { ChatBubble } from './ChatBubble'
 import { SourceHint } from './SourceHint'
 
-export function AskAIDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+const MAX_MESSAGES = 20
+
+export function AskAIDialog({ open, onMinimize, onEnd }: { open: boolean; onMinimize: () => void; onEnd: () => void }) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([])
 
@@ -12,14 +14,24 @@ export function AskAIDialog({ open, onClose }: { open: boolean; onClose: () => v
     if (!question) return
     const userMessage = { sender: 'user' as const, text: question }
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || ''
+    const trimmedHistory = messages.slice(-MAX_MESSAGES)
     const res = await fetch(`${apiBase}/api/askai`, {
       method: 'POST',
-      body: JSON.stringify({ question, history: messages }),
+      body: JSON.stringify({ question, history: trimmedHistory })
     })
     const data = await res.json()
     const aiMessage = { sender: 'ai' as const, text: data.answer as string }
-    setMessages((prev) => [...prev, userMessage, aiMessage])
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage, aiMessage]
+      return newMessages.slice(-MAX_MESSAGES)
+    })
     setQuestion('')
+  }
+
+  function handleEnd() {
+    setMessages([])
+    setQuestion('')
+    onEnd()
   }
 
   if (!open) return null
@@ -27,12 +39,14 @@ export function AskAIDialog({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center">
       <div className="bg-white w-full max-w-xl rounded-2xl p-6 m-4 shadow-xl relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-4 text-gray-500 hover:text-gray-800"
-        >
-          ✕
-        </button>
+        <div className="absolute top-3 right-4 flex gap-2 text-gray-500">
+          <button onClick={onMinimize} className="hover:text-gray-800" title="Minimize">
+            –
+          </button>
+          <button onClick={handleEnd} className="hover:text-gray-800" title="End conversation">
+            End
+          </button>
+        </div>
         <h2 className="text-lg font-semibold mb-3">Ask anything about your docs</h2>
 
         <textarea
@@ -40,13 +54,10 @@ export function AskAIDialog({ open, onClose }: { open: boolean; onClose: () => v
           rows={3}
           placeholder="Type your question..."
           value={question}
-          onChange={(e) => setQuestion(e.target.value)}
+          onChange={e => setQuestion(e.target.value)}
         />
 
-        <button
-          onClick={handleAsk}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
-        >
+        <button onClick={handleAsk} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
           Ask
         </button>
 
