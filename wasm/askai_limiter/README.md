@@ -2,7 +2,28 @@
 
 This module provides a simple API rate limiter for Nginx using the experimental
 `ngx_http_wasm_module` and the [proxy-wasm-rust-sdk](https://github.com/proxy-wasm/proxy-wasm-rust-sdk).
-It enforces a global daily limit of **200** requests per API endpoint.
+It supports two counting modes:
+
+- **Rolling** – requests are counted within a sliding time window. The default
+  configuration limits to **200** requests every **24** hours.
+- **Unlimited** – a fixed quota that never resets until the limit is exhausted.
+
+### Configuration
+
+The module accepts a simple comma‑separated configuration string when loaded:
+
+```
+limit=200,window=86400
+```
+
+- `limit` – maximum allowed requests.
+- `window` – (optional) duration of the rolling window in seconds. Omit this
+  field to enable the unlimited mode.
+
+Examples:
+
+- `limit=1000` – unlimited counting with a quota of 1000 total requests.
+- `limit=1400,window=604800` – 1400 requests allowed every 7 days (168 hours).
 
 ## Build
 
@@ -46,5 +67,5 @@ http {
 }
 ```
 
-Requests beyond the first 200 in a single day will return HTTP 429 with the
-body `{"error":"API daily limit reached"}`.
+Requests exceeding the configured quota will return HTTP 429 with the body
+`{"error":"API limit reached"}`.
