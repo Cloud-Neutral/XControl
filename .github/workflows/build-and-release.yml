@@ -20,13 +20,13 @@ jobs:
           go-version: 1.21
       - name: Build
         run: |
-          mkdir -p build/${{ matrix.goos }}-${{ matrix.goarch }}
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/${{ matrix.goos }}-${{ matrix.goarch }}/xcontrol ./cmd/api
+          mkdir -p build
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/xcontrol-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/api
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: xcontrol-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: build/${{ matrix.goos }}-${{ matrix.goarch }}/xcontrol
+          path: build/xcontrol-${{ matrix.goos }}-${{ matrix.goarch }}
 
   release:
     runs-on: ubuntu-latest
@@ -36,11 +36,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: release-artifacts
+          merge-multiple: true
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: daily-${{ github.run_number }}
           name: Daily Build ${{ github.run_number }}
-          files: release-artifacts/**/xcontrol
+          files: release-artifacts/xcontrol-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
