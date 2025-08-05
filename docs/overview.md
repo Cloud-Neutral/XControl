@@ -13,9 +13,8 @@ XControl is a multi-tenant, multi-service management platform. The project integ
 一个面向多租户、多服务设计，具备多节点控制、用户订阅配置导出、流量统计与模块化可视化管理面板的系统。
 
 📁 项目结构（Go）
-csharp
-复制
-编辑
+
+```
 xcontrol/
 ├── cmd/
 │   ├── api/            # 启动 HTTP 服务
@@ -30,12 +29,11 @@ xcontrol/
 │   ├── helm/           # Helm Chart
 │   └── docker-compose.yml
 └── README.md
-
+```
 
 🧩 如何工作？
-css
-复制
-编辑
+
+```
 [Client (vless://)]
       ↓
 [Xray-core (node)]
@@ -45,6 +43,8 @@ css
 [解析 SNI / UUID / Email / IP / TLS fingerprint]
       ↓
 [上报到 Controller → PostgreSQL / Prometheus]
+
+``
 
 🔧 关键功能实现规划（Go）
 1. 配置生成与重载
