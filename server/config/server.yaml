@@ -5,3 +5,12 @@ model:
 askai:
   timeout: 30
   retries: 3
+RAG:
+  redis:
+    addr: "127.0.0.1:6479"
+    password: "auth"
+  module: "https://github.xxxx/repo/path"
+  vectordb:
+    pgurl: "postgres://user:password@127.0.0.1:5432"
+  datasources:
+    - "https://github.xxxx/repo"
