@@ -2,6 +2,7 @@ APP_NAME := xcontrol-server
 MAIN_FILE := ../cmd/api/main.go
 MODULE := xcontrol
 PORT := 3001
+OS := $(shell uname -s)
 
 .PHONY: all build run clean init help dev
 
@@ -9,19 +10,22 @@ all: build
 
 init:
 	@echo ">>> 初始化 Go 依赖环境"
-	@if brew list go@1.24 >/dev/null 2>&1; then \
-		echo "Go 1.24 已安装"; \
+	@if command -v go >/dev/null 2>&1; then \
+	echo "Go 已安装"; \
 	else \
-		echo "安装 Go 1.24"; \
-		brew install go@1.24; \
+	echo "安装 Go"; \
+	if [ "$(OS)" = "Darwin" ]; then \
+	brew install go@1.24 && brew link --overwrite --force go@1.24; \
+	else \
+	sudo apt-get update && sudo apt-get install -y golang; \
+	fi; \
 	fi
-	@brew link --overwrite --force go@1.24
 	@if curl -s --max-time 5 https://goproxy.cn >/dev/null; then \
-		echo "使用国内镜像: goproxy.cn"; \
-		go env -w GOPROXY=https://goproxy.cn,direct; \
+	echo "使用国内镜像: goproxy.cn"; \
+	go env -w GOPROXY=https://goproxy.cn,direct; \
 	else \
-		echo "国内镜像不可用，使用默认: proxy.golang.org"; \
-		go env -w GOPROXY=https://proxy.golang.org,direct; \
+	echo "国内镜像不可用，使用默认: proxy.golang.org"; \
+	go env -w GOPROXY=https://proxy.golang.org,direct; \
 	fi
 	@echo ">>> 执行 go mod tidy"
 	go mod tidy
