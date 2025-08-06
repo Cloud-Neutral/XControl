@@ -1,83 +1,76 @@
-# Simplified Makefile for XControl
-GO=go
-APP_NAME=xcontrol
+OS := $(shell uname -s)
 
-WASM_TARGET=wasm32-wasip1
-WASM_MODULE=askai_limiter
+.PHONY: install install-openresty install-redis install-postgresql install-pgvector \
+        build build-server build-homepage build-panel \
+        run run-server run-homepage run-panel
 
-UNAME_S := $(shell uname -s)
-UNAME_M := $(shell uname -m)
+# -----------------------------------------------------------------------------
+# Dependency installation
+# -----------------------------------------------------------------------------
 
-.PHONY: all build agent vet test clean release \
-       macos-x64 macos-arm64 windows-x64 linux-x64 linux-arm64 macos linux \
-       wasm-askai-limiter
+install: install-openresty install-redis install-postgresql install-pgvector
 
-all: vet test build
+install-openresty:
+ifeq ($(OS),Darwin)
+	brew install openresty/brew/openresty
+else
+	sudo apt-get update && \
+	sudo apt-get install -y openresty || echo "Please install OpenResty manually."
+endif
 
-build:
-	$(GO) build -o bin/$(APP_NAME) ./cmd/api
+install-redis:
+ifeq ($(OS),Darwin)
+	brew install redis
+else
+	sudo apt-get update && \
+	sudo apt-get install -y redis-server
+endif
 
-agent:
-	$(GO) build -o bin/$(APP_NAME)-agent ./cmd/agent
+install-postgresql:
+ifeq ($(OS),Darwin)
+	brew install postgresql
+else
+	sudo apt-get update && \
+	sudo apt-get install -y postgresql postgresql-contrib
+endif
 
-vet:
-	$(GO) vet ./...
+install-pgvector:
+ifeq ($(OS),Darwin)
+	brew install pgvector
+else
+	sudo apt-get update && \
+	( sudo apt-get install -y postgresql-15-pgvector || \
+	sudo apt-get install -y postgresql-14-pgvector || \
+echo "Please install pgvector manually." )
+endif
 
-test:
-	$(GO) test ./...
+# -----------------------------------------------------------------------------
+# Build targets
+# -----------------------------------------------------------------------------
 
-clean:
-	rm -rf bin build wasm/$(WASM_MODULE)/target
+build: build-server build-homepage build-panel
 
-wasm-askai-limiter:
-	rustup target add $(WASM_TARGET)
-	cargo build --release --target $(WASM_TARGET) --manifest-path wasm/$(WASM_MODULE)/Cargo.toml
-	mkdir -p build
-	cp wasm/$(WASM_MODULE)/target/$(WASM_TARGET)/release/$(WASM_MODULE).wasm build/$(WASM_MODULE).wasm
+build-server:
+	$(MAKE) -C server build
 
-macos-x64:
-	@if [ "$(UNAME_S)" = "Darwin" ] && [ "$(UNAME_M)" = "x86_64" ]; then \
-	GOOS=darwin GOARCH=amd64 $(GO) build -o build/macos-x64/$(APP_NAME) ./cmd/api; \
-	else \
-	echo "macos-x64 build requires macOS x86_64"; \
-	fi
+build-homepage:
+	$(MAKE) -C ui/homepage build
 
-macos-arm64:
-	@if [ "$(UNAME_S)" = "Darwin" ] && [ "$(UNAME_M)" = "arm64" ]; then \
-	GOOS=darwin GOARCH=arm64 $(GO) build -o build/macos-arm64/$(APP_NAME) ./cmd/api; \
-	else \
-	echo "macos-arm64 build requires macOS arm64"; \
-	fi
+build-panel:
+	$(MAKE) -C ui/panel build
 
-windows-x64:
-	GOOS=windows GOARCH=amd64 $(GO) build -o build/windows-x64/$(APP_NAME).exe ./cmd/api
+# -----------------------------------------------------------------------------
+# Run targets
+# -----------------------------------------------------------------------------
 
-linux-x64:
-	GOOS=linux GOARCH=amd64 $(GO) build -o build/linux-x64/$(APP_NAME) ./cmd/api
+run: run-server run-homepage run-panel
 
-linux-arm64:
-	GOOS=linux GOARCH=arm64 $(GO) build -o build/linux-arm64/$(APP_NAME) ./cmd/api
+run-server:
+	$(MAKE) -C server run
 
-release: macos-x64 macos-arm64 windows-x64 linux-x64 linux-arm64 wasm-askai-limiter
+run-homepage:
+	$(MAKE) -C ui/homepage dev
 
-macos:
-	@if [ "$(UNAME_S)" = "Darwin" ]; then \
-	if [ "$(UNAME_M)" = "arm64" ]; then \
-	GOOS=darwin GOARCH=arm64 $(GO) build -o build/macos-arm64/$(APP_NAME) ./cmd/api; \
-	else \
-	GOOS=darwin GOARCH=amd64 $(GO) build -o build/macos-x64/$(APP_NAME) ./cmd/api; \
-	fi; \
-	else \
-	echo "macos build requires macOS host"; \
-	fi
+run-panel:
+	$(MAKE) -C ui/panel run
 
-linux:
-	@if [ "$(UNAME_S)" = "Linux" ]; then \
-	if [ "$(UNAME_M)" = "aarch64" ] || [ "$(UNAME_M)" = "arm64" ]; then \
-	GOOS=linux GOARCH=arm64 $(GO) build -o build/linux-arm64/$(APP_NAME) ./cmd/api; \
-	else \
-	GOOS=linux GOARCH=amd64 $(GO) build -o build/linux-x64/$(APP_NAME) ./cmd/api; \
-	fi; \
-	else \
-	echo "linux build requires Linux host"; \
-fi
