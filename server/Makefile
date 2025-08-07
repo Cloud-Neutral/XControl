@@ -1,7 +1,7 @@
 APP_NAME := xcontrol-server
 MAIN_FILE := ../cmd/api/main.go
 MODULE := xcontrol
-PORT := 3001
+PORT := 8080
 OS := $(shell uname -s)
 
 .PHONY: all build start stop restart clean init help dev test
