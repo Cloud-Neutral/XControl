@@ -1,6 +1,7 @@
 OS := $(shell uname -s)
+PG_DSN ?= postgres://user:password@127.0.0.1:5432/postgres
 
-.PHONY: install install-openresty install-redis install-postgresql install-pgvector \
+.PHONY: install install-openresty install-redis install-postgresql install-pgvector init-db \
         build build-server build-homepage build-panel \
         run run-server run-homepage run-panel
 
@@ -68,6 +69,26 @@ else
 	sudo apt-get install -y postgresql-14-pgvector || \
 echo "Please install pgvector manually." )
 endif
+
+# -----------------------------------------------------------------------------
+# Database initialization
+# -----------------------------------------------------------------------------
+
+init-db:
+	psql $(PG_DSN) <<'SQL'
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE IF NOT EXISTS documents (
+    id BIGSERIAL PRIMARY KEY,
+    repo TEXT NOT NULL,
+    path TEXT NOT NULL,
+    chunk_id INT NOT NULL,
+    content TEXT NOT NULL,
+    embedding VECTOR(1536),
+    metadata JSONB
+);
+CREATE INDEX IF NOT EXISTS documents_embedding_idx ON documents USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_documents_metadata ON documents USING gin (metadata);
+SQL
 
 # -----------------------------------------------------------------------------
 # Build targets
