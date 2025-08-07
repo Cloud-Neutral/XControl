@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -19,11 +20,42 @@ type Runtime struct {
 		Addr     string `yaml:"addr"`
 		Password string `yaml:"password"`
 	} `yaml:"redis"`
-	Module   string `yaml:"module"`
-	VectorDB struct {
-		PGURL string `yaml:"pgurl"`
-	} `yaml:"vectordb"`
+	Module      string       `yaml:"module"`
+	VectorDB    VectorDB     `yaml:"vectordb"`
 	Datasources []Datasource `yaml:"datasources"`
+}
+
+// VectorDB holds configuration for the PostgreSQL vector store.
+type VectorDB struct {
+	PGURL      string `yaml:"pgurl"`
+	PGHost     string `yaml:"pg_host"`
+	PGPort     int    `yaml:"pg_port"`
+	PGUser     string `yaml:"pg_user"`
+	PGPassword string `yaml:"pg_password"`
+	PGDBName   string `yaml:"pg_db_name"`
+	PGSSLMode  string `yaml:"pg_sslmode"`
+}
+
+// DSN returns the connection string for the database.
+// If PGURL is provided it is used, otherwise a DSN is constructed
+// from individual fields. When insufficient fields are provided it
+// returns an empty string.
+func (v VectorDB) DSN() string {
+	if v.PGURL != "" {
+		return v.PGURL
+	}
+	if v.PGHost == "" || v.PGUser == "" || v.PGDBName == "" {
+		return ""
+	}
+	port := v.PGPort
+	if port == 0 {
+		port = 5432
+	}
+	ssl := v.PGSSLMode
+	if ssl == "" {
+		ssl = "require"
+	}
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", v.PGUser, v.PGPassword, v.PGHost, port, v.PGDBName, ssl)
 }
 
 // LoadServer loads RAG configuration from server/config/server.yaml.
