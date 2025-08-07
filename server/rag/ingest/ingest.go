@@ -2,7 +2,7 @@ package ingest
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -13,7 +13,7 @@ const chunkSize = 800
 
 // File reads a markdown file and returns chunked documents.
 func File(repo, path string) ([]store.Document, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ const MAX_MESSAGES = 20
 export function AskAIDialog({ open, onMinimize, onEnd }: { open: boolean; onMinimize: () => void; onEnd: () => void }) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([])
+  const [sources, setSources] = useState<any[]>([])
 
   async function handleAsk() {
     if (!question) return
@@ -21,6 +22,7 @@ export function AskAIDialog({ open, onMinimize, onEnd }: { open: boolean; onMini
     })
     const data = await res.json()
     const aiMessage = { sender: 'ai' as const, text: data.answer as string }
+    setSources(data.chunks || [])
     setMessages(prev => {
       const newMessages = [...prev, userMessage, aiMessage]
       return newMessages.slice(-MAX_MESSAGES)
@@ -31,6 +33,7 @@ export function AskAIDialog({ open, onMinimize, onEnd }: { open: boolean; onMini
   function handleEnd() {
     setMessages([])
     setQuestion('')
+    setSources([])
     onEnd()
   }
 
@@ -56,7 +59,7 @@ export function AskAIDialog({ open, onMinimize, onEnd }: { open: boolean; onMini
           {messages.map((m, idx) => (
             <ChatBubble key={idx} message={m.text} type={m.sender} />
           ))}
-          {messages.length > 0 && <SourceHint />}
+          {sources.length > 0 && <SourceHint sources={sources} />}
         </div>
 
         <div className="border-t p-4">
