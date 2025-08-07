@@ -14,6 +14,7 @@ func RegisterRoutes(conn *pgx.Conn) server.Registrar {
 		registerUserRoutes(api)
 		registerNodeRoutes(api)
 		registerKnowledgeRoutes(api, conn)
+		registerRAGRoutes(api)
 		registerAskAIRoutes(api)
 	}
 }
