@@ -43,6 +43,9 @@ func (s *Service) Sync(ctx context.Context) error {
 // syncRepo pulls markdown files for a single repo and ingests them.
 // If force is false, ingestion is skipped when the repo has no changes.
 func (s *Service) syncRepo(ctx context.Context, repo config.Repo, force bool) error {
+	if s == nil || s.st == nil || s.emb == nil {
+		return nil
+	}
 	files, changed, err := rsync.Repo(repo)
 	if err != nil {
 		return err
@@ -71,7 +74,7 @@ func (s *Service) syncRepo(ctx context.Context, repo config.Repo, force bool) er
 
 // Watch monitors configured repositories and triggers sync on updates.
 func (s *Service) Watch(ctx context.Context) {
-	if s == nil || s.cfg == nil {
+	if s == nil || s.cfg == nil || s.st == nil || s.emb == nil {
 		return
 	}
 	for _, repo := range s.cfg.Repos {
