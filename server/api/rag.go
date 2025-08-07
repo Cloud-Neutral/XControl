@@ -30,11 +30,15 @@ func initRAG() *rag.Service {
 		return nil
 	}
 	key := os.Getenv("OPENAI_API_KEY")
-	if key == "" {
-		return rag.New(nil, st, nil)
+	svcCfg := cfg.ToConfig()
+	var emb embed.Embedder
+	if key != "" {
+		emb = embed.NewOpenAI("text-embedding-3-small", key)
 	}
-	emb := embed.NewOpenAI("text-embedding-3-small", key)
-	return rag.New(nil, st, emb)
+	svc := rag.New(svcCfg, st, emb)
+	go svc.Sync(context.Background())
+	go svc.Watch(context.Background())
+	return svc
 }
 
 // registerRAGRoutes wires the /api/rag endpoints.
