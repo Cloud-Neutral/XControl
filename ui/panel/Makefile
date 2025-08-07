@@ -30,7 +30,7 @@ init:
 	fi
 	yarn install
 
-build:
+build: init
 	@echo "🔨 Building Next.js project..."
 	yarn build
 
