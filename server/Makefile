@@ -4,7 +4,7 @@ MODULE := xcontrol
 PORT := 3001
 OS := $(shell uname -s)
 
-.PHONY: all build run clean init help dev
+.PHONY: all build run clean init help dev test
 
 all: build
 
@@ -37,8 +37,12 @@ build:
 	go build -o $(APP_NAME) $(MAIN_FILE)
 
 run:
-	@echo ">>> 运行 $(APP_NAME) on port $(PORT)"
-	PORT=$(PORT) go run $(MAIN_FILE)
+	@echo ">>> 运行 $(APP_NAME) on port $(PORT) (后台运行)"
+	@nohup env PORT=$(PORT) go run $(MAIN_FILE) > $(APP_NAME).log 2>&1 &
+
+test:
+	@echo ">>> 运行单元测试"
+	go test ./...
 
 dev:
 	@echo ">>> 开发模式运行 $(APP_NAME) (热重载) on port $(PORT)"
@@ -57,7 +61,8 @@ help:
 	@echo " XControl Server Makefile"
 	@echo ""
 	@echo "make build    编译 server 可执行文件"
-	@echo "make run      运行 server (默认端口: $(PORT))"
+	        @echo "make run      后台运行 server (默认端口: $(PORT))"
+	        @echo "make test     运行单元测试"
 	@echo "make dev      开发模式运行 (自动检测 air，如无则用 go run)"
 	@echo "make init     初始化依赖（自动选择国内/默认 Go 模块代理，air 可选）"
 	@echo "make clean    清理构建产物"
