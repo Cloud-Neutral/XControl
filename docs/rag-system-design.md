@@ -83,3 +83,60 @@ server/rag/
 
 以上设计为后续实现提供结构化指导，可在项目中逐步落地。
 
+## 8. 同步与查询测试
+
+### 8.1 启动依赖服务
+
+```bash
+docker run -d --name pgvector \
+  -e POSTGRES_PASSWORD=password \
+  -p 5432:5432 \
+  ankane/pgvector:latest
+
+docker run -d --name redis -p 6479:6379 redis
+```
+
+### 8.2 配置 rag.yaml
+
+```yaml
+redis:
+  addr: "127.0.0.1:6479"
+  password: ""
+module: "moonshotai/Kimi-K2-Instruct"
+vectordb:
+  pgurl: "postgres://user:password@127.0.0.1:5432"
+datasources:
+  - name: Xstream
+    repo: https://github.com/svc-design/Xstream
+    path: docs
+  - name: XControl
+    repo: https://github.com/svc-design/XControl
+    path: docs
+  - name: documents
+    repo: https://github.com/svc-design/documents
+```
+
+### 8.3 运行同步
+
+```bash
+./xcontrol-cli sync --config rag.yaml
+```
+
+运行过程会克隆或更新数据源仓库，解析 Markdown 并分块，调用模型生成向量，并写入 pgvector 数据库。成功后会看到类似下面的日志：
+
+```
+path: /2025/08/08 00:30:00 loaded 3 datasource(s)
+2025/08/08 00:30:00 sync triggered
+```
+
+### 8.4 查询接口
+
+同步完成后，可通过 curl 测试 `/api/rag/query`：
+
+```bash
+curl -X POST http://localhost:8080/api/rag/query \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is XControl?"}'
+```
+
+请求体必须包含 `question` 字段。若数据写入成功，将返回相关的 `chunks` 列表；若返回 `{"chunks":null}`，请检查同步日志、数据库连接与配置文件是否正确。
