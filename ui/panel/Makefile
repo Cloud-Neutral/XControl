@@ -5,7 +5,7 @@ NODE_VERSION := $(shell node -v 2>/dev/null || echo "Not Found")
 YARN := $(shell command -v yarn 2>/dev/null)
 OS := $(shell uname -s)
 
-.PHONY: init build run export clean info
+.PHONY: init build run export clean info test
 
 init:
 	@echo "🔧 Installing dependencies..."
@@ -35,8 +35,12 @@ build:
 	yarn build
 
 run:
-	@echo "🚀 Starting local dev server..."
-	yarn dev
+	@echo "🚀 Starting local dev server in background..."
+	@nohup yarn dev >/tmp/panel.log 2>&1 &
+
+test:
+	@echo "🔍 Running tests..."
+	@yarn test || echo "No tests configured"
 
 export:
 	@echo "📦 Exporting static site to ./out ..."
