@@ -1,3 +1,5 @@
+// Package api exposes HTTP handlers, including RAG endpoints previously
+// served from server/rag/api.
 package api
 
 import (
