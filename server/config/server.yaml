@@ -1,16 +1,25 @@
 env:
-  CHUTES_API_TOKEN: "r8_4em**********************************"
+  CHUTES_API_TOKEN: "cpk_xxxxxxxxxxxxxxxxxxxxxxxx"
 model:
-  - "deepseek-ai/DeepSeek-R1"
+  - 'moonshotai/Kimi-K2-Instruct'
 askai:
-  timeout: 30
+  timeout: 100
   retries: 3
 RAG:
   redis:
     addr: "127.0.0.1:6479"
-    password: "auth"
-  module: "https://github.xxxx/repo/path"
+    password: ""
+  module: "moonshotai/Kimi-K2-Instruct"
   vectordb:
     pgurl: "postgres://user:password@127.0.0.1:5432"
   datasources:
-    - "https://github.xxxx/repo"
+    - name: Xstream
+      repo: https://github.com/svc-design/Xstream
+      path: docs
+    - name: XControl
+      repo: https://github.com/svc-design/XControl
+      path: docs
+    - name: documents
+      repo: https://github.com/svc-design/documents
+      path: /
+

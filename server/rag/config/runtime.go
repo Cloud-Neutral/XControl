@@ -8,6 +8,12 @@ import (
 )
 
 // Runtime holds runtime configuration for RAG features.
+type Datasource struct {
+	Name string `yaml:"name"`
+	Repo string `yaml:"repo"`
+	Path string `yaml:"path"`
+}
+
 type Runtime struct {
 	Redis struct {
 		Addr     string `yaml:"addr"`
@@ -17,7 +23,7 @@ type Runtime struct {
 	VectorDB struct {
 		PGURL string `yaml:"pgurl"`
 	} `yaml:"vectordb"`
-	Datasources []string `yaml:"datasources"`
+	Datasources []Datasource `yaml:"datasources"`
 }
 
 // LoadServer loads RAG configuration from server/config/server.yaml.
@@ -34,4 +40,20 @@ func LoadServer() (*Runtime, error) {
 		return nil, err
 	}
 	return &cfg.RAG, nil
+}
+
+// ToConfig converts runtime configuration into service configuration.
+func (rt *Runtime) ToConfig() *Config {
+	if rt == nil {
+		return nil
+	}
+	var c Config
+	for _, ds := range rt.Datasources {
+		c.Repos = append(c.Repos, Repo{
+			URL:   ds.Repo,
+			Paths: []string{ds.Path},
+			Local: filepath.Join("server", "rag", ds.Name),
+		})
+	}
+	return &c
 }
