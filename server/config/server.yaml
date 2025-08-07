@@ -10,6 +10,7 @@ RAG:
     addr: "127.0.0.1:6479"
     password: ""
   module: "moonshotai/Kimi-K2-Instruct"
+  embedder: "openai"
   vectordb:
     pgurl: "postgres://myuser:mypassword@127.0.0.1:5432/mydb?sslmode=disable"
     pg_host: "127.0.0.1"
