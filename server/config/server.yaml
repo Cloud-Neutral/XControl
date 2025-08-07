@@ -11,7 +11,13 @@ RAG:
     password: ""
   module: "moonshotai/Kimi-K2-Instruct"
   vectordb:
-    pgurl: "postgres://user:password@127.0.0.1:5432"
+    pgurl: "postgres://myuser:mypassword@127.0.0.1:5432/mydb?sslmode=disable"
+    pg_host: "127.0.0.1"
+    pg_port: 5432
+    pg_user: myuser
+    pg_password: mypassword
+    pg_db_name: mydb
+    pg_sslmode: disable
   datasources:
     - name: Xstream
       repo: https://github.com/svc-design/Xstream
