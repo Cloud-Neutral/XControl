@@ -84,3 +84,55 @@ WebUI + 后端整合	✅ 前后端集成	✅ Go embed Vue，可做 SaaS 化
 
 export PG_DSN="postgres://shenlan@127.0.0.1:5432/postgres"
 make init-db
+
+
+概述（Overview）
+
+介绍 RAG 系统的背景、目标和整体方案。
+
+简要说明为何要将 Git 仓库 Markdown 文档转换为 Embedding，并存入 Postgres/pgvector。
+
+系统架构（Architecture）
+
+描述主要组件：xcontrol-cli、Redis、Postgres/pgvector、模型模块等。
+
+可附上架构图或流程图。
+
+数据源管理（Datasources）
+
+说明 rag.yaml 配置中的 datasources 如何指定仓库及路径。
+
+说明如何新增或更新数据源。
+
+同步流程（Sync Process）
+
+分解 xcontrol-cli sync 的步骤：克隆/更新仓库、切分 Markdown、生成向量、写入 pgvector。
+
+列出关键命令与重要日志输出示例。
+
+查询流程（Query Flow）
+
+描述 /api/rag/query 的调用方式及参数。
+
+给出典型的 curl 请求示例和返回格式说明。
+
+部署与运行（Deployment & Execution）
+
+记录启动 Postgres+pgvector、Redis、以及运行 xcontrol-cli 的命令。
+
+对环境变量、端口、账户等信息进行说明。
+
+故障排查（Troubleshooting）
+
+常见错误及解决方式，如 “chunks: null” 的排查流程。
+
+如何确认向量写入数据库成功（示例 SQL 查询等）。
+
+未来计划 / 待办事项（Future Work / TODO）
+
+列出后续可能的改进，如模型更新、UI 添加等。
+
+3. 格式与工具
+使用 Markdown 编写（支持标题、列表、代码块等）。
+
+可使用 plantuml 或 mermaid 绘制架构图并嵌入 Markdown。
