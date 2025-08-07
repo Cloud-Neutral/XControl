@@ -59,7 +59,7 @@ test:
 	@echo "🔍 Running tests..."
 	@yarn test || echo "No tests configured"
 
-build:
+build: init
 	@echo "🔨 Building homepage..."
 	yarn next build
 
