@@ -3,32 +3,72 @@ package main
 import (
 	"context"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/go-redis/v9"
 
 	"xcontrol/server"
 	"xcontrol/server/api"
+	"xcontrol/server/config"
 	"xcontrol/ui"
 )
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Warn("load config", "err", err)
+		cfg = &config.Server{}
+	}
+
+	level := slog.LevelInfo
+	switch strings.ToLower(cfg.Log.Level) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	slog.SetDefault(logger)
+
 	var conn *pgx.Conn
-	if dsn := os.Getenv("KB_DSN"); dsn != "" {
-		var err error
+	if dsn := cfg.Postgres.DSN; dsn != "" {
+		logger.Debug("connecting to postgres", "dsn", dsn)
 		conn, err = pgx.Connect(context.Background(), dsn)
 		if err != nil {
-			log.Printf("kb db connect error: %v", err)
+			logger.Error("postgres connect error", "err", err)
+		} else {
+			logger.Info("postgres connected")
 		}
+	} else {
+		logger.Warn("postgres dsn not provided")
+	}
+
+	if addr := cfg.Redis.Addr; addr != "" {
+		logger.Debug("connecting to redis", "addr", addr)
+		rdb := redis.NewClient(&redis.Options{
+			Addr:     addr,
+			Password: cfg.Redis.Password,
+		})
+		if err := rdb.Ping(context.Background()).Err(); err != nil {
+			logger.Error("redis connect error", "err", err)
+		} else {
+			logger.Info("redis connected")
+		}
+	} else {
+		logger.Warn("redis addr not provided")
 	}
 
 	uiFS, err := fs.Sub(ui.Assets, "dist")
 	if err != nil {
-		log.Fatalf("ui assets: %v", err)
+		logger.Error("ui assets", "err", err)
+		return
 	}
 
 	r := server.New(
