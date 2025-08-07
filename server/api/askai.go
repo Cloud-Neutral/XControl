@@ -28,12 +28,17 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		var chunks any
+		if ragSvc != nil {
+			docs, _ := ragSvc.Query(c.Request.Context(), req.Question, 5)
+			chunks = docs
+		}
 		answer, err := askFn(req.Question)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"answer": answer})
+		c.JSON(http.StatusOK, gin.H{"answer": answer, "chunks": chunks})
 	})
 }
 
