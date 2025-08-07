@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"errors"
 	"io/fs"
 	"path/filepath"
 
@@ -9,21 +10,30 @@ import (
 )
 
 // Repo synchronizes the configured repository and returns markdown file paths.
-func Repo(c config.Repo) ([]string, error) {
+// The returned boolean indicates whether new commits were pulled.
+func Repo(c config.Repo) ([]string, bool, error) {
+	changed := false
 	if _, err := git.PlainOpen(c.Local); err != nil {
 		if _, err := git.PlainClone(c.Local, false, &git.CloneOptions{URL: c.URL}); err != nil {
-			return nil, err
+			return nil, false, err
 		}
+		changed = true
 	} else {
 		r, err := git.PlainOpen(c.Local)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		w, err := r.Worktree()
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		_ = w.Pull(&git.PullOptions{RemoteName: "origin"})
+		if err := w.Pull(&git.PullOptions{RemoteName: "origin"}); err != nil {
+			if !errors.Is(err, git.NoErrAlreadyUpToDate) {
+				return nil, false, err
+			}
+		} else {
+			changed = true
+		}
 	}
 	var files []string
 	for _, p := range c.Paths {
@@ -41,5 +51,5 @@ func Repo(c config.Repo) ([]string, error) {
 			return nil
 		})
 	}
-	return files, nil
+	return files, changed, nil
 }

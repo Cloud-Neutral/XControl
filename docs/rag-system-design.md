@@ -26,25 +26,33 @@
 
 ## 4. 数据库设计
 
-使用 PostgreSQL + [pgvector](https://github.com/pgvector/pgvector)。建表及索引 SQL 如下：
+使用 PostgreSQL + [pgvector](https://github.com/pgvector/pgvector)。初始化步骤：
 
-```sql
-CREATE TABLE documents (
-    id BIGSERIAL PRIMARY KEY,
-    repo TEXT NOT NULL,         -- 来源仓库
-    path TEXT NOT NULL,         -- 文件路径
-    chunk_id INT NOT NULL,
-    content TEXT NOT NULL,
-    embedding VECTOR(1536),     -- 向量
-    metadata JSONB              -- 额外信息：标签/更新时间等
-);
+1. 在目标数据库中启用扩展：
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS vector;
+   ```
+2. 按以下 SQL 创建存储向量的表及索引：
 
--- 向量索引
-CREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops);
+   ```sql
+   CREATE TABLE documents (
+       id BIGSERIAL PRIMARY KEY,
+       repo TEXT NOT NULL,         -- 来源仓库
+       path TEXT NOT NULL,         -- 文件路径
+       chunk_id INT NOT NULL,
+       content TEXT NOT NULL,
+       embedding VECTOR(1536),     -- 向量
+       metadata JSONB              -- 额外信息：标签/更新时间等
+   );
 
--- 元数据索引
-CREATE INDEX idx_documents_metadata ON documents USING gin (metadata);
-```
+   -- 向量索引
+   CREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops);
+
+   -- 元数据索引
+   CREATE INDEX idx_documents_metadata ON documents USING gin (metadata);
+   ```
+
+连接字符串示例：`postgres://user:password@127.0.0.1:5432`。
 
 ## 5. 检索与问答流程
 

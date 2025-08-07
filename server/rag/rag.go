@@ -2,6 +2,7 @@ package rag
 
 import (
 	"context"
+	"time"
 
 	"xcontrol/server/rag/config"
 	"xcontrol/server/rag/embed"
@@ -32,28 +33,61 @@ func (s *Service) Sync(ctx context.Context) error {
 		return nil
 	}
 	for _, repo := range s.cfg.Repos {
-		files, err := rsync.Repo(repo)
-		if err != nil {
+		if err := s.syncRepo(ctx, repo, true); err != nil {
 			return err
-		}
-		for _, f := range files {
-			docs, err := ingest.File(repo.URL, f)
-			if err != nil {
-				continue
-			}
-			for i := range docs {
-				vec, err := s.emb.Embed(ctx, docs[i].Content)
-				if err != nil {
-					continue
-				}
-				docs[i].Embedding = vec
-			}
-			if err := s.st.Upsert(ctx, docs); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
+}
+
+// syncRepo pulls markdown files for a single repo and ingests them.
+// If force is false, ingestion is skipped when the repo has no changes.
+func (s *Service) syncRepo(ctx context.Context, repo config.Repo, force bool) error {
+	files, changed, err := rsync.Repo(repo)
+	if err != nil {
+		return err
+	}
+	if !force && !changed {
+		return nil
+	}
+	for _, f := range files {
+		docs, err := ingest.File(repo.URL, f)
+		if err != nil {
+			continue
+		}
+		for i := range docs {
+			vec, err := s.emb.Embed(ctx, docs[i].Content)
+			if err != nil {
+				continue
+			}
+			docs[i].Embedding = vec
+		}
+		if err := s.st.Upsert(ctx, docs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Watch monitors configured repositories and triggers sync on updates.
+func (s *Service) Watch(ctx context.Context) {
+	if s == nil || s.cfg == nil {
+		return
+	}
+	for _, repo := range s.cfg.Repos {
+		go func(r config.Repo) {
+			ticker := time.NewTicker(time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					_ = s.syncRepo(ctx, r, false)
+				}
+			}
+		}(repo)
+	}
 }
 
 // Query embeds the question and searches the store for similar documents.
