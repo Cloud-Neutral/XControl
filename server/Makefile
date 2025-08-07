@@ -4,7 +4,7 @@ MODULE := xcontrol
 PORT := 3001
 OS := $(shell uname -s)
 
-.PHONY: all build run clean init help dev test
+.PHONY: all build start stop restart clean init help dev test
 
 all: build
 
@@ -36,9 +36,20 @@ build:
 	@echo ">>> 编译 $(APP_NAME)"
 	go build -o $(APP_NAME) $(MAIN_FILE)
 
-run:
+start:
 	@echo ">>> 运行 $(APP_NAME) on port $(PORT) (后台运行)"
-	@nohup env PORT=$(PORT) go run $(MAIN_FILE) > $(APP_NAME).log 2>&1 &
+	@nohup env PORT=$(PORT) go run $(MAIN_FILE) > $(APP_NAME).log 2>&1 & echo $$! > $(APP_NAME).pid
+
+stop:
+	@echo ">>> 停止 $(APP_NAME)"
+	@if [ -f $(APP_NAME).pid ]; then \
+	        kill `cat $(APP_NAME).pid` >/dev/null 2>&1 || true; \
+	        rm $(APP_NAME).pid; \
+	else \
+	        echo "未找到运行中的进程"; \
+	fi
+
+restart: stop start
 
 test:
 	@echo ">>> 运行单元测试"
@@ -60,9 +71,11 @@ clean:
 help:
 	@echo " XControl Server Makefile"
 	@echo ""
-	@echo "make build    编译 server 可执行文件"
-	        @echo "make run      后台运行 server (默认端口: $(PORT))"
-	        @echo "make test     运行单元测试"
-	@echo "make dev      开发模式运行 (自动检测 air，如无则用 go run)"
-	@echo "make init     初始化依赖（自动选择国内/默认 Go 模块代理，air 可选）"
-	@echo "make clean    清理构建产物"
+	@echo "make build     编译 server 可执行文件"
+	@echo "make start     后台运行 server (默认端口: $(PORT))"
+	@echo "make stop      停止运行 server"
+	@echo "make restart   重启 server"
+	@echo "make test      运行单元测试"
+	@echo "make dev       开发模式运行 (自动检测 air，如无则用 go run)"
+	@echo "make init      初始化依赖（自动选择国内/默认 Go 模块代理，air 可选）"
+	@echo "make clean     清理构建产物"

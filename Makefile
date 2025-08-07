@@ -2,8 +2,9 @@ OS := $(shell uname -s)
 PG_DSN ?= postgres://user:password@127.0.0.1:5432/postgres
 
 .PHONY: install install-openresty install-redis install-postgresql install-pgvector init-db \
-        build build-server build-homepage build-panel \
-        run run-server run-homepage run-panel
+	build build-server build-homepage build-panel \
+	start start-server start-homepage start-panel \
+	stop stop-server stop-homepage stop-panel restart
 
 # -----------------------------------------------------------------------------
 # Dependency installation
@@ -95,14 +96,27 @@ build-panel:
 # Run targets
 # -----------------------------------------------------------------------------
 
-run: run-server run-homepage run-panel
+start: start-server start-homepage start-panel
 
-run-server:
-	$(MAKE) -C server run
+start-server:
+	$(MAKE) -C server start
 
-run-homepage:
-	$(MAKE) -C ui/homepage dev
+start-homepage:
+	$(MAKE) -C ui/homepage start
 
-run-panel:
-	$(MAKE) -C ui/panel run
+start-panel:
+	$(MAKE) -C ui/panel start
+
+stop: stop-server stop-homepage stop-panel
+
+stop-server:
+	$(MAKE) -C server stop
+
+stop-homepage:
+	$(MAKE) -C ui/homepage stop
+
+stop-panel:
+	$(MAKE) -C ui/panel stop
+
+restart: stop start
 
