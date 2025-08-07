@@ -4,7 +4,7 @@ YARN := $(shell command -v yarn 2>/dev/null)
 MAGICK := $(shell command -v magick 2>/dev/null || command -v convert 2>/dev/null)
 OS := $(shell uname -s)
 
-.PHONY: init dev build export clean info icon run test
+.PHONY: init dev build export clean info icon start stop restart test
 
 icon:
 	@echo "🎨 Generating favicon and icon images..."
@@ -51,9 +51,20 @@ dev:
 	@echo "🚀 Starting Next.js dev server (homepage)..."
 	yarn next dev -p 3001
 
-run:
+start:
 	@echo "🚀 Starting Next.js dev server (homepage) in background..."
-	@nohup yarn next dev -p 3001 >/tmp/homepage.log 2>&1 &
+	@nohup yarn next dev -p 3001 >/tmp/homepage.log 2>&1 & echo $$! > homepage.pid
+
+stop:
+	@echo "🛑 Stopping Next.js dev server (homepage)..."
+	@if [ -f homepage.pid ]; then \
+	        kill `cat homepage.pid` >/dev/null 2>&1 || true; \
+	        rm homepage.pid; \
+	else \
+	        echo "No running server"; \
+	fi
+
+restart: stop start
 
 test:
 	@echo "🔍 Running tests..."

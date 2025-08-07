@@ -5,7 +5,7 @@ NODE_VERSION := $(shell node -v 2>/dev/null || echo "Not Found")
 YARN := $(shell command -v yarn 2>/dev/null)
 OS := $(shell uname -s)
 
-.PHONY: init build run export clean info test
+.PHONY: init build start stop restart export clean info test
 
 init:
 	@echo "🔧 Installing dependencies..."
@@ -34,9 +34,20 @@ build:
 	@echo "🔨 Building Next.js project..."
 	yarn build
 
-run:
+start:
 	@echo "🚀 Starting local dev server in background..."
-	@nohup yarn dev >/tmp/panel.log 2>&1 &
+	@nohup yarn dev >/tmp/panel.log 2>&1 & echo $$! > panel.pid
+
+stop:
+	@echo "🛑 Stopping local dev server..."
+	@if [ -f panel.pid ]; then \
+	        kill `cat panel.pid` >/dev/null 2>&1 || true; \
+	        rm panel.pid; \
+	else \
+	        echo "No running server"; \
+	fi
+
+restart: stop start
 
 test:
 	@echo "🔍 Running tests..."
