@@ -20,12 +20,16 @@ var ragSvc = initRAG()
 // initRAG attempts to construct a RAG service from server configuration.
 func initRAG() *rag.Service {
 	cfg, err := rconfig.LoadServer()
-	if err != nil || cfg.VectorDB.PGURL == "" {
+	if err != nil {
+		return nil
+	}
+	dsn := cfg.VectorDB.DSN()
+	if dsn == "" {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	st, err := store.New(ctx, cfg.VectorDB.PGURL)
+	st, err := store.New(ctx, dsn)
 	if err != nil {
 		return nil
 	}
