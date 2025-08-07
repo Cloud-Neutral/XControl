@@ -1,0 +1,7 @@
+log:
+  level: info
+redis:
+  addr: ""
+  password: ""
+postgres:
+  dsn: ""
