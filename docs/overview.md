@@ -79,3 +79,8 @@ xcontrol/
 流量统计	✅ 基于 Xray stats	✅ 支持 stats + DeepFlow 双通道
 WebUI + 后端整合	✅ 前后端集成	✅ Go embed Vue，可做 SaaS 化
 可观测性 + 控制分离	❌ 不支持	✅ 支持 Agent 拉取或观察方式
+
+## Init DB
+
+export PG_DSN="postgres://shenlan@127.0.0.1:5432/postgres"
+make init-db
