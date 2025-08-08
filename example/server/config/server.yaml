@@ -1,0 +1,25 @@
+global:
+  redis:
+    addr: "127.0.0.1:6479"
+    password: ""
+  vectordb:
+    pgurl: "postgres://user:password@127.0.0.1:5432"
+  datasources:
+    - name: Xstream
+      repo: https://github.com/svc-design/Xstream
+      path: docs
+    - name: XControl
+      repo: https://github.com/svc-design/XControl
+      path: docs
+    - name: documents
+      repo: https://github.com/svc-design/documents
+      path: /
+llm:
+  url: https://llm.chutes.ai/
+  token: "cpk_xxxxxxx"
+  models:
+    - 'moonshotai/Kimi-K2-Instruct'
+api:
+  askai:
+    timeout: 100
+    retries: 3
