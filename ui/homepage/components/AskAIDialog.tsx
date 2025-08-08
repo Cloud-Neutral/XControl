@@ -16,17 +16,31 @@ export function AskAIDialog({ open, onMinimize, onEnd }: { open: boolean; onMini
     const userMessage = { sender: 'user' as const, text: question }
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || ''
     const trimmedHistory = messages.slice(-MAX_MESSAGES)
-    const res = await fetch(`${apiBase}/api/askai`, {
-      method: 'POST',
-      body: JSON.stringify({ question, history: trimmedHistory })
-    })
-    const data = await res.json()
-    const aiMessage = { sender: 'ai' as const, text: data.answer as string }
-    setSources(data.chunks || [])
-    setMessages(prev => {
-      const newMessages = [...prev, userMessage, aiMessage]
-      return newMessages.slice(-MAX_MESSAGES)
-    })
+    try {
+      const res = await fetch(`${apiBase}/api/rag/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, history: trimmedHistory })
+      })
+      const data = await res.json()
+      const retrieved = data.chunks || []
+      setSources(retrieved)
+      let answer = data.answer as string
+      if (!answer || retrieved.length === 0) {
+        answer = 'I could not find an answer in our docs. Please visit https://chart.svc.plus for more information.'
+      }
+      const aiMessage = { sender: 'ai' as const, text: answer }
+      setMessages(prev => {
+        const newMessages = [...prev, userMessage, aiMessage]
+        return newMessages.slice(-MAX_MESSAGES)
+      })
+    } catch (err) {
+      const aiMessage = { sender: 'ai' as const, text: 'Something went wrong. Please try again later.' }
+      setMessages(prev => {
+        const newMessages = [...prev, userMessage, aiMessage]
+        return newMessages.slice(-MAX_MESSAGES)
+      })
+    }
     setQuestion('')
   }
 
