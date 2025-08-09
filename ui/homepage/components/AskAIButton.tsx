@@ -7,6 +7,7 @@ import { AskAIDialog } from './AskAIDialog'
 export function AskAIButton() {
   const [open, setOpen] = useState(false)
   const [minimized, setMinimized] = useState(false)
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || ''
 
   return (
     <>
@@ -24,6 +25,7 @@ export function AskAIButton() {
 
       <AskAIDialog
         open={open}
+        apiBase={apiBase}
         onMinimize={() => {
           setOpen(false)
           setMinimized(true)
