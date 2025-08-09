@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"xcontrol/server/proxy"
 	rconfig "xcontrol/server/rag/config"
 	"xcontrol/server/rag/ingest"
 )
@@ -18,6 +19,7 @@ import (
 // calling the running API server's /api/rag/sync endpoint. When a file
 // path is provided via -file, it parses the Markdown locally and emits
 // chunk data as newline-delimited JSON.
+
 func main() {
 	configPath := flag.String("config", "", "Path to server RAG configuration file")
 	filePath := flag.String("file", "", "Markdown file to parse and chunk")
