@@ -58,7 +58,7 @@ func (v VectorDB) DSN() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", v.PGUser, v.PGPassword, v.PGHost, port, v.PGDBName, ssl)
 }
 
-// LoadServer loads RAG configuration from server/config/server.yaml.
+// LoadServer loads global configuration from server/config/server.yaml.
 func LoadServer() (*Runtime, error) {
 	path := filepath.Join("server", "config", "server.yaml")
 	b, err := os.ReadFile(path)
@@ -66,12 +66,12 @@ func LoadServer() (*Runtime, error) {
 		return nil, err
 	}
 	var cfg struct {
-		RAG Runtime `yaml:"RAG"`
+		Global Runtime `yaml:"global"`
 	}
 	if err := yaml.Unmarshal(b, &cfg); err != nil {
 		return nil, err
 	}
-	return &cfg.RAG, nil
+	return &cfg.Global, nil
 }
 
 // ToConfig converts runtime configuration into service configuration.
