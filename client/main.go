@@ -114,27 +114,31 @@ func main() {
 		if err != nil {
 			log.Fatalf("marshal docs: %v", err)
 		}
-		var resp *http.Response
-		for i := 0; i < 3; i++ {
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/rag/upsert", bytes.NewReader(b))
-			if err != nil {
-				log.Fatalf("create request: %v", err)
-			}
-			req.Header.Set("Content-Type", "application/json")
-			resp, err = http.DefaultClient.Do(req)
-			if err == nil {
-				break
-			}
-			time.Sleep(time.Second * time.Duration(i+1))
-		}
-		if err != nil {
-			log.Fatalf("upsert request: %v", err)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			log.Fatalf("upsert failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
-		}
+               var resp *http.Response
+               var req *http.Request
+               for i := 0; i < 3; i++ {
+                       req, err = http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/rag/upsert", bytes.NewReader(b))
+                       if err != nil {
+                               log.Fatalf("create request: %v", err)
+                       }
+                       req.Header.Set("Content-Type", "application/json")
+                       resp, err = http.DefaultClient.Do(req)
+                       if err == nil {
+                               break
+                       }
+                       time.Sleep(time.Second * time.Duration(i+1))
+               }
+               if err != nil {
+                       log.Fatalf("upsert request: %v", err)
+               }
+               if resp == nil {
+                       log.Fatalf("upsert request returned no response")
+               }
+               defer resp.Body.Close()
+               if resp.StatusCode != http.StatusOK {
+                       body, _ := io.ReadAll(resp.Body)
+                       log.Fatalf("upsert failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
+               }
 		log.Printf("ingested %d chunks for %s", len(rows), rel)
 		return
 	}
