@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
+	rconfig "xcontrol/internal/rag/config"
+	"xcontrol/internal/rag/embed"
+	"xcontrol/internal/rag/ingest"
+	"xcontrol/internal/rag/store"
+	rsync "xcontrol/internal/rag/sync"
 	"xcontrol/server/proxy"
-	rconfig "xcontrol/server/rag/config"
-	"xcontrol/server/rag/embed"
-	"xcontrol/server/rag/ingest"
-	"xcontrol/server/rag/store"
-	rsync "xcontrol/server/rag/sync"
 )
 
 // main loads server RAG configuration and triggers a manual sync by

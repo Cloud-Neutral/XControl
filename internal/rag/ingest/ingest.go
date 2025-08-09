@@ -8,10 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	cfgpkg "xcontrol/server/rag/config"
-	"xcontrol/server/rag/embed"
-	"xcontrol/server/rag/store"
-	rsync "xcontrol/server/rag/sync"
+	cfgpkg "xcontrol/internal/rag/config"
+	"xcontrol/internal/rag/embed"
+	"xcontrol/internal/rag/store"
+	rsync "xcontrol/internal/rag/sync"
 )
 
 // Options control ingestion behaviour.
@@ -41,7 +41,7 @@ func IngestRepo(ctx context.Context, cfg *cfgpkg.Config, ds cfgpkg.DataSource, o
 	chunkCfg := cfg.ResolveChunking()
 	embCfg := cfg.ResolveEmbedding()
 
-	workdir := filepath.Join("server", "rag", ds.Name)
+	workdir := filepath.Join("internal", "rag", ds.Name)
 	if _, err := rsync.SyncRepo(ctx, ds.Repo, workdir); err != nil {
 		st.Errors = append(st.Errors, err)
 		return st, err
