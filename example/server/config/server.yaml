@@ -3,7 +3,7 @@ global:
     addr: "127.0.0.1:6479"
     password: ""
   vectordb:
-    pgurl: "postgres://user:password@127.0.0.1:5432"
+    pgurl: "postgres://shenlan:password@127.0.0.1:5432/postgres"
   datasources:
     - name: Xstream
       repo: https://github.com/svc-design/Xstream
