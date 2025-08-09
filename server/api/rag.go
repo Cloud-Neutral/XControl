@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"xcontrol/server/proxy"
 	"xcontrol/server/rag"
 	rconfig "xcontrol/server/rag/config"
 )
@@ -19,6 +20,7 @@ func initRAG() *rag.Service {
 	if err != nil {
 		return nil
 	}
+	proxy.Set(cfg.Proxy)
 	svc := rag.New(cfg.ToConfig())
 	go svc.Sync(context.Background())
 	go svc.Watch(context.Background())

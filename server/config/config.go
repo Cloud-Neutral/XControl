@@ -55,6 +55,7 @@ type Global struct {
 	Redis       Redis        `yaml:"redis"`
 	VectorDB    VectorDB     `yaml:"vectordb"`
 	Datasources []Datasource `yaml:"datasources"`
+	Proxy       string       `yaml:"proxy"`
 }
 
 type LLM struct {

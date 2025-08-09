@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"xcontrol/server/proxy"
 	rconfig "xcontrol/server/rag/config"
 	"xcontrol/server/rag/ingest"
 )
