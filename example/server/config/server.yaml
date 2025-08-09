@@ -22,12 +22,9 @@ provider:
     models:
       - 'moonshotai/Kimi-K2-Instruct'
 
-# embedding 段为空时自动复用 llm（见代码回退逻辑）
 embedding:
   provider: chutes             # openai|azure|custom
-  base_url: ""                  # 为空 -> 用 provider base_url: + "/v1"
-  model: "text-embedding-3-large"
-  api_key_env: ""              # 为空 -> 直接用 llm.token
+  model: "BAAI/bge-m3"
   dimension: 0                 # 0 = 首次响应自动探测维度
   rate_limit_tpm: 120000
   max_batch: 64

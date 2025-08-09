@@ -24,20 +24,20 @@ endif
 
 install-redis:
 ifeq ($(OS),Darwin)
-        brew install redis && brew services start redis
+	brew install redis && brew services start redis
 else
-        sudo apt-get update && \
-        sudo apt-get install -y redis-server && \
-        sudo systemctl enable --now redis-server
+	sudo apt-get update && \
+	sudo apt-get install -y redis-server && \
+	sudo systemctl enable --now redis-server
 endif
 
 install-postgresql:
 ifeq ($(OS),Darwin)
-        brew install postgresql && brew services start postgresql
+	brew install postgresql && brew services start postgresql
 else
-        sudo apt-get update && \
-        sudo apt-get install -y postgresql postgresql-contrib && \
-        sudo systemctl enable --now postgresql
+	sudo apt-get update && \
+	sudo apt-get install -y postgresql postgresql-contrib && \
+	sudo systemctl enable --now postgresql
 endif
 
 install-pgvector:
@@ -46,8 +46,8 @@ ifeq ($(OS),Darwin)
 else
 	sudo apt-get update && \
 	( sudo apt-get install -y postgresql-15-pgvector || \
-	sudo apt-get install -y postgresql-14-pgvector || \
-echo "Please install pgvector manually." )
+	  sudo apt-get install -y postgresql-14-pgvector || \
+	  echo "Please install pgvector manually." )
 endif
 
 # -----------------------------------------------------------------------------
@@ -60,7 +60,10 @@ init-db:
 # Build targets
 # -----------------------------------------------------------------------------
 
-build: build-server build-homepage build-panel
+build: build-cli build-server build-homepage build-panel
+
+build-cli:
+	$(MAKE) -C cmd/cli build
 
 build-server:
 	$(MAKE) -C server build
@@ -95,37 +98,36 @@ stop-homepage:
 	$(MAKE) -C ui/homepage stop
 
 stop-panel:
-        $(MAKE) -C ui/panel stop
+	$(MAKE) -C ui/panel stop
 
 start-openresty:
 ifeq ($(OS),Darwin)
-        @brew services start openresty >/dev/null 2>&1 || \
-        (echo "Creating LaunchAgent for OpenResty..." && \
-        mkdir -p ~/Library/LaunchAgents && \
-        printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
-                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
-                '<plist version="1.0"><dict>' \
-                '  <key>Label</key><string>homebrew.mxcl.openresty</string>' \
-                '  <key>ProgramArguments</key>' \
-                '  <array>' \
-                '    <string>/opt/homebrew/openresty/nginx/sbin/nginx</string>' \
-                '    <string>-g</string>' \
-                '    <string>daemon off;</string>' \
-                '  </array>' \
-                '  <key>RunAtLoad</key><true/>' \
-                '</dict></plist>' \
-                > ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist && \
-        brew services start ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist)
+	@brew services start openresty >/dev/null 2>&1 || \
+	( echo "Creating LaunchAgent for OpenResty..." && \
+	  mkdir -p ~/Library/LaunchAgents && \
+	  printf '%s\n' '<?xml version="1.0" encoding="UTF-8?>' \
+		'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+		'<plist version="1.0"><dict>' \
+		'  <key>Label</key><string>homebrew.mxcl.openresty</string>' \
+		'  <key>ProgramArguments</key>' \
+		'  <array>' \
+		'    <string>/opt/homebrew/openresty/nginx/sbin/nginx</string>' \
+		'    <string>-g</string>' \
+		'    <string>daemon off;</string>' \
+		'  </array>' \
+		'  <key>RunAtLoad</key><true/>' \
+		'</dict></plist>' \
+		> ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist && \
+	  brew services start ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist )
 else
-        sudo systemctl enable --now openresty
+	sudo systemctl enable --now openresty
 endif
 
 stop-openresty:
 ifeq ($(OS),Darwin)
-        -brew services stop openresty >/dev/null 2>&1
+	-brew services stop openresty >/dev/null 2>&1
 else
-        -sudo systemctl stop openresty >/dev/null 2>&1
+	-sudo systemctl stop openresty >/dev/null 2>&1
 endif
 
 restart: stop start
-
