@@ -65,8 +65,13 @@ func (b *BGE) Embed(ctx context.Context, inputs []string) ([][]float32, int, err
 		if err := json.Unmarshal(data, &out); err != nil || len(out.Embedding) == 0 {
 			// try raw array format
 			var arr []float32
-			if err := json.Unmarshal(data, &arr); err != nil {
-				return nil, 0, err
+			if err := json.Unmarshal(data, &arr); err != nil || len(arr) == 0 {
+				// some services return [[..]] even for single input
+				var arr2 [][]float32
+				if err := json.Unmarshal(data, &arr2); err != nil || len(arr2) == 0 {
+					return nil, 0, err
+				}
+				arr = arr2[0]
 			}
 			out.Embedding = arr
 		}
