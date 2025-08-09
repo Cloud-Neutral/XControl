@@ -22,10 +22,9 @@ import (
 	"xcontrol/server/proxy"
 )
 
-// main either lists markdown files for ingestion or processes a single file.
-// When invoked without -file, it synchronizes configured repositories and
-// prints absolute paths of markdown files to stdout. When -file is provided,
-// the file is parsed, embedded and sent to the /api/rag/upsert endpoint.
+// main synchronizes configured repositories and ingests markdown files.
+// When -file is provided only that file is processed; otherwise all markdown
+// files from configured datasources are parsed, embedded and upserted.
 
 func main() {
 	configPath := flag.String("config", "", "Path to server RAG configuration file")
@@ -48,6 +47,13 @@ func main() {
 	embCfg := cfg.ResolveEmbedding()
 	chunkCfg := cfg.ResolveChunking()
 
+	var embedder embed.Embedder
+	if embCfg.Model != "" {
+		embedder = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+	} else {
+		embedder = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+	}
+
 	baseURL := os.Getenv("SERVER_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
@@ -57,89 +63,9 @@ func main() {
 	defer cancel()
 
 	if *filePath != "" {
-		var ds *rconfig.DataSource
-		var workdir string
-		for i := range cfg.Global.Datasources {
-			wd := filepath.Join(os.TempDir(), "xcontrol", cfg.Global.Datasources[i].Name)
-			if strings.HasPrefix(*filePath, wd) {
-				ds = &cfg.Global.Datasources[i]
-				workdir = wd
-				break
-			}
+		if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, *filePath); err != nil {
+			log.Fatalf("%v", err)
 		}
-		if ds == nil {
-			log.Fatalf("file %s not under any datasource", *filePath)
-		}
-
-		var embedder embed.Embedder
-		if embCfg.Model != "" {
-			embedder = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
-		} else {
-			embedder = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
-		}
-
-		secs, err := ingest.ParseMarkdown(*filePath)
-		if err != nil {
-			log.Fatalf("parse markdown: %v", err)
-		}
-		chunks, err := ingest.BuildChunks(secs, chunkCfg)
-		if err != nil {
-			log.Fatalf("build chunks: %v", err)
-		}
-		texts := make([]string, len(chunks))
-		rows := make([]store.DocRow, len(chunks))
-		rel := strings.TrimPrefix(*filePath, workdir+"/")
-		for i, ch := range chunks {
-			texts[i] = ch.Text
-			rows[i] = store.DocRow{
-				Repo:       ds.Repo,
-				Path:       rel,
-				ChunkID:    ch.ChunkID,
-				Content:    ch.Text,
-				Metadata:   ch.Meta,
-				ContentSHA: ch.SHA256,
-			}
-		}
-		vecs, _, err := embedder.Embed(ctx, texts)
-		if err != nil {
-			log.Fatalf("embed %s: %v", *filePath, err)
-		}
-		for i := range rows {
-			rows[i].Embedding = vecs[i]
-		}
-		payload := struct {
-			Docs []store.DocRow `json:"docs"`
-		}{Docs: rows}
-		b, err := json.Marshal(payload)
-		if err != nil {
-			log.Fatalf("marshal docs: %v", err)
-		}
-               var resp *http.Response
-               var req *http.Request
-               for i := 0; i < 3; i++ {
-                       req, err = http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/rag/upsert", bytes.NewReader(b))
-                       if err != nil {
-                               log.Fatalf("create request: %v", err)
-                       }
-                       req.Header.Set("Content-Type", "application/json")
-                       resp, err = http.DefaultClient.Do(req)
-                       if err == nil {
-                               break
-                       }
-                       time.Sleep(time.Second * time.Duration(i+1))
-               }
-               if err != nil {
-                       log.Fatalf("upsert request: %v", err)
-               }
-               if resp == nil {
-                       log.Fatalf("upsert request returned no response")
-               }
-               defer resp.Body.Close()
-               if resp.StatusCode != http.StatusOK {
-                       body, _ := io.ReadAll(resp.Body)
-                       log.Fatalf("upsert failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
-               }
-		log.Printf("ingested %d chunks for %s", len(rows), rel)
 		return
 	}
 
@@ -157,10 +83,92 @@ func main() {
 			log.Fatalf("list markdown: %v", err)
 		}
 		for _, f := range files {
-			fmt.Println(f)
+			if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, f); err != nil {
+				log.Printf("ingest %s: %v", f, err)
+			}
 		}
 	}
 	if len(syncErrs) > 0 {
 		log.Fatalf("failed to sync repositories: %s", strings.Join(syncErrs, ", "))
 	}
+}
+
+func ingestFile(ctx context.Context, cfg *rconfig.Config, chunkCfg rconfig.ChunkingConfig, embedder embed.Embedder, baseURL, filePath string) error {
+	var ds *rconfig.DataSource
+	var workdir string
+	for i := range cfg.Global.Datasources {
+		wd := filepath.Join(os.TempDir(), "xcontrol", cfg.Global.Datasources[i].Name)
+		if strings.HasPrefix(filePath, wd) {
+			ds = &cfg.Global.Datasources[i]
+			workdir = wd
+			break
+		}
+	}
+	if ds == nil {
+		return fmt.Errorf("file %s not under any datasource", filePath)
+	}
+
+	secs, err := ingest.ParseMarkdown(filePath)
+	if err != nil {
+		return fmt.Errorf("parse markdown: %w", err)
+	}
+	chunks, err := ingest.BuildChunks(secs, chunkCfg)
+	if err != nil {
+		return fmt.Errorf("build chunks: %w", err)
+	}
+	texts := make([]string, len(chunks))
+	rows := make([]store.DocRow, len(chunks))
+	rel := strings.TrimPrefix(filePath, workdir+"/")
+	for i, ch := range chunks {
+		texts[i] = ch.Text
+		rows[i] = store.DocRow{
+			Repo:       ds.Repo,
+			Path:       rel,
+			ChunkID:    ch.ChunkID,
+			Content:    ch.Text,
+			Metadata:   ch.Meta,
+			ContentSHA: ch.SHA256,
+		}
+	}
+	vecs, _, err := embedder.Embed(ctx, texts)
+	if err != nil {
+		return fmt.Errorf("embed %s: %w", filePath, err)
+	}
+	for i := range rows {
+		rows[i].Embedding = vecs[i]
+	}
+	payload := struct {
+		Docs []store.DocRow `json:"docs"`
+	}{Docs: rows}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal docs: %w", err)
+	}
+	var resp *http.Response
+	var req *http.Request
+	for i := 0; i < 3; i++ {
+		req, err = http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/rag/upsert", bytes.NewReader(b))
+		if err != nil {
+			return fmt.Errorf("create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err = http.DefaultClient.Do(req)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second * time.Duration(i+1))
+	}
+	if err != nil {
+		return fmt.Errorf("upsert request: %w", err)
+	}
+	if resp == nil {
+		return fmt.Errorf("upsert request returned no response")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("upsert failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	log.Printf("ingested %d chunks for %s", len(rows), rel)
+	return nil
 }
