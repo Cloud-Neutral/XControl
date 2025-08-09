@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"xcontrol/server/proxy"
 	rconfig "xcontrol/server/rag/config"
 )
 
@@ -18,9 +19,11 @@ func main() {
 	configPath := flag.String("config", "", "Path to server RAG configuration file")
 	flag.Parse()
 	if *configPath != "" {
-		if _, err := rconfig.Load(*configPath); err != nil {
+		cfg, err := rconfig.Load(*configPath)
+		if err != nil {
 			log.Fatalf("load config: %v", err)
 		}
+		proxy.Set(cfg.Global.Proxy)
 	}
 
 	baseURL := os.Getenv("SERVER_URL")

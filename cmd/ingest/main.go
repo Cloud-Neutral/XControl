@@ -6,6 +6,7 @@ import (
 	"log"
 	"runtime"
 
+	"xcontrol/server/proxy"
 	cfgpkg "xcontrol/server/rag/config"
 	"xcontrol/server/rag/ingest"
 )
@@ -23,6 +24,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
+	proxy.Set(cfg.Global.Proxy)
 
 	ctx := context.Background()
 	opt := ingest.Options{MaxFiles: *maxFiles, DryRun: *dryRun, MigrateDim: *migrateDim, Concurrency: *concurrency}
