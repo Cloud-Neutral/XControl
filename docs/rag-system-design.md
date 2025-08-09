@@ -93,14 +93,14 @@ docker run -d --name pgvector \
   -p 5432:5432 \
   ankane/pgvector:latest
 
-docker run -d --name redis -p 6479:6379 redis
+docker run -d --name redis -p 6379:6379 redis
 ```
 
 ### 8.2 配置 rag.yaml
 
 ```yaml
 redis:
-  addr: "127.0.0.1:6479"
+  addr: "127.0.0.1:6379"
   password: ""
 module: "moonshotai/Kimi-K2-Instruct"
 vectordb:

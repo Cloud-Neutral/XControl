@@ -27,9 +27,9 @@ provider:
       - 'moonshotai/Kimi-K2-Instruct'
 
 embedding:
-  provider: chutes             # openai|azure|custom
+  provider: chutes
   model: "BAAI/bge-m3"
-  dimension: 0                 # 0 = 首次响应自动探测维度
+  dimension: 0
   rate_limit_tpm: 120000
   max_batch: 64
   max_chars: 8000
