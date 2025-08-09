@@ -2,6 +2,7 @@ name: Configure Proxy Nginx
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   setup-nginx:

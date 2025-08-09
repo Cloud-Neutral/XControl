@@ -1,11 +1,7 @@
-name: Setup Proxy for cn-homepage.svc.plus
+name: Setup Proxy for global-homepage.svc.plus
 
 on:
   workflow_dispatch:
-    inputs:
-      dummy:
-        description: 'Manual trigger'
-        required: false
   workflow_call:
 
 jobs:
@@ -15,8 +11,8 @@ jobs:
       - name: 🚀 Configure Nginx on proxy host
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.CN_PROXY_HOST }}
-          username: ${{ secrets.CN_PROXY_HOST_USER }}
+          host: ${{ secrets.GLOBAL_PROXY_HOST }}
+          username: ${{ secrets.GLOBAL_PROXY_HOST_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             apt-get update
@@ -25,39 +21,25 @@ jobs:
             # 1. HTTP 自动跳转到 HTTPS
             server {
               listen 80;
-              server_name cn-homepage.svc.plus;
-              return 301 https://cn-homepage.svc.plus$request_uri;
+              server_name global-homepage.svc.plus;
+              return 301 https://global-homepage.svc.plus$request_uri;
             }
 
-            # 2. HTTPS 静态站部署 svc.plus
+            # 2. HTTPS 静态站部署
             server {
               listen 443 ssl http2;
-              server_name cn-homepage.svc.plus;
+              server_name global-homepage.svc.plus;
 
               ssl_certificate /etc/ssl/svc.plus.pem;
               ssl_certificate_key /etc/ssl/svc.plus.rsa.key;
               ssl_protocols TLSv1.2 TLSv1.3;
               ssl_ciphers HIGH:!aNULL:!MD5;
 
-              # 3. 指向静态构建输出目录
               root /var/www/XControl/ui/homepage/out;
               index index.html;
 
-              # 4. 页面访问（含 SPA fallback）
               location / {
                 try_files $uri $uri/ /index.html;
-              }
-
-              # 5. 静态资源缓存优化
-              location ~* \.(?:ico|css|js|gif|jpe?g|png|woff2?)$ {
-                expires 30d;
-                access_log off;
-                add_header Cache-Control "public";
-              }
-
-              # 6. 隐藏 . 文件（如 .DS_Store）
-              location ~ /\. {
-                deny all;
               }
             }
             NGINXCONF
