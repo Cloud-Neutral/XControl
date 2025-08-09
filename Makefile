@@ -63,7 +63,7 @@ init-db:
 build: build-cli build-server build-homepage build-panel
 
 build-cli:
-	$(MAKE) -C cmd/cli build
+$(MAKE) -C client build
 
 build-server:
 	$(MAKE) -C server build

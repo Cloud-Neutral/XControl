@@ -7,9 +7,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	pgvector "github.com/pgvector/pgvector-go"
 
-	"xcontrol/server/rag/config"
-	"xcontrol/server/rag/embed"
-	"xcontrol/server/rag/store"
+	"xcontrol/internal/rag/config"
+	"xcontrol/internal/rag/embed"
+	"xcontrol/internal/rag/store"
 )
 
 type Service struct {
