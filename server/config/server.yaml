@@ -1,0 +1,10 @@
+global:
+  redis:
+    addr: 127.0.0.1:6379
+  vectordb:
+    pgurl: postgres://user:password@127.0.0.1:5432/postgres
+  datasources: []
+api:
+  askai:
+    timeout: 100
+    retries: 0
