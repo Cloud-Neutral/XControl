@@ -13,17 +13,18 @@ import (
 	"time"
 
 	"xcontrol/server/proxy"
-	rconfig "xcontrol/server/rag/config"
-	"xcontrol/server/rag/embed"
+  "xcontrol/server/rag/embed"
 	"xcontrol/server/rag/ingest"
 	"xcontrol/server/rag/store"
 	rsync "xcontrol/server/rag/sync"
-	"xcontrol/server/rag/ingest"
+  rconfig "xcontrol/server/rag/config"
 )
 
 // main loads server RAG configuration and triggers a manual sync by
-// calling the running API server's /api/rag/sync endpoint. When a file path
-// is provided, it instead performs local markdown parsing and chunking.
+// calling the running API server's /api/rag/sync endpoint. When a file
+// path is provided via -file, it parses the Markdown locally and emits
+// chunk data as newline-delimited JSON.
+
 func main() {
 	configPath := flag.String("config", "", "Path to server RAG configuration file")
 	filePath := flag.String("file", "", "Markdown file to parse and chunk")
