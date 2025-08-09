@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -52,14 +53,24 @@ func (b *BGE) Embed(ctx context.Context, inputs []string) ([][]float32, int, err
 			resp.Body.Close()
 			return nil, 0, fmt.Errorf("embed failed: %s", resp.Status)
 		}
+		data, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, 0, err
+		}
+
 		var out struct {
 			Embedding []float32 `json:"embedding"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-			resp.Body.Close()
-			return nil, 0, err
+		if err := json.Unmarshal(data, &out); err != nil || len(out.Embedding) == 0 {
+			// try raw array format
+			var arr []float32
+			if err := json.Unmarshal(data, &arr); err != nil {
+				return nil, 0, err
+			}
+			out.Embedding = arr
 		}
-		resp.Body.Close()
+
 		if b.dim == 0 {
 			b.dim = len(out.Embedding)
 		}
