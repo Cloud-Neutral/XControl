@@ -14,55 +14,30 @@ install: install-openresty install-redis install-postgresql install-pgvector
 
 install-openresty:
 ifeq ($(OS),Darwin)
-	@echo "Detected macOS. Installing GeoIP library into /opt/homebrew/geoip..."
-	@curl -LO https://github.com/maxmind/geoip-api-c/releases/download/v1.6.12/GeoIP-1.6.12.tar.gz && \
-	tar zxvf GeoIP-1.6.12.tar.gz && \
-	cd GeoIP-1.6.12 && \
-	./configure --prefix=/opt/homebrew/geoip && \
-	make -j$(CORES) && \
-	sudo make install && \
-	cd .. && rm -rf GeoIP-1.6.12 GeoIP-1.6.12.tar.gz
-
-	@echo "Trying Homebrew build of OpenResty with GeoIP..."
-        env CPPFLAGS="-I/opt/homebrew/geoip/include" \
-            LDFLAGS="-L/opt/homebrew/geoip/lib" \
-            brew install --build-from-source openresty/brew/openresty || \
-        (echo "Homebrew failed, falling back to manual source build..." && \
-        curl -LO https://openresty.org/download/openresty-1.27.1.2.tar.gz && \
-        tar zxvf openresty-1.27.1.2.tar.gz && \
-        cd openresty-1.27.1.2 && \
-        ./configure \
-          --prefix=/opt/homebrew/openresty \
-          --with-http_geoip_module \
-          --with-cc-opt="-I/opt/homebrew/geoip/include" \
-          --with-ld-opt="-L/opt/homebrew/geoip/lib" && \
-        make -j$(CORES) && \
-        sudo make install && \
-        cd .. && rm -rf openresty-1.27.1.2 openresty-1.27.1.2.tar.gz)
-        @$(MAKE) start-openresty
+	@[ -f install-openresty.sh ] && bash install-openresty.sh
 else
-        @echo "Detected Linux. Installing via apt..."
-        sudo apt-get update && \
-        sudo apt-get install -y openresty || echo "Please install OpenResty manually."
-        @$(MAKE) start-openresty
+	@echo "Detected Linux. Installing via apt..."
+	sudo apt-get update && \
+	sudo apt-get install -y openresty || echo "Please install OpenResty manually."
+	@$(MAKE) start-openresty
 endif
 
 install-redis:
 ifeq ($(OS),Darwin)
-        brew install redis && brew services start redis
+	brew install redis && brew services start redis
 else
-        sudo apt-get update && \
-        sudo apt-get install -y redis-server && \
-        sudo systemctl enable --now redis-server
+	sudo apt-get update && \
+	sudo apt-get install -y redis-server && \
+	sudo systemctl enable --now redis-server
 endif
 
 install-postgresql:
 ifeq ($(OS),Darwin)
-        brew install postgresql && brew services start postgresql
+	brew install postgresql && brew services start postgresql
 else
-        sudo apt-get update && \
-        sudo apt-get install -y postgresql postgresql-contrib && \
-        sudo systemctl enable --now postgresql
+	sudo apt-get update && \
+	sudo apt-get install -y postgresql postgresql-contrib && \
+	sudo systemctl enable --now postgresql
 endif
 
 install-pgvector:
@@ -71,8 +46,8 @@ ifeq ($(OS),Darwin)
 else
 	sudo apt-get update && \
 	( sudo apt-get install -y postgresql-15-pgvector || \
-	sudo apt-get install -y postgresql-14-pgvector || \
-echo "Please install pgvector manually." )
+	  sudo apt-get install -y postgresql-14-pgvector || \
+	  echo "Please install pgvector manually." )
 endif
 
 # -----------------------------------------------------------------------------
@@ -85,7 +60,10 @@ init-db:
 # Build targets
 # -----------------------------------------------------------------------------
 
-build: build-server build-homepage build-panel
+build: build-cli build-server build-homepage build-panel
+
+build-cli:
+	$(MAKE) -C cmd/cli build
 
 build-server:
 	$(MAKE) -C server build
@@ -120,37 +98,36 @@ stop-homepage:
 	$(MAKE) -C ui/homepage stop
 
 stop-panel:
-        $(MAKE) -C ui/panel stop
+	$(MAKE) -C ui/panel stop
 
 start-openresty:
 ifeq ($(OS),Darwin)
-        @brew services start openresty >/dev/null 2>&1 || \
-        (echo "Creating LaunchAgent for OpenResty..." && \
-        mkdir -p ~/Library/LaunchAgents && \
-        printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
-                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
-                '<plist version="1.0"><dict>' \
-                '  <key>Label</key><string>homebrew.mxcl.openresty</string>' \
-                '  <key>ProgramArguments</key>' \
-                '  <array>' \
-                '    <string>/opt/homebrew/openresty/nginx/sbin/nginx</string>' \
-                '    <string>-g</string>' \
-                '    <string>daemon off;</string>' \
-                '  </array>' \
-                '  <key>RunAtLoad</key><true/>' \
-                '</dict></plist>' \
-                > ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist && \
-        brew services start ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist)
+	@brew services start openresty >/dev/null 2>&1 || \
+	( echo "Creating LaunchAgent for OpenResty..." && \
+	  mkdir -p ~/Library/LaunchAgents && \
+	  printf '%s\n' '<?xml version="1.0" encoding="UTF-8?>' \
+		'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+		'<plist version="1.0"><dict>' \
+		'  <key>Label</key><string>homebrew.mxcl.openresty</string>' \
+		'  <key>ProgramArguments</key>' \
+		'  <array>' \
+		'    <string>/opt/homebrew/openresty/nginx/sbin/nginx</string>' \
+		'    <string>-g</string>' \
+		'    <string>daemon off;</string>' \
+		'  </array>' \
+		'  <key>RunAtLoad</key><true/>' \
+		'</dict></plist>' \
+		> ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist && \
+	  brew services start ~/Library/LaunchAgents/homebrew.mxcl.openresty.plist )
 else
-        sudo systemctl enable --now openresty
+	sudo systemctl enable --now openresty
 endif
 
 stop-openresty:
 ifeq ($(OS),Darwin)
-        -brew services stop openresty >/dev/null 2>&1
+	-brew services stop openresty >/dev/null 2>&1
 else
-        -sudo systemctl stop openresty >/dev/null 2>&1
+	-sudo systemctl stop openresty >/dev/null 2>&1
 endif
 
 restart: stop start
-
