@@ -73,11 +73,14 @@ func main() {
 	embCfg := cfg.ResolveEmbedding()
 	chunkCfg := cfg.ResolveChunking()
 	embedder := embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+	var syncErrs []string
 
 	for _, ds := range cfg.Global.Datasources {
 		workdir := filepath.Join(os.TempDir(), "xcontrol", ds.Name)
 		if _, err := rsync.SyncRepo(ctx, ds.Repo, workdir); err != nil {
-			log.Fatalf("sync repo %s: %v", ds.Name, err)
+			log.Printf("sync repo %s: %v", ds.Name, err)
+			syncErrs = append(syncErrs, ds.Name)
+			continue
 		}
 		root := filepath.Join(workdir, ds.Path)
 		files, err := ingest.ListMarkdown(root, chunkCfg.IncludeExts, chunkCfg.IgnoreDirs, 0)
@@ -138,5 +141,8 @@ func main() {
 			log.Fatalf("upsert failed: %s", resp.Status)
 		}
 		log.Printf("ingested %d rows for %s", len(rows), ds.Name)
+	}
+	if len(syncErrs) > 0 {
+		log.Fatalf("failed to sync repositories: %s", strings.Join(syncErrs, ", "))
 	}
 }
