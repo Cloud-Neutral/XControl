@@ -29,14 +29,19 @@ func initRAG() *rag.Service {
 func registerRAGRoutes(r *gin.RouterGroup) {
 	r.POST("/rag/sync", func(c *gin.Context) {
 		if ragSvc == nil {
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
+			c.String(http.StatusOK, "rag service not initialized\n")
 			return
 		}
-		if err := ragSvc.Sync(c.Request.Context()); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		c.Status(http.StatusOK)
+		err := ragSvc.SyncWithProgress(c.Request.Context(), func(msg string) {
+			_, _ = c.Writer.Write([]byte(msg + "\n"))
+			c.Writer.Flush()
+		})
+		if err != nil {
+			_, _ = c.Writer.Write([]byte("error: " + err.Error() + "\n"))
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
 	r.POST("/rag/query", func(c *gin.Context) {

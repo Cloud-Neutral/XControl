@@ -43,5 +43,7 @@ func main() {
 		b, _ := io.ReadAll(resp.Body)
 		log.Fatalf("sync failed: %s", string(b))
 	}
-	log.Println("sync triggered")
+	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
+		log.Fatalf("read response: %v", err)
+	}
 }
