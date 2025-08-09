@@ -2,16 +2,27 @@ package main
 
 import (
 	"context"
+	"flag"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	rconfig "xcontrol/server/rag/config"
 )
 
 // main loads server RAG configuration and triggers a manual sync by
 // calling the running API server's /api/rag/sync endpoint.
 func main() {
+	configPath := flag.String("config", "", "Path to server RAG configuration file")
+	flag.Parse()
+	if *configPath != "" {
+		if _, err := rconfig.Load(*configPath); err != nil {
+			log.Fatalf("load config: %v", err)
+		}
+	}
+
 	baseURL := os.Getenv("SERVER_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
