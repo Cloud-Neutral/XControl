@@ -1,66 +1,74 @@
 package sync
 
 import (
-        "errors"
-        "io/fs"
-        "path/filepath"
+	"context"
+	"os"
 
-        git "github.com/go-git/go-git/v5"
-        "github.com/go-git/go-git/v5/plumbing"
-        "xcontrol/server/rag/config"
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-// Repo synchronizes the configured repository and returns markdown file paths.
-// The returned boolean indicates whether new commits were pulled.
-func Repo(c config.Repo) ([]string, bool, error) {
-        changed := false
-        if _, err := git.PlainOpen(c.Local); err != nil {
-                opts := &git.CloneOptions{URL: c.URL}
-                if c.Branch != "" {
-                        opts.ReferenceName = plumbing.NewBranchReferenceName(c.Branch)
-                        opts.SingleBranch = true
-                }
-                if _, err := git.PlainClone(c.Local, false, opts); err != nil {
-                        return nil, false, err
-                }
-                changed = true
-        } else {
-                r, err := git.PlainOpen(c.Local)
-                if err != nil {
-                        return nil, false, err
-                }
-                w, err := r.Worktree()
-                if err != nil {
-                        return nil, false, err
-                }
-                pullOpts := &git.PullOptions{RemoteName: "origin"}
-                if c.Branch != "" {
-                        pullOpts.ReferenceName = plumbing.NewBranchReferenceName(c.Branch)
-                        pullOpts.SingleBranch = true
-                }
-                if err := w.Pull(pullOpts); err != nil {
-                        if !errors.Is(err, git.NoErrAlreadyUpToDate) {
-                                return nil, false, err
-                        }
-                } else {
-                        changed = true
-                }
-        }
-	var files []string
-	for _, p := range c.Paths {
-		root := filepath.Join(c.Local, p)
-		filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if d.IsDir() {
-				return nil
-			}
-			if filepath.Ext(path) == ".md" {
-				files = append(files, path)
-			}
-			return nil
+// SyncRepo ensures the repository at workdir matches the remote url. It
+// performs a shallow clone when the directory does not exist, otherwise a
+// fetch and reset. The returned string is the current HEAD commit hash.
+func SyncRepo(ctx context.Context, url, workdir string) (string, error) {
+	if _, err := os.Stat(workdir); os.IsNotExist(err) {
+		// shallow clone
+		_, err := git.PlainCloneContext(ctx, workdir, false, &git.CloneOptions{
+			URL:   url,
+			Depth: 1,
 		})
+		if err != nil {
+			return "", err
+		}
+	} else {
+		r, err := git.PlainOpen(workdir)
+		if err != nil {
+			return "", err
+		}
+		// fetch
+		if err := r.FetchContext(ctx, &git.FetchOptions{Depth: 1}); err != nil && err != git.NoErrAlreadyUpToDate {
+			return "", err
+		}
+		// reset to origin/HEAD
+		head, err := r.ResolveRevision(plumbing.Revision("origin/HEAD"))
+		if err != nil {
+			// fallback to master/main
+			head, err = r.ResolveRevision(plumbing.Revision("origin/main"))
+			if err != nil {
+				head, err = r.ResolveRevision(plumbing.Revision("origin/master"))
+				if err != nil {
+					return "", err
+				}
+			}
+		}
+		w, err := r.Worktree()
+		if err != nil {
+			return "", err
+		}
+		if err := w.Reset(&git.ResetOptions{Mode: git.HardReset, Commit: *head}); err != nil {
+			return "", err
+		}
 	}
-	return files, changed, nil
+
+	r, err := git.PlainOpen(workdir)
+	if err != nil {
+		return "", err
+	}
+	ref, err := r.Head()
+	if err != nil {
+		return "", err
+	}
+	return ref.Hash().String(), nil
+}
+
+// WithAuth returns CloneOptions with basic auth if username/token provided in URL.
+// This is a helper for future extension; currently unused.
+func WithAuth(url, token string) *git.CloneOptions {
+	opts := &git.CloneOptions{URL: url, Depth: 1}
+	if token != "" {
+		opts.Auth = &http.BasicAuth{Username: "token", Password: token}
+	}
+	return opts
 }
