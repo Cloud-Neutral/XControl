@@ -21,7 +21,7 @@ func TestLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.Global.Redis.Addr != "127.0.0.1:6479" {
+	if cfg.Global.Redis.Addr != "127.0.0.1:6379" {
 		t.Fatalf("unexpected redis addr %q", cfg.Global.Redis.Addr)
 	}
 	if cfg.API.AskAI.Timeout != 100 {
