@@ -40,9 +40,26 @@ func EnsureSchema(ctx context.Context, conn *pgx.Conn, dim int, migrate bool) er
 	if _, err := conn.Exec(ctx, create); err != nil {
 		return err
 	}
+
+	// ensure new columns
+	// content_sha was added after initial releases, so older deployments may
+	// lack the column. Add it when missing to avoid insert errors.
+	var hasContentSHA bool
+	err := conn.QueryRow(ctx, `SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='documents' AND column_name='content_sha'
+        )`).Scan(&hasContentSHA)
+	if err != nil {
+		return err
+	}
+	if !hasContentSHA {
+		if _, err := conn.Exec(ctx, `ALTER TABLE documents ADD COLUMN content_sha TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
 	// check dimension
 	var curDim int
-	err := conn.QueryRow(ctx, `SELECT atttypmod-4 FROM pg_attribute a JOIN pg_type t ON a.atttypid=t.oid WHERE a.attrelid='documents'::regclass AND a.attname='embedding'`).Scan(&curDim)
+	err = conn.QueryRow(ctx, `SELECT atttypmod-4 FROM pg_attribute a JOIN pg_type t ON a.atttypid=t.oid WHERE a.attrelid='documents'::regclass AND a.attname='embedding'`).Scan(&curDim)
 	if err == nil && curDim != dim {
 		if !migrate {
 			return fmt.Errorf("embedding dimension %d != %d", curDim, dim)
