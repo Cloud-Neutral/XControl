@@ -6,42 +6,71 @@ import { SourceHint } from './SourceHint'
 
 const MAX_MESSAGES = 20
 
-export function AskAIDialog({ open, onMinimize, onEnd }: { open: boolean; onMinimize: () => void; onEnd: () => void }) {
+export function AskAIDialog({
+  open,
+  apiBase,
+  onMinimize,
+  onEnd
+}: {
+  open: boolean
+  apiBase: string
+  onMinimize: () => void
+  onEnd: () => void
+}) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([])
   const [sources, setSources] = useState<any[]>([])
 
   async function handleAsk() {
     if (!question) return
+
     const userMessage = { sender: 'user' as const, text: question }
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || ''
-    const trimmedHistory = messages.slice(-MAX_MESSAGES)
+    const history = [...messages.slice(-MAX_MESSAGES + 1), userMessage]
+    setMessages(prev => [...prev, userMessage])
+    setQuestion('')
+
     try {
       const res = await fetch(`${apiBase}/api/rag/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, history: trimmedHistory })
+        body: JSON.stringify({ question, history })
       })
+
+      if (!res.ok) throw new Error('Request failed')
+
       const data = await res.json()
       const retrieved = data.chunks || []
       setSources(retrieved)
+
       let answer = data.answer as string
+
       if (!answer || retrieved.length === 0) {
-        answer = 'I could not find an answer in our docs. Please visit https://chart.svc.plus for more information.'
+        try {
+          const aiRes = await fetch(`${apiBase}/api/askai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, history })
+          })
+
+          if (aiRes.ok) {
+            const aiData = await aiRes.json()
+            answer = aiData.answer as string
+          }
+        } catch (err) {
+          // ignore and use generic message below
+        }
+
+        if (!answer) {
+          answer = 'Sorry, I could not find an answer at this time.'
+        }
       }
+
       const aiMessage = { sender: 'ai' as const, text: answer }
-      setMessages(prev => {
-        const newMessages = [...prev, userMessage, aiMessage]
-        return newMessages.slice(-MAX_MESSAGES)
-      })
+      setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
     } catch (err) {
       const aiMessage = { sender: 'ai' as const, text: 'Something went wrong. Please try again later.' }
-      setMessages(prev => {
-        const newMessages = [...prev, userMessage, aiMessage]
-        return newMessages.slice(-MAX_MESSAGES)
-      })
+      setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
     }
-    setQuestion('')
   }
 
   function handleEnd() {
