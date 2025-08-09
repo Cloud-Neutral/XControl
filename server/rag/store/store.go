@@ -11,13 +11,13 @@ import (
 
 // DocRow represents a row to be stored in the documents table.
 type DocRow struct {
-	Repo       string
-	Path       string
-	ChunkID    int
-	Content    string
-	Embedding  []float32
-	Metadata   map[string]any
-	ContentSHA string
+	Repo       string         `json:"repo"`
+	Path       string         `json:"path"`
+	ChunkID    int            `json:"chunk_id"`
+	Content    string         `json:"content"`
+	Embedding  []float32      `json:"embedding"`
+	Metadata   map[string]any `json:"metadata"`
+	ContentSHA string         `json:"content_sha"`
 }
 
 // EnsureSchema creates the documents table and indexes if they do not exist. It
