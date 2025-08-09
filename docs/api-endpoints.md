@@ -43,6 +43,17 @@ This document describes the HTTP endpoints provided by the XControl server. Each
   limiting, and resumable transfers over long-lived connections while
   supporting dynamic, lossless queues for weak networks.
 
+## POST /api/rag/upsert
+- **Description:** Upsert pre-embedded document chunks into the RAG database.
+- **Body Parameters (JSON):**
+  - `docs` – Array of documents each containing `repo`, `path`, `chunk_id`, `content`, `embedding`, `metadata`, and `content_sha`.
+- **Test:**
+  ```bash
+  curl -X POST http://localhost:8080/api/rag/upsert \
+    -H "Content-Type: application/json" \
+    -d '{"docs":[{"repo":"example","path":"doc.md","chunk_id":1,"content":"hello","embedding":[0.1,0.2],"metadata":{},"content_sha":"abc"}]}'
+  ```
+
 ## POST /api/rag/query
 - **Description:** Query the RAG service.
 - **Body Parameters (JSON):**
