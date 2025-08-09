@@ -2,7 +2,38 @@
 
 XControl is a modular multi-tenant management platform written in Go. The project integrates several optional components to provide a visual control plane for traffic statistics, configuration export and multi-node management.
 
-This repository contains the API server, agent code and a Vue based UI.
+This repository contains the API server, agent code and a Next.js-based UI.
+
+## Components
+
+- **ui-homepage**
+- **ui-panel**
+- **xcontrol-cli**
+- **xcontrol-server**
+
+All UI components provide both Chinese and English interfaces.
+
+## Tech Stack
+
+| Category  | Technology | Version |
+|-----------|------------|---------|
+| Framework | Go         | 1.24    |
+| Framework | Next.js    | 14.1.0  |
+| Gateway   | OpenResty  | 1.27.1.2 |
+| Database  | PostgreSQL + pgvector | N/A |
+| Cache     | Redis      | N/A     |
+| Model     | Large Language Models via CodePRobot | N/A |
+
+## Supported Platforms
+
+Tested on **Ubuntu 22.04 x64** and **macOS 26 arm64**.
+
+## Installation
+
+```bash
+make install
+make init-db   # initialize database (optional)
+```
 
 ## Features
 - **XCloudFlow** Multi-cloud IaC engine built with Pulumi SDK and Go. GitHub →
@@ -24,6 +55,14 @@ This produces a binary under `bin/xcontrol`. Run `make agent` to build the node 
 ```
 make test
 ```
+
+## Deployment
+
+```bash
+make start
+```
+
+This launches the server, homepage and panel. Use `make stop` to stop all components.
 
 ## License
 
