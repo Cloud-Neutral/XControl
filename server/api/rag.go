@@ -1,19 +1,13 @@
-//go:build legacy
-
 package api
 
 import (
 	"context"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"xcontrol/server/rag"
 	rconfig "xcontrol/server/rag/config"
-	"xcontrol/server/rag/embed"
-	"xcontrol/server/rag/store"
 )
 
 // ragSvc provides repository sync and retrieval operations.
@@ -25,23 +19,7 @@ func initRAG() *rag.Service {
 	if err != nil {
 		return nil
 	}
-	dsn := cfg.VectorDB.DSN()
-	if dsn == "" {
-		return nil
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	st, err := store.New(ctx, dsn)
-	if err != nil {
-		return nil
-	}
-	key := os.Getenv("OPENAI_API_KEY")
-	svcCfg := cfg.ToConfig()
-	var emb embed.Embedder
-	if key != "" {
-		emb = embed.NewOpenAI("text-embedding-3-small", key)
-	}
-	svc := rag.New(svcCfg, st, emb)
+	svc := rag.New(cfg.ToConfig())
 	go svc.Sync(context.Background())
 	go svc.Watch(context.Background())
 	return svc
