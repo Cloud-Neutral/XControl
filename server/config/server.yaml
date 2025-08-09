@@ -23,7 +23,7 @@ provider:
       - 'gpt-oss:20b'
   - name: chutes
     base_url: https://llm.chutes.ai/
-    token: "cpk_xxxxxxx"
+    token: "cpk_9221badbda89490ea8f2fe8f3818eebc.5bd47a04456b5f9f94b88066fd18faa2.2jsXIytq11GcDmXpEGNd1ls2zeQWn4US"
     models:
       - 'moonshotai/Kimi-K2-Instruct'
 

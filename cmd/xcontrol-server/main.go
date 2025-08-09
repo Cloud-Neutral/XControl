@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 
+	rconfig "xcontrol/internal/rag/config"
 	"xcontrol/server"
 	"xcontrol/server/api"
 	"xcontrol/server/config"
@@ -20,10 +22,16 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
+	configPath := flag.String("config", "", "path to server configuration file")
+	flag.Parse()
+	cfg, err := config.Load(*configPath)
 	if err != nil {
 		slog.Warn("load config", "err", err)
 		cfg = &config.Config{}
+	}
+	if *configPath != "" {
+		api.ConfigPath = *configPath
+		rconfig.ServerConfigPath = *configPath
 	}
 	proxy.Set(cfg.Global.Proxy)
 

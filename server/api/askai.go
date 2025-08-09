@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -42,14 +43,10 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 	})
 }
 
-const chutesURL = "https://llm.chutes.ai/v1/chat/completions"
+// ConfigPath points to the server configuration file.
+var ConfigPath = filepath.Join("server", "config", "server.yaml")
 
 type serverConfig struct {
-	LLM struct {
-		URL    string   `yaml:"url"`
-		Token  string   `yaml:"token"`
-		Models []string `yaml:"models"`
-	} `yaml:"llm"`
 	Provider []struct {
 		Name    string   `yaml:"name"`
 		BaseURL string   `yaml:"base_url"`
@@ -64,44 +61,32 @@ type serverConfig struct {
 	} `yaml:"api"`
 }
 
-// loadConfig attempts to read CHUTES_API_TOKEN, model, URL, timeout and retries from
-// environment variables, falling back to config/server.yaml.
+// loadConfig reads model, URL, timeout and retries from ConfigPath and
+// environment variables. The Chutes API token is sourced from the config file.
 func loadConfig() (string, string, string, time.Duration, int) {
-	token := os.Getenv("CHUTES_API_TOKEN")
 	model := os.Getenv("CHUTES_API_MODEL")
-	url := os.Getenv("CHUTES_API_URL")
+	baseURL := os.Getenv("CHUTES_API_URL")
+	token := ""
 	timeout := 30 * time.Second
 	retries := 3
-	path := filepath.Join("server", "config", "server.yaml")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(ConfigPath)
 	if err == nil {
 		var cfg serverConfig
 		if err := yaml.Unmarshal(data, &cfg); err == nil {
-			if token == "" {
-				token = cfg.LLM.Token
-			}
-			if model == "" && len(cfg.LLM.Models) > 0 {
-				model = cfg.LLM.Models[0]
-			}
-			if url == "" {
-				url = cfg.LLM.URL
-			}
-			if token == "" || model == "" || url == "" {
-				for _, p := range cfg.Provider {
-					if p.Name != "chutes" {
-						continue
-					}
-					if token == "" {
-						token = p.Token
-					}
-					if model == "" && len(p.Models) > 0 {
-						model = p.Models[0]
-					}
-					if url == "" {
-						url = p.BaseURL
-					}
-					break
+			for _, p := range cfg.Provider {
+				if p.Name != "chutes" {
+					continue
 				}
+				if token == "" {
+					token = p.Token
+				}
+				if model == "" && len(p.Models) > 0 {
+					model = p.Models[0]
+				}
+				if baseURL == "" {
+					baseURL = p.BaseURL
+				}
+				break
 			}
 			if cfg.API.AskAI.Timeout > 0 {
 				timeout = time.Duration(cfg.API.AskAI.Timeout) * time.Second
@@ -120,17 +105,19 @@ func loadConfig() (string, string, string, time.Duration, int) {
 	if model == "" {
 		model = "deepseek-ai/DeepSeek-R1"
 	}
-	if url == "" {
-		url = chutesURL
+	baseURL = strings.TrimRight(baseURL, "/")
+	if baseURL == "" {
+		baseURL = "https://llm.chutes.ai"
 	}
+	url := baseURL + "/v1/chat/completions"
 	return token, model, url, timeout, retries
 }
 
 // callChutes sends the question to the hosted LLM service and returns the reply.
 func callChutes(question string) (string, error) {
 	token, model, url, timeout, retries := loadConfig()
-	if token == "" {
-		return "", errors.New("CHUTES_API_TOKEN not set")
+	if token == "" || token == "cpk_xxxxxxx" {
+		return "", errors.New("chutes token not set")
 	}
 
 	reqBody := map[string]interface{}{

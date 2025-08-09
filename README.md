@@ -64,6 +64,12 @@ make start
 
 This launches the server, homepage and panel. Use `make stop` to stop all components.
 
+The API server also accepts a custom configuration file:
+
+```bash
+xcontrol-server --config path/to/server.yaml
+```
+
 ## License
 
 This project is licensed under the terms of the [MIT License](./LICENSE).
