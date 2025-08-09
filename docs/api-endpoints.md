@@ -31,12 +31,17 @@ This document describes the HTTP endpoints provided by the XControl server. Each
   ```
 
 ## POST /api/rag/sync
-- **Description:** Trigger RAG background synchronization.
+- **Description:** Trigger RAG background synchronization. The endpoint streams
+  plain-text progress logs during the sync.
 - **Parameters:** None.
 - **Test:**
   ```bash
-  curl -X POST http://localhost:8080/api/rag/sync
+  curl -N -X POST http://localhost:8080/api/rag/sync
   ```
+- **Notes:** A future evolution could expose this operation via a gRPC
+  streaming RPC. That approach would allow high-speed synchronization, rate
+  limiting, and resumable transfers over long-lived connections while
+  supporting dynamic, lossless queues for weak networks.
 
 ## POST /api/rag/query
 - **Description:** Query the RAG service.

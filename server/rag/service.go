@@ -22,12 +22,29 @@ func New(cfg *config.Config) *Service {
 }
 
 func (s *Service) Sync(ctx context.Context) error {
+	return s.SyncWithProgress(ctx, nil)
+}
+
+// SyncWithProgress performs a full sync while reporting progress via the provided callback.
+//
+// The progress callback may be nil. When non-nil it will receive human readable
+// status messages as the sync operation progresses.
+func (s *Service) SyncWithProgress(ctx context.Context, progress func(string)) error {
 	if s == nil || s.cfg == nil {
 		return nil
 	}
 	for _, ds := range s.cfg.Global.Datasources {
+		if progress != nil {
+			progress("syncing " + ds.Name)
+		}
 		if _, err := ingest.IngestRepo(ctx, s.cfg, ds, ingest.Options{}); err != nil {
+			if progress != nil {
+				progress("error syncing " + ds.Name + ": " + err.Error())
+			}
 			return err
+		}
+		if progress != nil {
+			progress("completed " + ds.Name)
 		}
 	}
 	return nil
