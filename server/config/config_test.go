@@ -21,7 +21,10 @@ func TestLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.Log.Level != "info" {
-		t.Fatalf("unexpected log level %q", cfg.Log.Level)
+	if cfg.Global.Redis.Addr != "127.0.0.1:6479" {
+		t.Fatalf("unexpected redis addr %q", cfg.Global.Redis.Addr)
+	}
+	if cfg.API.AskAI.Timeout != 100 {
+		t.Fatalf("unexpected askai timeout %d", cfg.API.AskAI.Timeout)
 	}
 }
