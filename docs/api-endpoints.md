@@ -48,6 +48,14 @@ This document describes the HTTP endpoints provided by the XControl server. Each
     -H "Content-Type: application/json" \
     -d '{"question": "What is XControl?"}'
   ```
+  When copying the multi-line example above, ensure your shell treats the trailing
+  `\` characters as line continuations. Copying literal `\n` sequences will cause
+  `curl: (3) URL rejected: Bad hostname` errors. You can also run the command on a
+  single line without the backslashes:
+
+  ```bash
+  curl -X POST http://localhost:8080/api/rag/query -H "Content-Type: application/json" -d '{"question": "What is XControl?"}'
+  ```
 
 ## POST /api/askai
 - **Description:** Ask the AI service for an answer.
