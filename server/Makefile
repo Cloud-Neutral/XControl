@@ -1,5 +1,5 @@
 APP_NAME := xcontrol-server
-MAIN_FILE := ../cmd/api/main.go
+MAIN_FILE := ../cmd/xcontrol-server/main.go
 MODULE := xcontrol
 PORT := 8080
 OS := $(shell uname -s)
