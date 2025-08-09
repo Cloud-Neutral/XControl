@@ -17,6 +17,12 @@ type Config struct {
 		Token  string   `yaml:"token"`
 		Models []string `yaml:"models"`
 	} `yaml:"llm"`
+	Provider []struct {
+		Name    string   `yaml:"name"`
+		BaseURL string   `yaml:"base_url"`
+		Token   string   `yaml:"token"`
+		Models  []string `yaml:"models"`
+	} `yaml:"provider"`
 }
 
 // cfg holds the loaded configuration.
@@ -42,6 +48,21 @@ func loadConfig() {
 	}
 	if len(cfg.LLM.Models) > 0 {
 		os.Setenv("CHUTES_API_MODEL", cfg.LLM.Models[0])
+	}
+	for _, p := range cfg.Provider {
+		if p.Name != "chutes" {
+			continue
+		}
+		if p.Token != "" {
+			os.Setenv("CHUTES_API_TOKEN", p.Token)
+		}
+		if p.BaseURL != "" {
+			os.Setenv("CHUTES_API_URL", p.BaseURL)
+		}
+		if len(p.Models) > 0 {
+			os.Setenv("CHUTES_API_MODEL", p.Models[0])
+		}
+		break
 	}
 }
 

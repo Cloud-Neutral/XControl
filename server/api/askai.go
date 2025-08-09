@@ -50,6 +50,12 @@ type serverConfig struct {
 		Token  string   `yaml:"token"`
 		Models []string `yaml:"models"`
 	} `yaml:"llm"`
+	Provider []struct {
+		Name    string   `yaml:"name"`
+		BaseURL string   `yaml:"base_url"`
+		Token   string   `yaml:"token"`
+		Models  []string `yaml:"models"`
+	} `yaml:"provider"`
 	API struct {
 		AskAI struct {
 			Timeout int `yaml:"timeout"` // seconds
@@ -79,6 +85,23 @@ func loadConfig() (string, string, string, time.Duration, int) {
 			}
 			if url == "" {
 				url = cfg.LLM.URL
+			}
+			if token == "" || model == "" || url == "" {
+				for _, p := range cfg.Provider {
+					if p.Name != "chutes" {
+						continue
+					}
+					if token == "" {
+						token = p.Token
+					}
+					if model == "" && len(p.Models) > 0 {
+						model = p.Models[0]
+					}
+					if url == "" {
+						url = p.BaseURL
+					}
+					break
+				}
 			}
 			if cfg.API.AskAI.Timeout > 0 {
 				timeout = time.Duration(cfg.API.AskAI.Timeout) * time.Second
