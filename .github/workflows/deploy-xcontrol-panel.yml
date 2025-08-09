@@ -10,6 +10,7 @@ on:
       - 'ui/panel/**'
       - '.github/workflows/deploy-xcontrol-panel.yml'
     branches: [main]
+  workflow_call:
 
 jobs:
   deploy:
