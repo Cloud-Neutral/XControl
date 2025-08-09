@@ -7,20 +7,11 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	rconfig "xcontrol/server/rag/config"
 )
 
 // main loads server RAG configuration and triggers a manual sync by
 // calling the running API server's /api/rag/sync endpoint.
 func main() {
-	cfg, err := rconfig.LoadServer()
-	if err != nil {
-		log.Printf("read config: %v", err)
-	} else {
-		log.Printf("loaded %d datasource(s)", len(cfg.Datasources))
-	}
-
 	baseURL := os.Getenv("SERVER_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"

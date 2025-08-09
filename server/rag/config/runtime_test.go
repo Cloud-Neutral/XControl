@@ -1,9 +1,6 @@
 package config
 
-import (
-	"path/filepath"
-	"testing"
-)
+import "testing"
 
 func TestVectorDB_DSN(t *testing.T) {
 	v := VectorDB{
@@ -21,22 +18,30 @@ func TestVectorDB_DSN(t *testing.T) {
 	}
 }
 
-func TestRuntimeToConfig(t *testing.T) {
-	rt := &Runtime{
-		Datasources: []Datasource{
-			{Name: "docs", Repo: "https://example.com/repo.git", Path: "docs"},
-		},
+func TestResolveEmbedding(t *testing.T) {
+	cfg := &Config{
+		Provider:  []Provider{{Name: "p1", BaseURL: "https://api.example.com", Token: "tok"}},
+		Embedding: EmbeddingCfg{Provider: "p1", Model: "m"},
 	}
-	cfg := rt.ToConfig()
-	if len(cfg.Repos) != 1 {
-		t.Fatalf("expected 1 repo, got %d", len(cfg.Repos))
+	e := cfg.ResolveEmbedding()
+	if e.BaseURL != "https://api.example.com/v1" {
+		t.Fatalf("unexpected base url %q", e.BaseURL)
 	}
-	r := cfg.Repos[0]
-	if r.URL != "https://example.com/repo.git" || len(r.Paths) != 1 || r.Paths[0] != "docs" {
-		t.Fatalf("unexpected repo: %+v", r)
+	if e.APIKey != "tok" {
+		t.Fatalf("unexpected api key %q", e.APIKey)
 	}
-	expectedLocal := filepath.Join("server", "rag", "docs")
-	if r.Local != expectedLocal {
-		t.Fatalf("expected local %q, got %q", expectedLocal, r.Local)
+	if e.Model != "m" {
+		t.Fatalf("unexpected model %q", e.Model)
+	}
+}
+
+func TestResolveChunking(t *testing.T) {
+	cfg := &Config{}
+	ch := cfg.ResolveChunking()
+	if ch.MaxTokens != 800 || ch.OverlapTokens != 80 {
+		t.Fatalf("defaults not applied: %+v", ch)
+	}
+	if len(ch.IncludeExts) == 0 || len(ch.IgnoreDirs) == 0 {
+		t.Fatalf("expected default slices")
 	}
 }

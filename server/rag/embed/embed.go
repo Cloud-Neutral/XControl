@@ -2,7 +2,8 @@ package embed
 
 import "context"
 
-// Embedder produces a vector representation for input text.
+// Embedder defines embedding operations.
 type Embedder interface {
-	Embed(ctx context.Context, text string) ([]float32, error)
+	Embed(ctx context.Context, inputs []string) ([][]float32, int, error)
+	Dimension() int
 }
