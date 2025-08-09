@@ -79,6 +79,7 @@ type Runtime struct {
 	} `yaml:"redis"`
 	VectorDB    VectorDB     `yaml:"vectordb"`
 	Datasources []DataSource `yaml:"datasources"`
+	Proxy       string       `yaml:"proxy"`
 }
 
 // LoadServer loads global configuration from server/config/server.yaml.
@@ -106,5 +107,6 @@ func (rt *Runtime) ToConfig() *Config {
 	c.Global.Redis = rt.Redis
 	c.Global.VectorDB = rt.VectorDB
 	c.Global.Datasources = rt.Datasources
+	c.Global.Proxy = rt.Proxy
 	return &c
 }
