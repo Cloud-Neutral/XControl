@@ -60,7 +60,7 @@ CREATE TABLE chunks (
 
 ## 4. Ingest 流程
 
-1. 调用 `CloneOrPullRepo()` 同步文档。
+1. 调用 `SyncRepo()` 同步文档。
 2. 通过 `Pandoc` 或 `goldmark` 转为纯文本。
 3. 按标题/段落切割，生成 `Chunk` 对象。
 4. 调用 `Embed()` 得到向量并写入 `chunks` 表。
@@ -68,8 +68,8 @@ CREATE TABLE chunks (
 示例代码：
 
 ```go
-// ingest/fetch_repo.go
-func CloneOrPullRepo(repoURL, localPath string) error { /* ... */ }
+// sync/sync.go
+func SyncRepo(ctx context.Context, url, workdir string) (string, error) { /* ... */ }
 
 // ingest/embed.go
 func Embed(text string) ([]float32, error) { /* 调用 Embedding 模型 */ }
@@ -78,23 +78,14 @@ func Embed(text string) ([]float32, error) { /* 调用 Embedding 模型 */ }
 ## 5. 项目代码规划
 
 ```
-server/markmind/
-├── ingest/
-│   ├── fetch_repo.go      # Git 克隆/更新
-│   ├── convert.go         # 文档转换
-│   ├── chunk.go           # 分块逻辑
-│   └── embed.go           # 向量化
-├── db/
-│   ├── pgvector.go        # 向量存储封装
-│   └── schema.sql         # 表结构
-├── llm/
-│   ├── prompt.go          # Prompt 构造
-│   └── rag.go             # 问答流程
-├── server/
-│   └── api.go             # REST API
-├── config/
-│   └── repos.yaml         # 同步仓库配置
-└── main.go
+  server/rag/
+  ├── sync/                  # Git 克隆/更新
+  ├── ingest/                # 文档转换与分块
+  ├── embed/                 # 向量化
+  ├── store/                 # 向量存储封装
+  ├── llm/                   # Prompt 构造与问答流程
+  ├── api/                   # REST API
+  └── config/                # 同步仓库配置
 ```
 
 以上规划提供了最小可用的 AI 问答知识库实现思路，可在此基础上逐步完善。 
