@@ -21,10 +21,7 @@ func initRAG() *rag.Service {
 		return nil
 	}
 	proxy.Set(cfg.Proxy)
-	svc := rag.New(cfg.ToConfig())
-	go svc.Sync(context.Background())
-	go svc.Watch(context.Background())
-	return svc
+	return rag.New(cfg.ToConfig())
 }
 
 // registerRAGRoutes wires the /api/rag upsert and query endpoints.
