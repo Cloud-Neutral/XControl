@@ -4,39 +4,66 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 )
 
-// BGE calls a local bge-m3 embedding service.
+// BGE implements the Embedder interface for a BGE embedding service.
 type BGE struct {
-	Endpoint string
-	Client   *http.Client
+	baseURL string
+	token   string
+	dim     int
+	client  *http.Client
 }
 
 // NewBGE returns a new BGE embedder.
-func NewBGE(endpoint string) *BGE {
-	return &BGE{Endpoint: endpoint, Client: &http.Client{}}
+func NewBGE(baseURL, token string, dim int) *BGE {
+	return &BGE{
+		baseURL: baseURL,
+		token:   token,
+		dim:     dim,
+		client:  &http.Client{Timeout: 30 * time.Second},
+	}
 }
 
-// Embed posts text to the bge service and parses the vector.
-func (b *BGE) Embed(ctx context.Context, text string) ([]float32, error) {
-	body := map[string]string{"text": text}
-	data, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, "POST", b.Endpoint, bytes.NewReader(data))
-	if err != nil {
-		return nil, err
+// Dimension returns the embedding dimension if known.
+func (b *BGE) Dimension() int { return b.dim }
+
+// Embed posts texts to the BGE service and returns embeddings.
+func (b *BGE) Embed(ctx context.Context, inputs []string) ([][]float32, int, error) {
+	vecs := make([][]float32, len(inputs))
+	for i, text := range inputs {
+		payload := map[string]any{"inputs": text}
+		body, _ := json.Marshal(payload)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.baseURL, bytes.NewReader(body))
+		if err != nil {
+			return nil, 0, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if b.token != "" {
+			req.Header.Set("Authorization", "Bearer "+b.token)
+		}
+		resp, err := b.client.Do(req)
+		if err != nil {
+			return nil, 0, err
+		}
+		if resp.StatusCode >= 300 {
+			resp.Body.Close()
+			return nil, 0, fmt.Errorf("embed failed: %s", resp.Status)
+		}
+		var out struct {
+			Embedding []float32 `json:"embedding"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			resp.Body.Close()
+			return nil, 0, err
+		}
+		resp.Body.Close()
+		if b.dim == 0 {
+			b.dim = len(out.Embedding)
+		}
+		vecs[i] = out.Embedding
 	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := b.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var res struct {
-		Embedding []float32 `json:"embedding"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return nil, err
-	}
-	return res.Embedding, nil
+	return vecs, 0, nil
 }
