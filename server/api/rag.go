@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"xcontrol/server/proxy"
 	"xcontrol/server/rag"
 	rconfig "xcontrol/server/rag/config"
 	"xcontrol/server/rag/store"
@@ -19,7 +20,11 @@ func initRAG() *rag.Service {
 	if err != nil {
 		return nil
 	}
-	return rag.New(cfg.ToConfig())
+	proxy.Set(cfg.Proxy)
+	svc := rag.New(cfg.ToConfig())
+	go svc.Sync(context.Background())
+	go svc.Watch(context.Background())
+	return svc
 }
 
 // registerRAGRoutes wires the /api/rag endpoints.
