@@ -53,6 +53,7 @@ type Global struct {
 	} `yaml:"redis"`
 	VectorDB    VectorDB     `yaml:"vectordb"`
 	Datasources []DataSource `yaml:"datasources"`
+	Proxy       string       `yaml:"proxy"`
 }
 
 // Provider defines an LLM provider which can also serve embeddings.

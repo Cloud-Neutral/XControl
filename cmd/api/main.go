@@ -15,6 +15,7 @@ import (
 	"xcontrol/server"
 	"xcontrol/server/api"
 	"xcontrol/server/config"
+	"xcontrol/server/proxy"
 	"xcontrol/ui"
 )
 
@@ -24,6 +25,7 @@ func main() {
 		slog.Warn("load config", "err", err)
 		cfg = &config.Config{}
 	}
+	proxy.Set(cfg.Global.Proxy)
 
 	level := slog.LevelInfo
 	switch strings.ToLower(cfg.Log.Level) {
