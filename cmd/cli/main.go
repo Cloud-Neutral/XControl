@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"xcontrol/server/proxy"
-  "xcontrol/server/rag/embed"
+	rconfig "xcontrol/server/rag/config"
+	"xcontrol/server/rag/embed"
 	"xcontrol/server/rag/ingest"
 	"xcontrol/server/rag/store"
 	rsync "xcontrol/server/rag/sync"
-  rconfig "xcontrol/server/rag/config"
 )
 
 // main loads server RAG configuration and triggers a manual sync by
@@ -40,6 +40,8 @@ func main() {
 	} else {
 		cfg = &rconfig.Config{}
 	}
+
+	proxy.Set(cfg.Global.Proxy)
 
 	if *filePath != "" {
 		chunkCfg := cfg.ResolveChunking()
