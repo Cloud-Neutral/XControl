@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 
-	"xcontrol/server/markmind/ingest"
+	rsync "xcontrol/server/rag/sync"
 )
 
 // registerKnowledgeRoutes sets up knowledge base endpoints.
@@ -20,7 +20,7 @@ func registerKnowledgeRoutes(r *gin.RouterGroup, _ *pgx.Conn) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if err := ingest.CloneOrPullRepo(req.RepoURL, req.LocalPath); err != nil {
+		if _, err := rsync.SyncRepo(c.Request.Context(), req.RepoURL, req.LocalPath); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}

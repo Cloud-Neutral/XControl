@@ -4,46 +4,76 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"time"
 )
 
-// OpenAI calls the OpenAI embeddings endpoint.
+// OpenAI implements the Embedder interface using OpenAI-compatible APIs.
 type OpenAI struct {
-	APIKey string
-	Model  string
-	Client *http.Client
+	baseURL string
+	apiKey  string
+	model   string
+	dim     int
+	client  *http.Client
 }
 
-// NewOpenAI creates a new OpenAI embedder.
-func NewOpenAI(model, key string) *OpenAI {
-	return &OpenAI{Model: model, APIKey: key, Client: &http.Client{}}
-}
-
-// Embed generates an embedding using OpenAI API.
-func (o *OpenAI) Embed(ctx context.Context, text string) ([]float32, error) {
-	body := map[string]any{"input": text, "model": o.Model}
-	b, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/embeddings", bytes.NewReader(b))
-	if err != nil {
-		return nil, err
+// NewOpenAI creates a new OpenAI embedder from configuration.
+func NewOpenAI(baseURL, apiKey, model string, dim int) *OpenAI {
+	return &OpenAI{
+		baseURL: baseURL,
+		apiKey:  apiKey,
+		model:   model,
+		dim:     dim,
+		client:  &http.Client{Timeout: 30 * time.Second},
 	}
-	req.Header.Set("Authorization", "Bearer "+o.APIKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := o.Client.Do(req)
+}
+
+// Dimension returns the embedding dimension if known.
+func (o *OpenAI) Dimension() int { return o.dim }
+
+// Embed embeds the inputs and returns vectors and token usage.
+func (o *OpenAI) Embed(ctx context.Context, inputs []string) ([][]float32, int, error) {
+	payload := map[string]any{
+		"model": o.model,
+		"input": inputs,
+	}
+	b, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/embeddings", bytes.NewReader(b))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+o.apiKey)
+	resp, err := o.client.Do(req)
+	if err != nil {
+		return nil, 0, err
 	}
 	defer resp.Body.Close()
-	var res struct {
+	if resp.StatusCode >= 300 {
+		return nil, 0, fmt.Errorf("embed failed: %s", resp.Status)
+	}
+	var out struct {
 		Data []struct {
 			Embedding []float32 `json:"embedding"`
 		} `json:"data"`
+		Usage struct {
+			TotalTokens int `json:"total_tokens"`
+		} `json:"usage"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return nil, err
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, 0, err
 	}
-	if len(res.Data) == 0 {
-		return nil, nil
+	if len(out.Data) != len(inputs) {
+		return nil, 0, errors.New("embedding count mismatch")
 	}
-	return res.Data[0].Embedding, nil
+	if o.dim == 0 && len(out.Data) > 0 {
+		o.dim = len(out.Data[0].Embedding)
+	}
+	vecs := make([][]float32, len(out.Data))
+	for i, d := range out.Data {
+		vecs[i] = d.Embedding
+	}
+	return vecs, out.Usage.TotalTokens, nil
 }

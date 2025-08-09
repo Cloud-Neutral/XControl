@@ -14,11 +14,29 @@ global:
     - name: documents
       repo: https://github.com/svc-design/documents
       path: /
-llm:
-  url: https://llm.chutes.ai/
-  token: "cpk_xxxxxxx"
-  models:
-    - 'moonshotai/Kimi-K2-Instruct'
+
+provider:
+  - name: chutes
+    base_url: https://llm.chutes.ai/
+    token: "cpk_xxxxxxx"
+    models:
+      - 'moonshotai/Kimi-K2-Instruct'
+
+embedding:
+  provider: chutes             # openai|azure|custom
+  model: "BAAI/bge-m3"
+  dimension: 0                 # 0 = 首次响应自动探测维度
+  rate_limit_tpm: 120000
+  max_batch: 64
+  max_chars: 8000
+
+chunking:
+  max_tokens: 800
+  overlap_tokens: 80
+  prefer_heading_split: true
+  include_exts: [".md", ".mdx"]
+  ignore_dirs: [".git", "node_modules", "dist", "build"]
+
 api:
   askai:
     timeout: 100
