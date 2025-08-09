@@ -21,13 +21,13 @@ jobs:
       - name: Build
         run: |
           mkdir -p build
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/xcontrol-api-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/api
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/xcontrol-cli-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/cli
-      - name: Upload API artifact
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/xcontrol-server-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/xcontrol-server
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/xcontrol-cli-${{ matrix.goos }}-${{ matrix.goarch }} ./client
+      - name: Upload server artifact
         uses: actions/upload-artifact@v4
         with:
-          name: xcontrol-api-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: build/xcontrol-api-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: xcontrol-server-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: build/xcontrol-server-${{ matrix.goos }}-${{ matrix.goarch }}
       - name: Upload CLI artifact
         uses: actions/upload-artifact@v4
         with:

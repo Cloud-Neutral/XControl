@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"xcontrol/internal/rag"
+	rconfig "xcontrol/internal/rag/config"
+	"xcontrol/internal/rag/store"
 	"xcontrol/server/proxy"
-	"xcontrol/server/rag"
-	rconfig "xcontrol/server/rag/config"
-	"xcontrol/server/rag/store"
 )
 
 // ragSvc handles RAG document storage and retrieval.

@@ -3,7 +3,7 @@ package ingest
 import (
 	"strings"
 
-	cfgpkg "xcontrol/server/rag/config"
+	cfgpkg "xcontrol/internal/rag/config"
 )
 
 // Chunk represents a piece of text prepared for embedding.
