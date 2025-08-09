@@ -55,10 +55,15 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 		return nil, nil
 	}
 	embCfg := s.cfg.ResolveEmbedding()
-	if embCfg.APIKey == "" || embCfg.BaseURL == "" || embCfg.Model == "" {
+	if embCfg.APIKey == "" || embCfg.BaseURL == "" {
 		return nil, nil
 	}
-	emb := embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+	var emb embed.Embedder
+	if embCfg.Model != "" {
+		emb = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+	} else {
+		emb = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+	}
 	vecs, _, err := emb.Embed(ctx, []string{question})
 	if err != nil {
 		return nil, err
