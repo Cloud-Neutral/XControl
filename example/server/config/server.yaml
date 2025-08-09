@@ -16,6 +16,10 @@ global:
       path: /
 
 provider:
+  - name: allama
+    base_url: http://localhost:11434
+    models:
+      - 'gpt-oss:20b'
   - name: chutes
     base_url: https://llm.chutes.ai/
     token: "cpk_xxxxxxx"
