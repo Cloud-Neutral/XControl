@@ -119,15 +119,17 @@ datasources:
 ### 8.3 运行同步
 
 ```bash
-./xcontrol-cli sync --config rag.yaml
+# 列出所有需要处理的 Markdown 文件路径
+./xcontrol-cli --config rag.yaml > files.txt
+
+# 逐个处理文件，生成向量并写入 pgvector
+while read -r f; do
+  ./xcontrol-cli --config rag.yaml --file "$f"
+done < files.txt
 ```
 
-运行过程会克隆或更新数据源仓库，解析 Markdown 并分块，调用模型生成向量，并写入 pgvector 数据库。成功后会看到类似下面的日志：
-
-```
-path: /2025/08/08 00:30:00 loaded 3 datasource(s)
-2025/08/08 00:30:00 sync triggered
-```
+第一步会克隆或更新数据源仓库，并将扫描到的 Markdown 文件绝对路径打印到标准输出。
+第二步读取这些路径，逐个解析、分块、调用 BGE Embed 并通过 `/api/rag/upsert` 写入数据库。
 
 ### 8.4 查询接口
 
