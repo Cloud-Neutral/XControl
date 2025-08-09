@@ -50,17 +50,26 @@ func (c *Config) ResolveEmbedding() RuntimeEmbedding {
 	return rt
 }
 
-// ResolveChunking returns chunking configuration with defaults applied.
-func (c *Config) ResolveChunking() ChunkingCfg {
-	ch := c.Chunking
-	if ch.MaxTokens == 0 {
-		ch.MaxTokens = 800
+// LoadServer loads global configuration from server/config/server.yaml.
+func LoadServer() (*Runtime, error) {
+	path := filepath.Join("server", "config", "server.yaml")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var cfg struct {
+		Global Runtime `yaml:"global"`
 	}
 	if ch.OverlapTokens == 0 {
 		ch.OverlapTokens = 80
 	}
-	if len(ch.IncludeExts) == 0 {
-		ch.IncludeExts = []string{".md", ".mdx"}
+	return &cfg.Global, nil
+}
+
+// ToConfig converts runtime configuration into service configuration.
+func (rt *Runtime) ToConfig() *Config {
+	if rt == nil {
+		return nil
 	}
 	if len(ch.IgnoreDirs) == 0 {
 		ch.IgnoreDirs = []string{".git", "node_modules", "dist", "build"}

@@ -22,7 +22,7 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Warn("load config", "err", err)
-		cfg = &config.Server{}
+		cfg = &config.Config{}
 	}
 
 	level := slog.LevelInfo
@@ -38,7 +38,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	var conn *pgx.Conn
-	if dsn := cfg.Postgres.DSN; dsn != "" {
+	if dsn := cfg.Global.VectorDB.DSN(); dsn != "" {
 		logger.Debug("connecting to postgres", "dsn", dsn)
 		conn, err = pgx.Connect(context.Background(), dsn)
 		if err != nil {
@@ -50,11 +50,11 @@ func main() {
 		logger.Warn("postgres dsn not provided")
 	}
 
-	if addr := cfg.Redis.Addr; addr != "" {
+	if addr := cfg.Global.Redis.Addr; addr != "" {
 		logger.Debug("connecting to redis", "addr", addr)
 		rdb := redis.NewClient(&redis.Options{
 			Addr:     addr,
-			Password: cfg.Redis.Password,
+			Password: cfg.Global.Redis.Password,
 		})
 		if err := rdb.Ping(context.Background()).Err(); err != nil {
 			logger.Error("redis connect error", "err", err)
