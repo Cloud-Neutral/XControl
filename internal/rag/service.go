@@ -36,7 +36,8 @@ func (s *Service) Upsert(ctx context.Context, rows []store.DocRow) (int, error) 
 	defer conn.Close(ctx)
 
 	dim := len(rows[0].Embedding)
-	if err := store.EnsureSchema(ctx, conn, dim, false); err != nil {
+	// Allow schema migration so the embedding dimension can be updated
+	if err := store.EnsureSchema(ctx, conn, dim, true); err != nil {
 		return 0, err
 	}
 	return store.UpsertDocuments(ctx, conn, rows)
