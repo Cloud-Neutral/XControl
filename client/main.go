@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -109,19 +110,30 @@ func main() {
 		payload := struct {
 			Docs []store.DocRow `json:"docs"`
 		}{Docs: rows}
-		b, _ := json.Marshal(payload)
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/rag/upsert", bytes.NewReader(b))
+		b, err := json.Marshal(payload)
 		if err != nil {
-			log.Fatalf("create request: %v", err)
+			log.Fatalf("marshal docs: %v", err)
 		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
+		var resp *http.Response
+		for i := 0; i < 3; i++ {
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/rag/upsert", bytes.NewReader(b))
+			if err != nil {
+				log.Fatalf("create request: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			resp, err = http.DefaultClient.Do(req)
+			if err == nil {
+				break
+			}
+			time.Sleep(time.Second * time.Duration(i+1))
+		}
 		if err != nil {
 			log.Fatalf("upsert request: %v", err)
 		}
-		resp.Body.Close()
+		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			log.Fatalf("upsert failed: %s", resp.Status)
+			body, _ := io.ReadAll(resp.Body)
+			log.Fatalf("upsert failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
 		}
 		log.Printf("ingested %d chunks for %s", len(rows), rel)
 		return
