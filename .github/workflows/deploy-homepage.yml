@@ -10,6 +10,7 @@ on:
       - 'ui/homepage/**'
       - '.github/workflows/deploy-homepage.yml'
     branches: [main]
+  workflow_call:
 
 jobs:
   deploy:
