@@ -2,7 +2,10 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // RuntimeEmbedding is the resolved embedding configuration used at runtime.
@@ -50,6 +53,34 @@ func (c *Config) ResolveEmbedding() RuntimeEmbedding {
 	return rt
 }
 
+// ResolveChunking returns chunking configuration with defaults applied.
+func (c *Config) ResolveChunking() ChunkingCfg {
+	ch := c.Chunking
+	if ch.MaxTokens == 0 {
+		ch.MaxTokens = 800
+	}
+	if ch.OverlapTokens == 0 {
+		ch.OverlapTokens = 80
+	}
+	if len(ch.IncludeExts) == 0 {
+		ch.IncludeExts = []string{".md", ".mdx"}
+	}
+	if len(ch.IgnoreDirs) == 0 {
+		ch.IgnoreDirs = []string{".git", "node_modules", "dist", "build"}
+	}
+	return ch
+}
+
+// Runtime holds runtime configuration for RAG features.
+type Runtime struct {
+	Redis struct {
+		Addr     string `yaml:"addr"`
+		Password string `yaml:"password"`
+	} `yaml:"redis"`
+	VectorDB    VectorDB     `yaml:"vectordb"`
+	Datasources []DataSource `yaml:"datasources"`
+}
+
 // LoadServer loads global configuration from server/config/server.yaml.
 func LoadServer() (*Runtime, error) {
 	path := filepath.Join("server", "config", "server.yaml")
@@ -60,8 +91,8 @@ func LoadServer() (*Runtime, error) {
 	var cfg struct {
 		Global Runtime `yaml:"global"`
 	}
-	if ch.OverlapTokens == 0 {
-		ch.OverlapTokens = 80
+	if err := yaml.Unmarshal(b, &cfg); err != nil {
+		return nil, err
 	}
 	return &cfg.Global, nil
 }
@@ -71,8 +102,9 @@ func (rt *Runtime) ToConfig() *Config {
 	if rt == nil {
 		return nil
 	}
-	if len(ch.IgnoreDirs) == 0 {
-		ch.IgnoreDirs = []string{".git", "node_modules", "dist", "build"}
-	}
-	return ch
+	var c Config
+	c.Global.Redis = rt.Redis
+	c.Global.VectorDB = rt.VectorDB
+	c.Global.Datasources = rt.Datasources
+	return &c
 }
