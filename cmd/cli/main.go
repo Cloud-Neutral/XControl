@@ -11,24 +11,51 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	rconfig "xcontrol/server/rag/config"
 	"xcontrol/server/rag/embed"
 	"xcontrol/server/rag/ingest"
 	"xcontrol/server/rag/store"
 	rsync "xcontrol/server/rag/sync"
+  rconfig "xcontrol/server/rag/config"
 )
 
-// main performs cloning, parsing and embedding before sending documents to the server.
+// main loads server RAG configuration and triggers a manual sync by
+// calling the running API server's /api/rag/sync endpoint. When a file
+// path is provided via -file, it parses the Markdown locally and emits
+// chunk data as newline-delimited JSON.
+
 func main() {
-	configPath := flag.String("config", "", "Path to RAG configuration file")
+	configPath := flag.String("config", "", "Path to server RAG configuration file")
+	filePath := flag.String("file", "", "Markdown file to parse and chunk")
 	flag.Parse()
-	if *configPath == "" {
-		log.Fatalf("config path required")
+
+	var cfg *rconfig.Config
+	var err error
+	if *configPath != "" {
+		cfg, err = rconfig.Load(*configPath)
+		if err != nil {
+			log.Fatalf("load config: %v", err)
+		}
+	} else {
+		cfg = &rconfig.Config{}
 	}
-	cfg, err := rconfig.Load(*configPath)
-	if err != nil {
-		log.Fatalf("load config: %v", err)
+
+	if *filePath != "" {
+		chunkCfg := cfg.ResolveChunking()
+		secs, err := ingest.ParseMarkdown(*filePath)
+		if err != nil {
+			log.Fatalf("parse markdown: %v", err)
+		}
+		chunks, err := ingest.BuildChunks(secs, chunkCfg)
+		if err != nil {
+			log.Fatalf("build chunks: %v", err)
+		}
+		enc := json.NewEncoder(os.Stdout)
+		for _, ch := range chunks {
+			if err := enc.Encode(ch); err != nil {
+				log.Fatalf("encode chunk: %v", err)
+			}
+		}
+		return
 	}
 
 	baseURL := os.Getenv("SERVER_URL")
