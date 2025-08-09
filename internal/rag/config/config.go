@@ -68,6 +68,7 @@ type Provider struct {
 type EmbeddingCfg struct {
 	Provider     string `yaml:"provider"`
 	BaseURL      string `yaml:"base_url"`
+	Token        string `yaml:"token"`
 	Model        string `yaml:"model"`
 	APIKeyEnv    string `yaml:"api_key_env"`
 	Dimension    int    `yaml:"dimension"`

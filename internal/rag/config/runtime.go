@@ -46,6 +46,8 @@ func (c *Config) ResolveEmbedding() RuntimeEmbedding {
 
 	if e.APIKeyEnv != "" {
 		rt.APIKey = os.Getenv(e.APIKeyEnv)
+	} else if e.Token != "" {
+		rt.APIKey = e.Token
 	} else if prov != nil {
 		rt.APIKey = prov.Token
 	}
