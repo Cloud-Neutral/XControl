@@ -82,10 +82,12 @@ type Runtime struct {
 	Proxy       string       `yaml:"proxy"`
 }
 
-// LoadServer loads global configuration from server/config/server.yaml.
+// ServerConfigPath points to the server configuration file.
+var ServerConfigPath = filepath.Join("server", "config", "server.yaml")
+
+// LoadServer loads global configuration from ServerConfigPath.
 func LoadServer() (*Runtime, error) {
-	path := filepath.Join("server", "config", "server.yaml")
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(ServerConfigPath)
 	if err != nil {
 		return nil, err
 	}

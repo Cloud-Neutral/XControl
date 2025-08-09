@@ -12,11 +12,6 @@ import (
 
 // Config represents server configuration loaded from YAML.
 type Config struct {
-	LLM struct {
-		URL    string   `yaml:"url"`
-		Token  string   `yaml:"token"`
-		Models []string `yaml:"models"`
-	} `yaml:"llm"`
 	Provider []struct {
 		Name    string   `yaml:"name"`
 		BaseURL string   `yaml:"base_url"`
@@ -39,15 +34,6 @@ func loadConfig() {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		log.Printf("server config parse: %v", err)
 		return
-	}
-	if cfg.LLM.Token != "" {
-		os.Setenv("CHUTES_API_TOKEN", cfg.LLM.Token)
-	}
-	if cfg.LLM.URL != "" {
-		os.Setenv("CHUTES_API_URL", cfg.LLM.URL)
-	}
-	if len(cfg.LLM.Models) > 0 {
-		os.Setenv("CHUTES_API_MODEL", cfg.LLM.Models[0])
 	}
 	for _, p := range cfg.Provider {
 		if p.Name != "chutes" {

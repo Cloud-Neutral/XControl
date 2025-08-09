@@ -63,7 +63,7 @@ This document describes the HTTP endpoints provided by the XControl server. Each
   ```
 
 ## POST /api/askai
-- **Description:** Ask the AI service for an answer.
+- **Description:** Ask the AI service for an answer. Requires a valid Chutes token in the server configuration.
 - **Body Parameters (JSON):**
   - `question` – Question text.
 - **Test:**

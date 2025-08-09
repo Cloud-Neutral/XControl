@@ -58,10 +58,11 @@ type Global struct {
 	Proxy       string       `yaml:"proxy"`
 }
 
-type LLM struct {
-	URL    string   `yaml:"url"`
-	Token  string   `yaml:"token"`
-	Models []string `yaml:"models"`
+type Provider struct {
+	Name    string   `yaml:"name"`
+	BaseURL string   `yaml:"base_url"`
+	Token   string   `yaml:"token"`
+	Models  []string `yaml:"models"`
 }
 
 type API struct {
@@ -72,16 +73,20 @@ type API struct {
 }
 
 type Config struct {
-	Log    Log    `yaml:"log"`
-	Global Global `yaml:"global"`
-	LLM    LLM    `yaml:"llm"`
-	API    API    `yaml:"api"`
+	Log      Log        `yaml:"log"`
+	Global   Global     `yaml:"global"`
+	Provider []Provider `yaml:"provider"`
+	API      API        `yaml:"api"`
 }
 
-// Load reads server/config/server.yaml and unmarshals into Config struct.
-func Load() (*Config, error) {
-	path := filepath.Join("server", "config", "server.yaml")
-	b, err := os.ReadFile(path)
+// Load reads the configuration file at the provided path. When path is empty,
+// it defaults to server/config/server.yaml.
+func Load(path ...string) (*Config, error) {
+	p := filepath.Join("server", "config", "server.yaml")
+	if len(path) > 0 && path[0] != "" {
+		p = path[0]
+	}
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return nil, err
 	}
