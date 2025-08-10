@@ -1,11 +1,8 @@
 package config
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 // RuntimeEmbedding is the resolved embedding configuration used at runtime.
@@ -22,38 +19,20 @@ type RuntimeEmbedding struct {
 
 // ResolveEmbedding applies fallback logic to produce runtime embedding settings.
 func (c *Config) ResolveEmbedding() RuntimeEmbedding {
-	e := c.Embedding
 	var rt RuntimeEmbedding
-	rt.Provider = e.Provider
-	rt.Model = e.Model
+	m := c.Models.Embedder
+	rt.Provider = m.Provider
+	if len(m.Models) > 0 {
+		rt.Model = m.Models[0]
+	}
+	rt.BaseURL = strings.TrimRight(m.Endpoint, "/")
+	rt.APIKey = m.Token
+
+	e := c.Embedding
 	rt.Dimension = e.Dimension
 	rt.RateLimitTPM = e.RateLimitTPM
 	rt.MaxBatch = e.MaxBatch
 	rt.MaxChars = e.MaxChars
-
-	// find provider by name
-	var prov *Provider
-	for i := range c.Provider {
-		if c.Provider[i].Name == e.Provider {
-			prov = &c.Provider[i]
-			break
-		}
-	}
-
-	if e.BaseURL != "" {
-		rt.BaseURL = e.BaseURL
-	} else if prov != nil {
-		rt.BaseURL = strings.TrimRight(prov.BaseURL, "/") + "/v1"
-	}
-
-	if e.APIKeyEnv != "" {
-		rt.APIKey = os.Getenv(e.APIKeyEnv)
-	} else if e.Token != "" {
-		rt.APIKey = e.Token
-	} else if prov != nil {
-		rt.APIKey = prov.Token
-	}
-
 	return rt
 }
 
@@ -84,13 +63,7 @@ type Runtime struct {
 	VectorDB    VectorDB     `yaml:"vectordb"`
 	Datasources []DataSource `yaml:"datasources"`
 	Proxy       string       `yaml:"proxy"`
-	Embedding   struct {
-		Provider  string `yaml:"provider"`
-		BaseURL   string `yaml:"base_url"`
-		Token     string `yaml:"token"`
-		Model     string `yaml:"model"`
-		Dimension int    `yaml:"dimension"`
-	} `yaml:"embedding"`
+	Embedding   RuntimeEmbedding
 }
 
 // ServerConfigPath points to the server configuration file.
@@ -98,17 +71,18 @@ var ServerConfigPath = filepath.Join("server", "config", "server.yaml")
 
 // LoadServer loads global configuration from ServerConfigPath.
 func LoadServer() (*Runtime, error) {
-	b, err := os.ReadFile(ServerConfigPath)
+	cfg, err := Load(ServerConfigPath)
 	if err != nil {
 		return nil, err
 	}
-	var cfg struct {
-		Global Runtime `yaml:"global"`
+	rt := &Runtime{
+		VectorDB:    cfg.Global.VectorDB,
+		Datasources: cfg.Global.Datasources,
+		Proxy:       cfg.Global.Proxy,
 	}
-	if err := yaml.Unmarshal(b, &cfg); err != nil {
-		return nil, err
-	}
-	return &cfg.Global, nil
+	rt.Redis = cfg.Global.Redis
+	rt.Embedding = cfg.ResolveEmbedding()
+	return rt, nil
 }
 
 // ToConfig converts runtime configuration into service configuration.
@@ -121,10 +95,15 @@ func (rt *Runtime) ToConfig() *Config {
 	c.Global.VectorDB = rt.VectorDB
 	c.Global.Datasources = rt.Datasources
 	c.Global.Proxy = rt.Proxy
-	c.Embedding.Provider = rt.Embedding.Provider
-	c.Embedding.BaseURL = rt.Embedding.BaseURL
-	c.Embedding.Token = rt.Embedding.Token
-	c.Embedding.Model = rt.Embedding.Model
+	c.Models.Embedder.Provider = rt.Embedding.Provider
+	c.Models.Embedder.Endpoint = rt.Embedding.BaseURL
+	c.Models.Embedder.Token = rt.Embedding.APIKey
+	if rt.Embedding.Model != "" {
+		c.Models.Embedder.Models = []string{rt.Embedding.Model}
+	}
 	c.Embedding.Dimension = rt.Embedding.Dimension
+	c.Embedding.MaxBatch = rt.Embedding.MaxBatch
+	c.Embedding.MaxChars = rt.Embedding.MaxChars
+	c.Embedding.RateLimitTPM = rt.Embedding.RateLimitTPM
 	return &c
 }
