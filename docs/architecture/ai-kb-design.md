@@ -53,7 +53,7 @@ CREATE TABLE chunks (
     id SERIAL PRIMARY KEY,
     doc_id TEXT,
     content TEXT,
-    vector vector(1536),
+    vector vector(1024),
     metadata JSONB
 );
 ```

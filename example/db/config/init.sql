@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS documents (
     path TEXT NOT NULL,
     chunk_id INT NOT NULL,
     content TEXT NOT NULL,
-    embedding VECTOR(1536),
+    embedding VECTOR(1024),
     metadata JSONB
 );
 
