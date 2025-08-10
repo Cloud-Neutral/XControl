@@ -136,3 +136,36 @@ make init-db
 使用 Markdown 编写（支持标题、列表、代码块等）。
 
 可使用 plantuml 或 mermaid 绘制架构图并嵌入 Markdown。
+
+## DEV
+
+1. 运行（首次会自动下载模型）
+python offline_embed_server.py
+2. 测试接口
+编辑
+curl -s http://127.0.0.1:9000/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model":"BAAI/bge-m3","input":["你好","PGVector 怎么建 HNSW？"]}' | jq .
+3. 环境变量（可选）
+export BGE_M3_DIR="/path/to/bge-m3"
+export EMBED_HOST="127.0.0.1"
+export EMBED_PORT=9100
+python offline_embed_server.py
+
+## Ollama API test
+
+用流式接收（推荐）：
+
+curl http://127.0.0.1:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-oss:20b",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Tell me three tips for optimizing HNSW in PostgreSQL."}
+    ],
+    "max_tokens": 512,
+    "stream": true
+  }'
+这样会实时输出分块数据
+
