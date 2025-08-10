@@ -14,7 +14,7 @@ import (
 func TestAskAI(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	register := RegisterRoutes(nil)
+	register := RegisterRoutes(nil, "")
 
 	// stub ask function
 	old := askFn
@@ -47,7 +47,7 @@ func TestAskAI(t *testing.T) {
 func TestAskAI_BadRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	register := RegisterRoutes(nil)
+	register := RegisterRoutes(nil, "")
 
 	// ensure askFn is stubbed to avoid dependency
 	old := askFn
