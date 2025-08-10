@@ -10,6 +10,7 @@ import (
 
 // RuntimeEmbedding is the resolved embedding configuration used at runtime.
 type RuntimeEmbedding struct {
+	Provider     string
 	BaseURL      string
 	APIKey       string
 	Model        string
@@ -23,6 +24,7 @@ type RuntimeEmbedding struct {
 func (c *Config) ResolveEmbedding() RuntimeEmbedding {
 	e := c.Embedding
 	var rt RuntimeEmbedding
+	rt.Provider = e.Provider
 	rt.Model = e.Model
 	rt.Dimension = e.Dimension
 	rt.RateLimitTPM = e.RateLimitTPM
@@ -83,8 +85,10 @@ type Runtime struct {
 	Datasources []DataSource `yaml:"datasources"`
 	Proxy       string       `yaml:"proxy"`
 	Embedding   struct {
+		Provider  string `yaml:"provider"`
 		BaseURL   string `yaml:"base_url"`
 		Token     string `yaml:"token"`
+		Model     string `yaml:"model"`
 		Dimension int    `yaml:"dimension"`
 	} `yaml:"embedding"`
 }
@@ -117,8 +121,10 @@ func (rt *Runtime) ToConfig() *Config {
 	c.Global.VectorDB = rt.VectorDB
 	c.Global.Datasources = rt.Datasources
 	c.Global.Proxy = rt.Proxy
+	c.Embedding.Provider = rt.Embedding.Provider
 	c.Embedding.BaseURL = rt.Embedding.BaseURL
 	c.Embedding.Token = rt.Embedding.Token
+	c.Embedding.Model = rt.Embedding.Model
 	c.Embedding.Dimension = rt.Embedding.Dimension
 	return &c
 }

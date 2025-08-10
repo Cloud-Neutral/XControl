@@ -59,6 +59,13 @@ type Global struct {
 	VectorDB    VectorDB     `yaml:"vectordb"`
 	Datasources []Datasource `yaml:"datasources"`
 	Proxy       string       `yaml:"proxy"`
+	Embedding   struct {
+		Provider  string `yaml:"provider"`
+		BaseURL   string `yaml:"base_url"`
+		Token     string `yaml:"token"`
+		Model     string `yaml:"model"`
+		Dimension int    `yaml:"dimension"`
+	} `yaml:"embedding"`
 }
 
 type Provider struct {

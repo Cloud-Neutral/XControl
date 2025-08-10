@@ -1,15 +1,25 @@
 log:
   level: info
 global:
+  #proxy: socks5://127.0.0.1:1080 # optional
   redis:
     addr: 127.0.0.1:6379
+    password: ""
   vectordb:
     pgurl: postgres://user:password@127.0.0.1:5432/postgres
   datasources: []
   embedding:
-    base_url: http://127.0.0.1:11434
+    provider: allama
+    base_url: http://localhost:11434
     token: ""
+    model: bge-m3
     dimension: 1536
+provider:
+  - name: allama
+    base_url: http://localhost:11434
+    token: ""
+    models:
+      - gpt-oss:20b
 api:
   askai:
     timeout: 100
