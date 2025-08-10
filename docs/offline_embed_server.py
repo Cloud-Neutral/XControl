@@ -57,6 +57,7 @@ def embeddings():
 def healthz():
     return "ok", 200
 
+<<<<<<< HEAD
 if __name__ == "__main__":
     host = os.getenv("EMBED_HOST", "0.0.0.0")
     port = int(os.getenv("EMBED_PORT", 9000))
