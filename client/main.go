@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,14 +29,30 @@ import (
 func main() {
 	configPath := flag.String("config", "", "Path to server RAG configuration file")
 	filePath := flag.String("file", "", "Markdown file to embed and upsert")
+	logLevel := flag.String("log-level", "info", "log level (debug, info, warn, error)")
 	flag.Parse()
+
+	var level slog.Level
+	switch strings.ToLower(*logLevel) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	slog.SetDefault(logger)
 
 	var cfg *rconfig.Config
 	var err error
 	if *configPath != "" {
 		cfg, err = rconfig.Load(*configPath)
 		if err != nil {
-			log.Fatalf("load config: %v", err)
+			slog.Error("load config", "err", err)
+			os.Exit(1)
 		}
 	} else {
 		cfg = &rconfig.Config{}
@@ -64,7 +80,8 @@ func main() {
 
 	if *filePath != "" {
 		if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, *filePath); err != nil {
-			log.Fatalf("%v", err)
+			slog.Error("ingest file", "err", err)
+			os.Exit(1)
 		}
 		return
 	}
@@ -73,23 +90,25 @@ func main() {
 	for _, ds := range cfg.Global.Datasources {
 		workdir := filepath.Join(os.TempDir(), "xcontrol", ds.Name)
 		if _, err := rsync.SyncRepo(ctx, ds.Repo, workdir); err != nil {
-			log.Printf("sync repo %s: %v", ds.Name, err)
+			slog.Warn("sync repo", "repo", ds.Name, "err", err)
 			syncErrs = append(syncErrs, ds.Name)
 			continue
 		}
 		root := filepath.Join(workdir, ds.Path)
 		files, err := ingest.ListMarkdown(root, chunkCfg.IncludeExts, chunkCfg.IgnoreDirs, 0)
 		if err != nil {
-			log.Fatalf("list markdown: %v", err)
+			slog.Error("list markdown", "err", err)
+			os.Exit(1)
 		}
 		for _, f := range files {
 			if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, f); err != nil {
-				log.Printf("ingest %s: %v", f, err)
+				slog.Warn("ingest file", "file", f, "err", err)
 			}
 		}
 	}
 	if len(syncErrs) > 0 {
-		log.Fatalf("failed to sync repositories: %s", strings.Join(syncErrs, ", "))
+		slog.Error("failed to sync repositories", "repos", strings.Join(syncErrs, ", "))
+		os.Exit(1)
 	}
 }
 
@@ -169,6 +188,6 @@ func ingestFile(ctx context.Context, cfg *rconfig.Config, chunkCfg rconfig.Chunk
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("upsert failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
-	log.Printf("ingested %d chunks for %s", len(rows), rel)
+	slog.Info("ingested chunks", "count", len(rows), "file", rel)
 	return nil
 }
