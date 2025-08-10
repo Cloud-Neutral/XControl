@@ -8,7 +8,7 @@ import (
 // RuntimeEmbedding is the resolved embedding configuration used at runtime.
 type RuntimeEmbedding struct {
 	Provider     string
-	BaseURL      string
+	Endpoint     string
 	APIKey       string
 	Model        string
 	Dimension    int
@@ -25,7 +25,7 @@ func (c *Config) ResolveEmbedding() RuntimeEmbedding {
 	if len(m.Models) > 0 {
 		rt.Model = m.Models[0]
 	}
-	rt.BaseURL = strings.TrimRight(m.Endpoint, "/")
+	rt.Endpoint = strings.TrimRight(m.Endpoint, "/")
 	rt.APIKey = m.Token
 
 	e := c.Embedding
@@ -96,7 +96,7 @@ func (rt *Runtime) ToConfig() *Config {
 	c.Global.Datasources = rt.Datasources
 	c.Global.Proxy = rt.Proxy
 	c.Models.Embedder.Provider = rt.Embedding.Provider
-	c.Models.Embedder.Endpoint = rt.Embedding.BaseURL
+	c.Models.Embedder.Endpoint = rt.Embedding.Endpoint
 	c.Models.Embedder.Token = rt.Embedding.APIKey
 	if rt.Embedding.Model != "" {
 		c.Models.Embedder.Models = []string{rt.Embedding.Model}
