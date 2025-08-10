@@ -63,12 +63,12 @@ type serverConfig struct {
 	} `yaml:"api"`
 }
 
-// loadConfig reads provider, model, URL, timeout and retries from ConfigPath
+// loadConfig reads provider, model, endpoint, timeout and retries from ConfigPath
 // and environment variables.
 func loadConfig() (string, string, string, string, time.Duration, int) {
 	provider := ""
 	model := os.Getenv("CHUTES_API_MODEL")
-	baseURL := os.Getenv("CHUTES_API_URL")
+	endpoint := os.Getenv("CHUTES_API_URL")
 	token := ""
 	timeout := 30 * time.Second
 	retries := 3
@@ -83,8 +83,8 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 			if model == "" && len(g.Models) > 0 {
 				model = g.Models[0]
 			}
-			if baseURL == "" {
-				baseURL = g.Endpoint
+			if endpoint == "" {
+				endpoint = g.Endpoint
 			}
 			if token == "" {
 				token = g.Token
@@ -104,23 +104,23 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 		retries = 3
 	}
 	provider = strings.ToLower(provider)
-	baseURL = strings.TrimRight(baseURL, "/")
-	if provider == "allama" {
-		if baseURL == "" {
-			baseURL = "http://localhost:11434"
+	endpoint = strings.TrimRight(endpoint, "/")
+	if provider == "ollama" {
+		if endpoint == "" {
+			endpoint = "http://localhost:11434/v1/chat/completions"
 		}
 		if model == "" {
 			model = "gpt-oss:20b"
 		}
-		return provider, token, model, baseURL + "/api/chat", timeout, retries
+		return provider, token, model, endpoint, timeout, retries
 	}
-	if baseURL == "" {
-		baseURL = "https://llm.chutes.ai"
+	if endpoint == "" {
+		endpoint = "https://llm.chutes.ai/v1/chat/completions"
 	}
 	if model == "" {
 		model = "deepseek-ai/DeepSeek-R1"
 	}
-	return "chutes", token, model, baseURL + "/v1/chat/completions", timeout, retries
+	return "chutes", token, model, endpoint, timeout, retries
 }
 
 // callChutes sends the question to the hosted LLM service and returns the reply.
@@ -222,7 +222,7 @@ func callAllama(model, url string, timeout time.Duration, retries int, question 
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("allama API error: %s", string(b))
+			lastErr = fmt.Errorf("ollama API error: %s", string(b))
 			continue
 		}
 		var res struct {
@@ -246,7 +246,7 @@ func callAllama(model, url string, timeout time.Duration, retries int, question 
 func callLLM(question string) (string, error) {
 	provider, token, model, url, timeout, retries := loadConfig()
 	switch provider {
-	case "allama":
+	case "ollama":
 		return callAllama(model, url, timeout, retries, question)
 	default:
 		return callChutes(token, model, url, timeout, retries, question)

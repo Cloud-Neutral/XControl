@@ -13,19 +13,19 @@ import (
 
 // Allama implements the Embedder interface using the Allama/Ollama embeddings API.
 type Allama struct {
-	baseURL string
-	model   string
-	dim     int
-	client  *http.Client
+	endpoint string
+	model    string
+	dim      int
+	client   *http.Client
 }
 
 // NewAllama creates a new Allama embedder.
-func NewAllama(baseURL, model string, dim int) *Allama {
+func NewAllama(endpoint, model string, dim int) *Allama {
 	return &Allama{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		model:   model,
-		dim:     dim,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		endpoint: strings.TrimRight(endpoint, "/"),
+		model:    model,
+		dim:      dim,
+		client:   &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -35,11 +35,10 @@ func (a *Allama) Dimension() int { return a.dim }
 // Embed posts texts to the Allama embeddings endpoint.
 func (a *Allama) Embed(ctx context.Context, inputs []string) ([][]float32, int, error) {
 	vecs := make([][]float32, len(inputs))
-	url := a.baseURL + "/api/embeddings"
 	for i, text := range inputs {
 		payload := map[string]any{"model": a.model, "prompt": text}
 		body, _ := json.Marshal(payload)
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.endpoint, bytes.NewReader(body))
 		if err != nil {
 			return nil, 0, err
 		}
