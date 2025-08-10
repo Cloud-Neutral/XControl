@@ -40,7 +40,7 @@ func registerRAGRoutes(r *gin.RouterGroup) {
 		}
 		n, err := ragSvc.Upsert(c.Request.Context(), req.Docs)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusServiceUnavailable, gin.H{"rows": 0, "error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"rows": n})
