@@ -52,7 +52,7 @@ func (m *mockRAGService) Query(ctx context.Context, question string, limit int) 
 func TestRAGUpsertAndQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	register := RegisterRoutes(nil)
+	register := RegisterRoutes(nil, "")
 
 	old := ragSvc
 	mock := &mockRAGService{dim: 1024}
@@ -105,7 +105,7 @@ func TestRAGUpsertAndQuery(t *testing.T) {
 func TestRAGUpsert_DimensionMismatch(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	register := RegisterRoutes(nil)
+	register := RegisterRoutes(nil, "")
 
 	old := ragSvc
 	ragSvc = &mockRAGService{dim: 1024}
@@ -120,7 +120,7 @@ func TestRAGUpsert_DimensionMismatch(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected status 500, got %d", w.Code)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503, got %d", w.Code)
 	}
 }
