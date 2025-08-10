@@ -60,10 +60,15 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 		return nil, nil
 	}
 	var emb embed.Embedder
-	if embCfg.Model != "" {
-		emb = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
-	} else {
-		emb = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+	switch embCfg.Provider {
+	case "allama":
+		emb = embed.NewAllama(embCfg.BaseURL, embCfg.Model, embCfg.Dimension)
+	default:
+		if embCfg.Model != "" {
+			emb = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+		} else {
+			emb = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+		}
 	}
 	vecs, _, err := emb.Embed(ctx, []string{question})
 	if err != nil {
