@@ -23,11 +23,15 @@ import (
 
 func main() {
 	configPath := flag.String("config", "", "path to server configuration file")
+	logLevel := flag.String("log-level", "", "log level (debug, info, warn, error)")
 	flag.Parse()
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		slog.Warn("load config", "err", err)
 		cfg = &config.Config{}
+	}
+	if *logLevel != "" {
+		cfg.Log.Level = *logLevel
 	}
 	if *configPath != "" {
 		api.ConfigPath = *configPath

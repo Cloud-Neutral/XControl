@@ -1,7 +1,7 @@
 package server
 
 import (
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -28,11 +28,11 @@ func loadConfig() {
 	path := filepath.Join("server", "config", "server.yaml")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Printf("server config: %v", err)
+		slog.Warn("server config", "err", err)
 		return
 	}
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		log.Printf("server config parse: %v", err)
+		slog.Warn("server config parse", "err", err)
 		return
 	}
 	for _, p := range cfg.Provider {
