@@ -19,22 +19,33 @@ sync:
   repo:
     proxy: socks5://127.0.0.1:1080  # 仅在同步仓库时使用代理
 
-provider:
-  - name: allama
-    base_url: http://localhost:11434
-    token: ""
+# For DEV
+models:
+  embedder:
+    provider: "huggingface_hub"
+    models: "bge-m3"
+    endpoint: "http://127.0.0.1:9000/v1/embeddings"
+  generator:
+    provider: "ollama"
     models:
       - 'gpt-oss:20b'
-  - name: chutes
-    base_url: https://llm.chutes.ai
-    token: "cpk_xxxxxxxxxxxxxxxxxxxx"
-    models:
-      - 'moonshotai/Kimi-K2-Instruct'
+    endpoint: "http://127.0.0.1:11434/v1/chat/completions"
+    token: ""
+# For PROD
+#models:
+#  embedder:
+    #provider: "chutes"
+    #models: "bge-m3"
+    #endpoint: "https://chutes-baai-bge-m3.chutes.ai/embed/v1/embeddings"
+    #token: "cpk_xxxxxxxxxxxxxxxxxxxx"
+#  generator:
+    #provider: "chutes"
+    #endpoint: "https://llm.chutes.ai/v1/chat/completions"
+    #token: "cpk_xxxxxxxxxxxxxxxxxxxx"
+    #models:
+    #  - 'moonshotai/Kimi-K2-Instruct'
 
 embedding:
-  base_url: http://localhost:11434
-  token: ""
-  models: bge-m3
   max_batch: 64
   dimension: 1024          #维度
   max_chars: 8000
