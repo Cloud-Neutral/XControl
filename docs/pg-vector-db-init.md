@@ -57,6 +57,6 @@ psql -h 127.0.0.1 -U shenlan -d mydb -f docs/init.sql
 ```bash
 psql postgres://shenlan:<密码>@127.0.0.1:5432/mydb -c "\d+ documents"
 ```
-若能看到 `embedding | vector(1536)` 字段，说明 pgvector 已成功启用。
+若能看到 `embedding | vector(1024)` 字段，说明 pgvector 已成功启用。
 
 完成以上步骤后，应用即可通过连接串 `postgres://shenlan:<密码>@127.0.0.1:5432/mydb` 使用数据库。
