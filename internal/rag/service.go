@@ -56,18 +56,20 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 		return nil, nil
 	}
 	embCfg := s.cfg.ResolveEmbedding()
-	if embCfg.APIKey == "" || embCfg.BaseURL == "" {
+	if embCfg.Endpoint == "" {
 		return nil, nil
 	}
 	var emb embed.Embedder
 	switch embCfg.Provider {
-	case "allama":
-		emb = embed.NewAllama(embCfg.BaseURL, embCfg.Model, embCfg.Dimension)
+	case "ollama":
+		emb = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
+	case "chutes":
+		emb = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
 	default:
 		if embCfg.Model != "" {
-			emb = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+			emb = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
 		} else {
-			emb = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+			emb = embed.NewBGE(embCfg.Endpoint, embCfg.APIKey, embCfg.Dimension)
 		}
 	}
 	vecs, _, err := emb.Embed(ctx, []string{question})
