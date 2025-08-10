@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	rconfig "xcontrol/internal/rag/config"
 	"xcontrol/internal/rag/embed"
@@ -23,91 +24,108 @@ import (
 )
 
 // main synchronizes configured repositories and ingests markdown files.
-// When -file is provided only that file is processed; otherwise all markdown
+// When --file is provided only that file is processed; otherwise all markdown
 // files from configured datasources are parsed, embedded and upserted.
 
-func main() {
-	configPath := flag.String("config", "", "Path to server RAG configuration file")
-	filePath := flag.String("file", "", "Markdown file to embed and upsert")
-	logLevel := flag.String("log-level", "info", "log level (debug, info, warn, error)")
-	flag.Parse()
+var (
+	configPath string
+	filePath   string
+	logLevel   string
+)
 
-	var level slog.Level
-	switch strings.ToLower(*logLevel) {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn", "warning":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	default:
-		level = slog.LevelInfo
-	}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
-	slog.SetDefault(logger)
-
-	var cfg *rconfig.Config
-	var err error
-	if *configPath != "" {
-		cfg, err = rconfig.Load(*configPath)
-		if err != nil {
-			slog.Error("load config", "err", err)
-			os.Exit(1)
+var rootCmd = &cobra.Command{
+	Use:   "xcontrol-cli",
+	Short: "Synchronize repositories and ingest markdown files",
+	Run: func(cmd *cobra.Command, args []string) {
+		var level slog.Level
+		switch strings.ToLower(logLevel) {
+		case "debug":
+			level = slog.LevelDebug
+		case "warn", "warning":
+			level = slog.LevelWarn
+		case "error":
+			level = slog.LevelError
+		default:
+			level = slog.LevelInfo
 		}
-	} else {
-		cfg = &rconfig.Config{}
-	}
+		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+		slog.SetDefault(logger)
 
-	proxy.Set(cfg.Global.Proxy)
-
-	embCfg := cfg.ResolveEmbedding()
-	chunkCfg := cfg.ResolveChunking()
-
-	var embedder embed.Embedder
-	if embCfg.Model != "" {
-		embedder = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
-	} else {
-		embedder = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
-	}
-
-	baseURL := os.Getenv("SERVER_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:8080"
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-	defer cancel()
-
-	if *filePath != "" {
-		if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, *filePath); err != nil {
-			slog.Error("ingest file", "err", err)
-			os.Exit(1)
+		var cfg *rconfig.Config
+		var err error
+		if configPath != "" {
+			cfg, err = rconfig.Load(configPath)
+			if err != nil {
+				slog.Error("load config", "err", err)
+				os.Exit(1)
+			}
+		} else {
+			cfg = &rconfig.Config{}
 		}
-		return
-	}
 
-	var syncErrs []string
-	for _, ds := range cfg.Global.Datasources {
-		workdir := filepath.Join(os.TempDir(), "xcontrol", ds.Name)
-		if _, err := rsync.SyncRepo(ctx, ds.Repo, workdir); err != nil {
-			slog.Warn("sync repo", "repo", ds.Name, "err", err)
-			syncErrs = append(syncErrs, ds.Name)
-			continue
+		proxy.Set(cfg.Global.Proxy)
+
+		embCfg := cfg.ResolveEmbedding()
+		chunkCfg := cfg.ResolveChunking()
+
+		var embedder embed.Embedder
+		if embCfg.Model != "" {
+			embedder = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+		} else {
+			embedder = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
 		}
-		root := filepath.Join(workdir, ds.Path)
-		files, err := ingest.ListMarkdown(root, chunkCfg.IncludeExts, chunkCfg.IgnoreDirs, 0)
-		if err != nil {
-			slog.Error("list markdown", "err", err)
-			os.Exit(1)
+
+		baseURL := os.Getenv("SERVER_URL")
+		if baseURL == "" {
+			baseURL = "http://localhost:8080"
 		}
-		for _, f := range files {
-			if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, f); err != nil {
-				slog.Warn("ingest file", "file", f, "err", err)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		defer cancel()
+
+		if filePath != "" {
+			if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, filePath); err != nil {
+				slog.Error("ingest file", "err", err)
+				os.Exit(1)
+			}
+			return
+		}
+
+		var syncErrs []string
+		for _, ds := range cfg.Global.Datasources {
+			workdir := filepath.Join(os.TempDir(), "xcontrol", ds.Name)
+			if _, err := rsync.SyncRepo(ctx, ds.Repo, workdir); err != nil {
+				slog.Warn("sync repo", "repo", ds.Name, "err", err)
+				syncErrs = append(syncErrs, ds.Name)
+				continue
+			}
+			root := filepath.Join(workdir, ds.Path)
+			files, err := ingest.ListMarkdown(root, chunkCfg.IncludeExts, chunkCfg.IgnoreDirs, 0)
+			if err != nil {
+				slog.Error("list markdown", "err", err)
+				os.Exit(1)
+			}
+			for _, f := range files {
+				if err := ingestFile(ctx, cfg, chunkCfg, embedder, baseURL, f); err != nil {
+					slog.Warn("ingest file", "file", f, "err", err)
+				}
 			}
 		}
-	}
-	if len(syncErrs) > 0 {
-		slog.Error("failed to sync repositories", "repos", strings.Join(syncErrs, ", "))
+		if len(syncErrs) > 0 {
+			slog.Error("failed to sync repositories", "repos", strings.Join(syncErrs, ", "))
+			os.Exit(1)
+		}
+	},
+}
+
+func init() {
+	rootCmd.Flags().StringVar(&configPath, "config", "", "Path to server RAG configuration file")
+	rootCmd.Flags().StringVar(&filePath, "file", "", "Markdown file to embed and upsert")
+	rootCmd.Flags().StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error)")
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
