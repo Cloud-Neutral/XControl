@@ -53,7 +53,8 @@ This document describes the HTTP endpoints provided by the XControl server. Each
     -H "Content-Type: application/json" \
     -d '{"docs":[{"repo":"example","path":"doc.md","chunk_id":1,"content":"hello","embedding":[0.1,0.2],"metadata":{},"content_sha":"abc"}]}'
   ```
-
+  Expected response on success: `{"rows":1}`. If the vector database is unavailable,
+  the endpoint returns `{"rows":0,"error":"..."}`.
 ## POST /api/rag/query
 - **Description:** Query the RAG service.
 - **Body Parameters (JSON):**

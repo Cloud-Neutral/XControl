@@ -125,7 +125,19 @@ datasources:
 
 该命令会克隆或更新数据源仓库，扫描 Markdown 文件，并逐个解析、分块、调用 BGE Embed 并通过 `/api/rag/upsert` 写入数据库。
 
-### 8.4 查询接口
+### 8.4 手动测试 Upsert 接口
+
+在同步流程之外，也可以通过 `curl` 手动向 `/api/rag/upsert` 写入一条记录：
+
+```bash
+curl -X POST http://localhost:8080/api/rag/upsert \
+  -H "Content-Type: application/json" \
+  -d '{"docs":[{"repo":"example","path":"doc.md","chunk_id":1,"content":"hello","embedding":[0.1,0.2],"metadata":{},"content_sha":"abc"}]}'
+```
+
+若向量数据库未就绪，接口会返回 `error` 字段提示连接问题。
+
+### 8.5 查询接口
 
 同步完成后，可通过 curl 测试 `/api/rag/query`：
 
