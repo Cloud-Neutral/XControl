@@ -41,6 +41,13 @@ func EnsureSchema(ctx context.Context, conn *pgx.Conn, dim int, migrate bool) er
 		return err
 	}
 
+	// older deployments may lack the unique constraint required for
+	// upserts. Ensure a unique index exists on (repo,path,chunk_id) so
+	// the ON CONFLICT clause can work reliably.
+	if _, err := conn.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS documents_repo_path_chunk_id_key ON documents (repo, path, chunk_id)`); err != nil {
+		return err
+	}
+
 	// ensure new columns
 	// content_sha was added after initial releases, so older deployments may
 	// lack the column. Add it when missing to avoid insert errors.
