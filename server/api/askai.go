@@ -63,12 +63,12 @@ type serverConfig struct {
 	} `yaml:"api"`
 }
 
-// loadConfig reads provider, model, URL, timeout and retries from ConfigPath
+// loadConfig reads provider, model, endpoint, timeout and retries from ConfigPath
 // and environment variables.
 func loadConfig() (string, string, string, string, time.Duration, int) {
 	provider := ""
 	model := os.Getenv("CHUTES_API_MODEL")
-	baseURL := os.Getenv("CHUTES_API_URL")
+	endpoint := os.Getenv("CHUTES_API_URL")
 	token := ""
 	timeout := 30 * time.Second
 	retries := 3
@@ -83,8 +83,8 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 			if model == "" && len(g.Models) > 0 {
 				model = g.Models[0]
 			}
-			if baseURL == "" {
-				baseURL = g.Endpoint
+			if endpoint == "" {
+				endpoint = g.Endpoint
 			}
 			if token == "" {
 				token = g.Token
@@ -104,23 +104,33 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 		retries = 3
 	}
 	provider = strings.ToLower(provider)
-	baseURL = strings.TrimRight(baseURL, "/")
-	if provider == "allama" {
-		if baseURL == "" {
-			baseURL = "http://localhost:11434"
+	endpoint = strings.TrimRight(endpoint, "/")
+	switch provider {
+	case "ollama":
+		if endpoint == "" {
+			endpoint = "http://localhost:11434/v1/chat/completions"
 		}
 		if model == "" {
 			model = "gpt-oss:20b"
 		}
-		return provider, token, model, baseURL + "/api/chat", timeout, retries
+		return provider, token, model, endpoint, timeout, retries
+	case "chutes":
+		if endpoint == "" {
+			endpoint = "https://llm.chutes.ai/v1/chat/completions"
+		}
+		if model == "" {
+			model = "deepseek-ai/DeepSeek-R1"
+		}
+		return provider, token, model, endpoint, timeout, retries
+	default:
+		if endpoint == "" {
+			endpoint = "https://llm.chutes.ai/v1/chat/completions"
+		}
+		if model == "" {
+			model = "deepseek-ai/DeepSeek-R1"
+		}
+		return provider, token, model, endpoint, timeout, retries
 	}
-	if baseURL == "" {
-		baseURL = "https://llm.chutes.ai"
-	}
-	if model == "" {
-		model = "deepseek-ai/DeepSeek-R1"
-	}
-	return "chutes", token, model, baseURL + "/v1/chat/completions", timeout, retries
 }
 
 // callChutes sends the question to the hosted LLM service and returns the reply.
@@ -191,12 +201,14 @@ func callChutes(token, model, url string, timeout time.Duration, retries int, qu
 	return "", lastErr
 }
 
-// callAllama sends the question to a local Allama server.
-func callAllama(model, url string, timeout time.Duration, retries int, question string) (string, error) {
+// callOllama sends the question to a local Ollama server.
+func callOllama(model, url string, timeout time.Duration, retries int, question string) (string, error) {
 	reqBody := map[string]any{
-		"model":    model,
-		"messages": []any{map[string]string{"role": "user", "content": question}},
-		"stream":   false,
+		"model":       model,
+		"messages":    []any{map[string]any{"role": "user", "content": question}},
+		"stream":      false,
+		"max_tokens":  1024,
+		"temperature": 0.7,
 	}
 	data, err := json.Marshal(reqBody)
 	if err != nil {
@@ -222,19 +234,25 @@ func callAllama(model, url string, timeout time.Duration, retries int, question 
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("allama API error: %s", string(b))
+			lastErr = fmt.Errorf("ollama API error: %s", string(b))
 			continue
 		}
 		var res struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
 		}
 		if err := json.Unmarshal(b, &res); err != nil {
 			lastErr = err
 			continue
 		}
-		return res.Message.Content, nil
+		if len(res.Choices) == 0 {
+			lastErr = errors.New("no choices returned")
+			continue
+		}
+		return res.Choices[0].Message.Content, nil
 	}
 	if lastErr == nil {
 		lastErr = errors.New("request failed")
@@ -246,8 +264,10 @@ func callAllama(model, url string, timeout time.Duration, retries int, question 
 func callLLM(question string) (string, error) {
 	provider, token, model, url, timeout, retries := loadConfig()
 	switch provider {
-	case "allama":
-		return callAllama(model, url, timeout, retries, question)
+	case "ollama":
+		return callOllama(model, url, timeout, retries, question)
+	case "chutes":
+		return callChutes(token, model, url, timeout, retries, question)
 	default:
 		return callChutes(token, model, url, timeout, retries, question)
 	}

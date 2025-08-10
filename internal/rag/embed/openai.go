@@ -12,21 +12,21 @@ import (
 
 // OpenAI implements the Embedder interface using OpenAI-compatible APIs.
 type OpenAI struct {
-	baseURL string
-	apiKey  string
-	model   string
-	dim     int
-	client  *http.Client
+	endpoint string
+	apiKey   string
+	model    string
+	dim      int
+	client   *http.Client
 }
 
 // NewOpenAI creates a new OpenAI embedder from configuration.
-func NewOpenAI(baseURL, apiKey, model string, dim int) *OpenAI {
+func NewOpenAI(endpoint, apiKey, model string, dim int) *OpenAI {
 	return &OpenAI{
-		baseURL: baseURL,
-		apiKey:  apiKey,
-		model:   model,
-		dim:     dim,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		endpoint: endpoint,
+		apiKey:   apiKey,
+		model:    model,
+		dim:      dim,
+		client:   &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -40,12 +40,14 @@ func (o *OpenAI) Embed(ctx context.Context, inputs []string) ([][]float32, int, 
 		"input": inputs,
 	}
 	b, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/embeddings", bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.endpoint, bytes.NewReader(b))
 	if err != nil {
 		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+o.apiKey)
+	if o.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+o.apiKey)
+	}
 	resp, err := o.client.Do(req)
 	if err != nil {
 		return nil, 0, err

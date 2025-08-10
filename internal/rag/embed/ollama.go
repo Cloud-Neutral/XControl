@@ -11,31 +11,31 @@ import (
 	"time"
 )
 
-// Allama implements the Embedder interface using the Allama/Ollama embeddings API.
-type Allama struct {
-	baseURL string
-	model   string
-	dim     int
-	client  *http.Client
+// Ollama implements the Embedder interface using the Ollama embeddings API.
+type Ollama struct {
+	endpoint string
+	model    string
+	dim      int
+	client   *http.Client
 }
 
-// NewAllama creates a new Allama embedder.
-func NewAllama(baseURL, model string, dim int) *Allama {
-	return &Allama{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		model:   model,
-		dim:     dim,
-		client:  &http.Client{Timeout: 30 * time.Second},
+// NewOllama creates a new Ollama embedder.
+func NewOllama(endpoint, model string, dim int) *Ollama {
+	return &Ollama{
+		endpoint: strings.TrimRight(endpoint, "/"),
+		model:    model,
+		dim:      dim,
+		client:   &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
 // Dimension returns the embedding dimension if known.
-func (a *Allama) Dimension() int { return a.dim }
+func (a *Ollama) Dimension() int { return a.dim }
 
-// Embed posts texts to the Allama embeddings endpoint.
-func (a *Allama) Embed(ctx context.Context, inputs []string) ([][]float32, int, error) {
+// Embed posts texts to the Ollama embeddings endpoint.
+func (a *Ollama) Embed(ctx context.Context, inputs []string) ([][]float32, int, error) {
 	vecs := make([][]float32, len(inputs))
-	url := a.baseURL + "/api/embeddings"
+	url := a.endpoint
 	for i, text := range inputs {
 		payload := map[string]any{"model": a.model, "prompt": text}
 		body, _ := json.Marshal(payload)
