@@ -60,3 +60,17 @@ psql postgres://shenlan:<密码>@127.0.0.1:5432/mydb -c "\d+ documents"
 若能看到 `embedding | vector(1536)` 字段，说明 pgvector 已成功启用。
 
 完成以上步骤后，应用即可通过连接串 `postgres://shenlan:<密码>@127.0.0.1:5432/mydb` 使用数据库。
+
+## 6. 配置嵌入服务
+
+在 `server/config/server.yaml` 中新增 `embedding` 配置，使服务端能够对问题进行向量化检索：
+
+```yaml
+global:
+  embedding:
+    base_url: http://127.0.0.1:11434
+    token: ""
+    dimension: 1536
+```
+
+其中 `dimension` 需与所使用的嵌入模型返回的向量维度一致。
