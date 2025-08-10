@@ -8,7 +8,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Log defines logging configuration for the server.
 type Log struct {
+	// Level sets the minimum log level. Valid values are "debug", "info",
+	// "warn", and "error".
 	Level string `yaml:"level"`
 }
 
