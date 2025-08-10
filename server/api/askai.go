@@ -47,12 +47,14 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 var ConfigPath = filepath.Join("server", "config", "server.yaml")
 
 type serverConfig struct {
-	Provider []struct {
-		Name    string   `yaml:"name"`
-		BaseURL string   `yaml:"base_url"`
-		Token   string   `yaml:"token"`
-		Models  []string `yaml:"models"`
-	} `yaml:"provider"`
+	Models struct {
+		Generator struct {
+			Provider string   `yaml:"provider"`
+			Models   []string `yaml:"models"`
+			Endpoint string   `yaml:"endpoint"`
+			Token    string   `yaml:"token"`
+		} `yaml:"generator"`
+	} `yaml:"models"`
 	API struct {
 		AskAI struct {
 			Timeout int `yaml:"timeout"` // seconds
@@ -74,29 +76,18 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 	if err == nil {
 		var cfg serverConfig
 		if err := yaml.Unmarshal(data, &cfg); err == nil {
-			for _, p := range cfg.Provider {
-				if provider == "" {
-					provider = p.Name
-				}
-				switch p.Name {
-				case "allama":
-					if model == "" && len(p.Models) > 0 {
-						model = p.Models[0]
-					}
-					if baseURL == "" {
-						baseURL = p.BaseURL
-					}
-				case "chutes":
-					if token == "" {
-						token = p.Token
-					}
-					if model == "" && len(p.Models) > 0 {
-						model = p.Models[0]
-					}
-					if baseURL == "" {
-						baseURL = p.BaseURL
-					}
-				}
+			g := cfg.Models.Generator
+			if provider == "" {
+				provider = g.Provider
+			}
+			if model == "" && len(g.Models) > 0 {
+				model = g.Models[0]
+			}
+			if baseURL == "" {
+				baseURL = g.Endpoint
+			}
+			if token == "" {
+				token = g.Token
 			}
 			if cfg.API.AskAI.Timeout > 0 {
 				timeout = time.Duration(cfg.API.AskAI.Timeout) * time.Second
