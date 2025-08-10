@@ -7,10 +7,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	rsync "xcontrol/internal/rag/sync"
+	"xcontrol/server/proxy"
 )
 
 // registerKnowledgeRoutes sets up knowledge base endpoints.
-func registerKnowledgeRoutes(r *gin.RouterGroup, _ *pgx.Conn) {
+func registerKnowledgeRoutes(r *gin.RouterGroup, _ *pgx.Conn, repoProxy string) {
 	r.POST("/sync", func(c *gin.Context) {
 		var req struct {
 			RepoURL   string `json:"repo_url"`
@@ -20,7 +21,10 @@ func registerKnowledgeRoutes(r *gin.RouterGroup, _ *pgx.Conn) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if _, err := rsync.SyncRepo(c.Request.Context(), req.RepoURL, req.LocalPath); err != nil {
+		if err := proxy.With(repoProxy, func() error {
+			_, err := rsync.SyncRepo(c.Request.Context(), req.RepoURL, req.LocalPath)
+			return err
+		}); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
