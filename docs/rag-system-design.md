@@ -20,8 +20,8 @@
 ## 3. 向量化
 
 - 默认嵌入模型：
-  - [bge-m3](https://github.com/BAAI-bge/): 本地部署，HTTP 服务返回 1536 维向量。
-  - [OpenAI `text-embedding-3-large`](https://platform.openai.com/docs/guides/embeddings): 通过 OpenAI API 获取 1536 维向量。
+  - [bge-m3](https://github.com/BAAI-bge/): 本地部署，HTTP 服务返回 1024 维向量。
+  - [OpenAI `text-embedding-3-large`](https://platform.openai.com/docs/guides/embeddings): 通过 OpenAI API 获取 1024 维向量。
 - 统一的 `Embed(text string) ([]float32, error)` 接口屏蔽具体实现，可在配置中切换模型。
 
 ## 4. 数据库设计
@@ -41,7 +41,7 @@
        path TEXT NOT NULL,         -- 文件路径
        chunk_id INT NOT NULL,
        content TEXT NOT NULL,
-       embedding VECTOR(1536),     -- 向量
+       embedding VECTOR(1024),     -- 向量
        metadata JSONB              -- 额外信息：标签/更新时间等
    );
 
