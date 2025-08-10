@@ -56,6 +56,12 @@ type Global struct {
 	Proxy       string       `yaml:"proxy"`
 }
 
+type Sync struct {
+	Repo struct {
+		Proxy string `yaml:"proxy"`
+	} `yaml:"repo"`
+}
+
 // Provider defines an LLM provider which can also serve embeddings.
 type Provider struct {
 	Name    string   `yaml:"name"`
@@ -89,6 +95,7 @@ type ChunkingCfg struct {
 // Config is the root configuration for ingestion.
 type Config struct {
 	Global    Global       `yaml:"global"`
+	Sync      Sync         `yaml:"sync"`
 	Provider  []Provider   `yaml:"provider"`
 	Embedding EmbeddingCfg `yaml:"embedding"`
 	Chunking  ChunkingCfg  `yaml:"chunking"`

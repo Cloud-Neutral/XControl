@@ -52,7 +52,7 @@ func (m *mockRAGService) Query(ctx context.Context, question string, limit int) 
 func TestRAGUpsertAndQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	register := RegisterRoutes(nil)
+	register := RegisterRoutes(nil, "")
 
 	old := ragSvc
 	mock := &mockRAGService{dim: 1024}
@@ -105,7 +105,7 @@ func TestRAGUpsertAndQuery(t *testing.T) {
 func TestRAGUpsert_DimensionMismatch(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	register := RegisterRoutes(nil)
+	register := RegisterRoutes(nil, "")
 
 	old := ragSvc
 	ragSvc = &mockRAGService{dim: 1024}

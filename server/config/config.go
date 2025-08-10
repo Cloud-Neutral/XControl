@@ -68,6 +68,12 @@ type Global struct {
 	} `yaml:"embedding"`
 }
 
+type Sync struct {
+	Repo struct {
+		Proxy string `yaml:"proxy"`
+	} `yaml:"repo"`
+}
+
 type Provider struct {
 	Name    string   `yaml:"name"`
 	BaseURL string   `yaml:"base_url"`
@@ -85,6 +91,7 @@ type API struct {
 type Config struct {
 	Log      Log        `yaml:"log"`
 	Global   Global     `yaml:"global"`
+	Sync     Sync       `yaml:"sync"`
 	Provider []Provider `yaml:"provider"`
 	API      API        `yaml:"api"`
 }
