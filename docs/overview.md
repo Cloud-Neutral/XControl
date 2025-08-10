@@ -142,15 +142,18 @@ make init-db
 1. 运行（首次会自动下载模型）
 python offline_embed_server.py
 2. 测试接口
-编辑
-curl -s http://127.0.0.1:9000/v1/embeddings \
+
+测试顺序
+
+1) 健康检查（端口就绪即返回 ok） curl -v http://127.0.0.1:9000/healthz
+2) 就绪检查（模型加载完成后返回 ready） curl -v http://127.0.0.1:9000/readyz
+3) 调用 embeddings
+
+curl http://127.0.0.1:9000/v1/embeddings \
   -H "Content-Type: application/json" \
-  -d '{"model":"BAAI/bge-m3","input":["你好","PGVector 怎么建 HNSW？"]}' | jq .
-3. 环境变量（可选）
-export BGE_M3_DIR="/path/to/bge-m3"
-export EMBED_HOST="127.0.0.1"
-export EMBED_PORT=9100
-python offline_embed_server.py
+  -d '{"model":"BAAI/bge-m3","input":["你好","PGVector 怎么建 HNSW？"]}'
+
+如果你要把 DEVICE 固定为 mps 并行内核，保留默认即可；如需落回 CPU：DEVICE=cpu python docs/offline_embed_server.py。
 
 ## Ollama API test
 
