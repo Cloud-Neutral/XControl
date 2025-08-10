@@ -10,6 +10,9 @@ global:
     base_url: http://127.0.0.1:11434
     token: ""
     dimension: 1536
+sync:
+  repo:
+    proxy: ""
 api:
   askai:
     timeout: 100

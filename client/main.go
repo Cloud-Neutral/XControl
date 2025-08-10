@@ -94,7 +94,11 @@ var rootCmd = &cobra.Command{
 		var syncErrs []string
 		for _, ds := range cfg.Global.Datasources {
 			workdir := filepath.Join(os.TempDir(), "xcontrol", ds.Name)
-			if _, err := rsync.SyncRepo(ctx, ds.Repo, workdir); err != nil {
+			err := proxy.With(cfg.Sync.Repo.Proxy, func() error {
+				_, err := rsync.SyncRepo(ctx, ds.Repo, workdir)
+				return err
+			})
+			if err != nil {
 				slog.Warn("sync repo", "repo", ds.Name, "err", err)
 				syncErrs = append(syncErrs, ds.Name)
 				continue

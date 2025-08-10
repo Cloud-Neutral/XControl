@@ -91,7 +91,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		r := server.New(
-			api.RegisterRoutes(conn),
+			api.RegisterRoutes(conn, cfg.Sync.Repo.Proxy),
 			func(r *gin.Engine) {
 				fileServer := http.FileServer(http.FS(uiFS))
 				r.NoRoute(func(c *gin.Context) {

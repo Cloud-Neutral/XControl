@@ -12,6 +12,7 @@ import (
 	"xcontrol/internal/rag/embed"
 	"xcontrol/internal/rag/store"
 	rsync "xcontrol/internal/rag/sync"
+	"xcontrol/server/proxy"
 )
 
 // Options control ingestion behaviour.
@@ -42,7 +43,10 @@ func IngestRepo(ctx context.Context, cfg *cfgpkg.Config, ds cfgpkg.DataSource, o
 	embCfg := cfg.ResolveEmbedding()
 
 	workdir := filepath.Join("internal", "rag", ds.Name)
-	if _, err := rsync.SyncRepo(ctx, ds.Repo, workdir); err != nil {
+	if err := proxy.With(cfg.Sync.Repo.Proxy, func() error {
+		_, err := rsync.SyncRepo(ctx, ds.Repo, workdir)
+		return err
+	}); err != nil {
 		st.Errors = append(st.Errors, err)
 		return st, err
 	}

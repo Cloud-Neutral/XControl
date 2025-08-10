@@ -8,12 +8,12 @@ import (
 
 // RegisterRoutes returns a server.Registrar that registers all API routes.
 // It wires user, node, and knowledge base handlers under /api.
-func RegisterRoutes(conn *pgx.Conn) server.Registrar {
+func RegisterRoutes(conn *pgx.Conn, repoProxy string) server.Registrar {
 	return func(r *gin.Engine) {
 		api := r.Group("/api")
 		registerUserRoutes(api)
 		registerNodeRoutes(api)
-		registerKnowledgeRoutes(api, conn)
+		registerKnowledgeRoutes(api, conn, repoProxy)
 		registerRAGRoutes(api)
 		registerAskAIRoutes(api)
 	}
