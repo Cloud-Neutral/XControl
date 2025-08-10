@@ -93,7 +93,7 @@ func main() {
 	}
 }
 
-func ingestFile(ctx context.Context, cfg *rconfig.Config, chunkCfg rconfig.ChunkingConfig, embedder embed.Embedder, baseURL, filePath string) error {
+func ingestFile(ctx context.Context, cfg *rconfig.Config, chunkCfg rconfig.ChunkingCfg, embedder embed.Embedder, baseURL, filePath string) error {
 	var ds *rconfig.DataSource
 	var workdir string
 	for i := range cfg.Global.Datasources {
