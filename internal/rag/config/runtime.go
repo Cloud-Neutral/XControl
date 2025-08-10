@@ -82,6 +82,11 @@ type Runtime struct {
 	VectorDB    VectorDB     `yaml:"vectordb"`
 	Datasources []DataSource `yaml:"datasources"`
 	Proxy       string       `yaml:"proxy"`
+	Embedding   struct {
+		BaseURL   string `yaml:"base_url"`
+		Token     string `yaml:"token"`
+		Dimension int    `yaml:"dimension"`
+	} `yaml:"embedding"`
 }
 
 // ServerConfigPath points to the server configuration file.
@@ -112,5 +117,8 @@ func (rt *Runtime) ToConfig() *Config {
 	c.Global.VectorDB = rt.VectorDB
 	c.Global.Datasources = rt.Datasources
 	c.Global.Proxy = rt.Proxy
+	c.Embedding.BaseURL = rt.Embedding.BaseURL
+	c.Embedding.Token = rt.Embedding.Token
+	c.Embedding.Dimension = rt.Embedding.Dimension
 	return &c
 }
