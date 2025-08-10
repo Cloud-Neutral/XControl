@@ -1,5 +1,4 @@
 global:
-  proxy: socks5://127.0.0.1:1080 # optional
   redis:
     addr: "127.0.0.1:6379"
     password: ""
@@ -15,6 +14,9 @@ global:
     - name: documents
       repo: https://github.com/svc-design/documents
       path: /
+sync:
+  repo:
+    proxy: socks5://127.0.0.1:1080  # 仅在同步仓库时使用代理
 
 provider:
   - name: allama
