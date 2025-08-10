@@ -120,7 +120,7 @@ func TestRAGUpsert_DimensionMismatch(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected status 500, got %d", w.Code)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503, got %d", w.Code)
 	}
 }
