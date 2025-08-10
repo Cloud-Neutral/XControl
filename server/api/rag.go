@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,11 +12,19 @@ import (
 	"xcontrol/server/proxy"
 )
 
+// ragService defines methods used by the RAG API. It allows tests to supply a
+// mock implementation without touching the real vector database or embedding
+// service.
+type ragService interface {
+	Upsert(ctx context.Context, rows []store.DocRow) (int, error)
+	Query(ctx context.Context, question string, limit int) ([]rag.Document, error)
+}
+
 // ragSvc handles RAG document storage and retrieval.
-var ragSvc = initRAG()
+var ragSvc ragService = initRAG()
 
 // initRAG attempts to construct a RAG service from server configuration.
-func initRAG() *rag.Service {
+func initRAG() ragService {
 	cfg, err := rconfig.LoadServer()
 	if err != nil {
 		return nil
