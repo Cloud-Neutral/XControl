@@ -69,10 +69,15 @@ var rootCmd = &cobra.Command{
 		chunkCfg := cfg.ResolveChunking()
 
 		var embedder embed.Embedder
-		if embCfg.Model != "" {
-			embedder = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
-		} else {
-			embedder = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+		switch embCfg.Provider {
+		case "allama":
+			embedder = embed.NewAllama(embCfg.BaseURL, embCfg.Model, embCfg.Dimension)
+		default:
+			if embCfg.Model != "" {
+				embedder = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+			} else {
+				embedder = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+			}
 		}
 
 		baseURL := os.Getenv("SERVER_URL")
