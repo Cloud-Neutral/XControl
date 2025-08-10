@@ -62,25 +62,44 @@ type Sync struct {
 	} `yaml:"repo"`
 }
 
-// Provider defines an LLM provider which can also serve embeddings.
-type Provider struct {
-	Name    string   `yaml:"name"`
-	BaseURL string   `yaml:"base_url"`
-	Token   string   `yaml:"token"`
-	Models  []string `yaml:"models"`
+// StringSlice supports unmarshaling from either a single string or a list of strings.
+type StringSlice []string
+
+// UnmarshalYAML implements yaml unmarshaling for StringSlice.
+func (s *StringSlice) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		var str string
+		if err := value.Decode(&str); err != nil {
+			return err
+		}
+		*s = []string{str}
+	case yaml.SequenceNode:
+		var arr []string
+		if err := value.Decode(&arr); err != nil {
+			return err
+		}
+		*s = arr
+	default:
+		return fmt.Errorf("invalid yaml kind for StringSlice: %v", value.Kind)
+	}
+	return nil
+}
+
+// ModelCfg describes a model service such as embedder or generator.
+type ModelCfg struct {
+	Provider string      `yaml:"provider"`
+	Models   StringSlice `yaml:"models"`
+	Endpoint string      `yaml:"endpoint"`
+	Token    string      `yaml:"token"`
 }
 
 // EmbeddingCfg describes embedding service settings.
 type EmbeddingCfg struct {
-	Provider     string `yaml:"provider"`
-	BaseURL      string `yaml:"base_url"`
-	Token        string `yaml:"token"`
-	Model        string `yaml:"model"`
-	APIKeyEnv    string `yaml:"api_key_env"`
-	Dimension    int    `yaml:"dimension"`
-	RateLimitTPM int    `yaml:"rate_limit_tpm"`
-	MaxBatch     int    `yaml:"max_batch"`
-	MaxChars     int    `yaml:"max_chars"`
+	MaxBatch     int `yaml:"max_batch"`
+	Dimension    int `yaml:"dimension"`
+	MaxChars     int `yaml:"max_chars"`
+	RateLimitTPM int `yaml:"rate_limit_tpm"`
 }
 
 // ChunkingCfg controls how markdown is split into chunks.
@@ -94,11 +113,20 @@ type ChunkingCfg struct {
 
 // Config is the root configuration for ingestion.
 type Config struct {
-	Global    Global       `yaml:"global"`
-	Sync      Sync         `yaml:"sync"`
-	Provider  []Provider   `yaml:"provider"`
+	Global Global `yaml:"global"`
+	Sync   Sync   `yaml:"sync"`
+	Models struct {
+		Embedder  ModelCfg `yaml:"embedder"`
+		Generator ModelCfg `yaml:"generator"`
+	} `yaml:"models"`
 	Embedding EmbeddingCfg `yaml:"embedding"`
 	Chunking  ChunkingCfg  `yaml:"chunking"`
+	API       struct {
+		AskAI struct {
+			Timeout int `yaml:"timeout"`
+			Retries int `yaml:"retries"`
+		} `yaml:"askai"`
+	} `yaml:"api"`
 }
 
 // Load reads YAML configuration from the given path.

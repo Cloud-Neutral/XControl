@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
@@ -12,12 +13,14 @@ import (
 
 // Config represents server configuration loaded from YAML.
 type Config struct {
-	Provider []struct {
-		Name    string   `yaml:"name"`
-		BaseURL string   `yaml:"base_url"`
-		Token   string   `yaml:"token"`
-		Models  []string `yaml:"models"`
-	} `yaml:"provider"`
+	Models struct {
+		Generator struct {
+			Provider string   `yaml:"provider"`
+			Models   []string `yaml:"models"`
+			Endpoint string   `yaml:"endpoint"`
+			Token    string   `yaml:"token"`
+		} `yaml:"generator"`
+	} `yaml:"models"`
 }
 
 // cfg holds the loaded configuration.
@@ -35,20 +38,17 @@ func loadConfig() {
 		slog.Warn("server config parse", "err", err)
 		return
 	}
-	for _, p := range cfg.Provider {
-		if p.Name != "chutes" {
-			continue
+	g := cfg.Models.Generator
+	if strings.ToLower(g.Provider) == "chutes" {
+		if g.Token != "" {
+			os.Setenv("CHUTES_API_TOKEN", g.Token)
 		}
-		if p.Token != "" {
-			os.Setenv("CHUTES_API_TOKEN", p.Token)
+		if g.Endpoint != "" {
+			os.Setenv("CHUTES_API_URL", g.Endpoint)
 		}
-		if p.BaseURL != "" {
-			os.Setenv("CHUTES_API_URL", p.BaseURL)
+		if len(g.Models) > 0 {
+			os.Setenv("CHUTES_API_MODEL", g.Models[0])
 		}
-		if len(p.Models) > 0 {
-			os.Setenv("CHUTES_API_MODEL", p.Models[0])
-		}
-		break
 	}
 }
 
