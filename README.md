@@ -70,6 +70,24 @@ The API server also accepts a custom configuration file:
 xcontrol-server --config path/to/server.yaml
 ```
 
+## Logging
+
+Both `xcontrol-cli` and `xcontrol-server` accept a `--log-level` flag to control verbosity. The level may be one of `debug`, `info`, `warn`, or `error`:
+
+```bash
+xcontrol-cli --log-level debug
+xcontrol-server --log-level warn
+```
+
+The server's log level can also be set in the configuration file:
+
+```yaml
+log:
+  level: info
+```
+
+The flag value takes precedence over the configuration file.
+
 ## License
 
 This project is licensed under the terms of the [MIT License](./LICENSE).
