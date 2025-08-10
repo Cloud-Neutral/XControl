@@ -12,19 +12,19 @@ import (
 
 // BGE implements the Embedder interface for a BGE embedding service.
 type BGE struct {
-	baseURL string
-	token   string
-	dim     int
-	client  *http.Client
+	endpoint string
+	token    string
+	dim      int
+	client   *http.Client
 }
 
 // NewBGE returns a new BGE embedder.
-func NewBGE(baseURL, token string, dim int) *BGE {
+func NewBGE(endpoint, token string, dim int) *BGE {
 	return &BGE{
-		baseURL: baseURL,
-		token:   token,
-		dim:     dim,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		endpoint: endpoint,
+		token:    token,
+		dim:      dim,
+		client:   &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -37,7 +37,7 @@ func (b *BGE) Embed(ctx context.Context, inputs []string) ([][]float32, int, err
 	for i, text := range inputs {
 		payload := map[string]any{"inputs": text}
 		body, _ := json.Marshal(payload)
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.baseURL, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.endpoint, bytes.NewReader(body))
 		if err != nil {
 			return nil, 0, err
 		}

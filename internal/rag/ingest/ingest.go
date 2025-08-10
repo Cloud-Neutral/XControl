@@ -69,13 +69,15 @@ func IngestRepo(ctx context.Context, cfg *cfgpkg.Config, ds cfgpkg.DataSource, o
 
 	var embedder embed.Embedder
 	switch embCfg.Provider {
-	case "allama":
-		embedder = embed.NewAllama(embCfg.BaseURL, embCfg.Model, embCfg.Dimension)
+	case "ollama":
+		embedder = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
+	case "chutes":
+		embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
 	default:
 		if embCfg.Model != "" {
-			embedder = embed.NewOpenAI(embCfg.BaseURL, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+			embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
 		} else {
-			embedder = embed.NewBGE(embCfg.BaseURL, embCfg.APIKey, embCfg.Dimension)
+			embedder = embed.NewBGE(embCfg.Endpoint, embCfg.APIKey, embCfg.Dimension)
 		}
 	}
 	if err := store.EnsureSchema(ctx, conn, embedder.Dimension(), opt.MigrateDim); err != nil {
