@@ -45,3 +45,20 @@ func TestResolveChunking(t *testing.T) {
 		t.Fatalf("expected default slices")
 	}
 }
+
+func TestRuntimeToConfigEmbedding(t *testing.T) {
+	rt := &Runtime{}
+	rt.Embedding.BaseURL = "http://localhost:8080"
+	rt.Embedding.Token = "tok"
+	rt.Embedding.Dimension = 123
+	cfg := rt.ToConfig()
+	if cfg.Embedding.BaseURL != "http://localhost:8080" {
+		t.Fatalf("unexpected base url %q", cfg.Embedding.BaseURL)
+	}
+	if cfg.Embedding.Token != "tok" {
+		t.Fatalf("unexpected token %q", cfg.Embedding.Token)
+	}
+	if cfg.Embedding.Dimension != 123 {
+		t.Fatalf("unexpected dimension %d", cfg.Embedding.Dimension)
+	}
+}

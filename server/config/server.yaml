@@ -6,6 +6,10 @@ global:
   vectordb:
     pgurl: postgres://user:password@127.0.0.1:5432/postgres
   datasources: []
+  embedding:
+    base_url: http://127.0.0.1:11434
+    token: ""
+    dimension: 1536
 api:
   askai:
     timeout: 100
