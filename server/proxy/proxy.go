@@ -43,3 +43,20 @@ func Set(proxyURL string) {
 	gclient.InstallProtocol("https", ghttp.NewClient(c))
 	gclient.InstallProtocol("http", ghttp.NewClient(c))
 }
+
+// With sets the proxy for the duration of fn and restores previous settings afterwards.
+func With(proxyURL string, fn func() error) error {
+	if proxyURL == "" {
+		return fn()
+	}
+	prevTransport, _ := http.DefaultTransport.(*http.Transport)
+	prevHTTP := gclient.Protocols["http"]
+	prevHTTPS := gclient.Protocols["https"]
+	Set(proxyURL)
+	defer func() {
+		http.DefaultTransport = prevTransport
+		gclient.InstallProtocol("http", prevHTTP)
+		gclient.InstallProtocol("https", prevHTTPS)
+	}()
+	return fn()
+}
