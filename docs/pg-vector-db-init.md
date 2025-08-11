@@ -74,3 +74,60 @@ global:
 ```
 
 其中 `dimension` 需与所使用的嵌入模型返回的向量维度一致。
+
+
+# 常用检查命令
+
+- 查看总条数:           SELECT COUNT(*) FROM documents;
+- 查看前几条数据        SELECT * FROM documents LIMIT 5;
+- 只看主要字段          SELECT id, repo, path, chunk_id FROM documents LIMIT 10;
+- 查看嵌入向量的维度    SELECT id, vector_dims(embedding) AS dims FROM documents LIMIT 5;
+- 确认带向量的记录      SELECT COUNT(*) FROM public.documents WHERE embedding IS NOT NULL;
+- 查看向量维度
+
+SELECT id, vector_dims(embedding) AS dims
+FROM public.documents
+WHERE embedding IS NOT NULL
+LIMIT 5;
+
+vector_dims() 是 pgvector 提供的函数
+
+
+查看全部（注意可能很长）
+SELECT content
+FROM public.documents;
+
+2. 只看前几条
+SELECT id, content
+FROM public.documents
+LIMIT 5;
+
+3. 只看前 80 个字符（避免太长）
+SELECT id, LEFT(content, 80) AS preview
+FROM public.documents
+LIMIT 5;
+这样会输出 content 的前 80 个字符，方便快速浏览。
+
+4. 随机抽查几条
+
+SELECT id, LEFT(content, 80) AS preview
+FROM public.documents
+ORDER BY random()
+LIMIT 5;
+
+5. 同时查看 embedding 维度和 content
+
+SELECT id,
+       vector_dims(embedding) AS dims,
+       LEFT(content, 80) AS preview
+FROM public.documents
+ORDER BY random()
+LIMIT 5;
+这样能一次确认：
+
+向量维度（是不是 1024）
+
+文本内容大致是什么
+
+
+
