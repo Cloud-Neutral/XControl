@@ -22,3 +22,17 @@
 
 说明：InTok = 输入 tokens，OutTok = 输出 tokens；OutTok/s = OutTok/Total；GenTok/s = OutTok/(Total-TTFT)。
 
+
+## 嵌入模型基准
+
+以下结果来自在 `http://127.0.0.1:9000/v1/embeddings` 接口上执行：
+
+`bash bench_embedding.sh --input_config models-emb.txt --require-dim 1024`
+
+测试参数：BATCH=4，N=20，C=2，timeout=120s。仅统计向量维度为 1024 的结果。
+
+| Model | HTTP | TTFT | Total | Dim | Samples | InTok | Tok/s | Samples/s | P90(s) | P95(s) |
+|-------|------|------|-------|-----|---------|-------|-------|-----------|--------|--------|
+| bge-m3:latest | 200 | 0.022 | 0.022 | 1024 | 4 | 0 | 0.00 | 181.50 | 0.0530 | 0.0542 |
+
+说明：Dim = 向量维度；Samples = 每请求输入条数；InTok = usage.prompt_tokens；Tok/s = InTok/Total；Samples/s = Samples/Total。
