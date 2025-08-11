@@ -36,7 +36,14 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 		}
 		answer, err := askFn(req.Question)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			_, _, _, _, timeout, retries := loadConfig()
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+				"config": gin.H{
+					"timeout": timeout.Seconds(),
+					"retries": retries,
+				},
+			})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"answer": answer, "chunks": chunks})
@@ -97,9 +104,7 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 			}
 		}
 	}
-	if timeout > 30*time.Second {
-		timeout = 30 * time.Second
-	}
+	// Allow custom timeout values without imposing a hard cap.
 	if retries > 3 {
 		retries = 3
 	}
@@ -139,9 +144,9 @@ func callChutes(token, model, url string, timeout time.Duration, retries int, qu
 		return "", errors.New("chutes token not set")
 	}
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"model":       model,
-		"messages":    []interface{}{map[string]interface{}{"role": "user", "content": question}},
+		"messages":    []any{map[string]any{"role": "user", "content": question}},
 		"stream":      false,
 		"max_tokens":  1024,
 		"temperature": 0.7,
@@ -263,12 +268,20 @@ func callOllama(model, url string, timeout time.Duration, retries int, question 
 // callLLM dispatches the question to the configured provider.
 func callLLM(question string) (string, error) {
 	provider, token, model, url, timeout, retries := loadConfig()
+	var (
+		answer string
+		err    error
+	)
 	switch provider {
 	case "ollama":
-		return callOllama(model, url, timeout, retries, question)
+		answer, err = callOllama(model, url, timeout, retries, question)
 	case "chutes":
-		return callChutes(token, model, url, timeout, retries, question)
+		answer, err = callChutes(token, model, url, timeout, retries, question)
 	default:
-		return callChutes(token, model, url, timeout, retries, question)
+		answer, err = callChutes(token, model, url, timeout, retries, question)
 	}
+	if err != nil {
+		return "", fmt.Errorf("%w (timeout=%s retries=%d)", err, timeout, retries)
+	}
+	return answer, nil
 }
