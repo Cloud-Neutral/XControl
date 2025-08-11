@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,6 +37,8 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 		}
 		answer, err := askFn(req.Question)
 		if err != nil {
+			provider, _, _, _, _, _ := loadConfig()
+			slog.Error("askai request failed", "question", req.Question, "provider", provider, "err", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
