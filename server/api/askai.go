@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -35,19 +36,21 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 			chunks = docs
 		}
 		answer, err := askFn(req.Question)
-		if err != nil {
-			_, _, _, _, timeout, retries := loadConfig()
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-				"config": gin.H{
-					"timeout": timeout.Seconds(),
-					"retries": retries,
-				},
-			})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"answer": answer, "chunks": chunks})
-	})
+    if err != nil {
+    provider, _, _, _, timeout, retries := loadConfig()
+    slog.Error("askai request failed",
+        "question", req.Question,
+        "provider", provider,
+        "err", err,
+    )
+    c.JSON(http.StatusInternalServerError, gin.H{
+        "error": err.Error(),
+        "config": gin.H{
+            "timeout": timeout.Seconds(),
+            "retries": retries,
+        },
+    })
+    return
 }
 
 // ConfigPath points to the server configuration file.
