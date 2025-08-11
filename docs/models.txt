@@ -1,0 +1,3 @@
+llama2:7b
+llama2:13b
+llama3:latest
