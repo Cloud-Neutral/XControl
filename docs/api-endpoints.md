@@ -77,6 +77,13 @@ Expected response on success: `{"rows":1}`. If the vector database is unavailabl
 - **Description:** Ask the AI service for an answer. Requires a valid Chutes token in the server configuration.
 - **Body Parameters (JSON):**
   - `question` – Question text.
+- **Configuration:** In `server/config/server.yaml` the `api.askai` section controls request behaviour:
+  ```yaml
+  api:
+    askai:
+      timeout: 60   # seconds
+      retries: 3    # retry attempts
+  ```
 - **Test:**
   ```bash
   curl -X POST http://localhost:8080/api/askai \
