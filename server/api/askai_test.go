@@ -3,8 +3,11 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -65,5 +68,33 @@ func TestAskAI_BadRequest(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
+// TestAskAI_ErrorLogged ensures an internal error logs details and returns 500.
+func TestAskAI_ErrorLogged(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	register := RegisterRoutes(nil, "")
+
+	old := askFn
+	defer func() { askFn = old }()
+	askFn = func(q string) (string, error) {
+		return "", fmt.Errorf("fail")
+	}
+
+	// ensure logs are emitted to stdout
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
+
+	register(r)
+
+	body, _ := json.Marshal(map[string]string{"question": "hello"})
+	req := httptest.NewRequest(http.MethodPost, "/api/askai", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
 	}
 }
