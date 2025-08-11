@@ -83,3 +83,46 @@ Expected response on success: `{"rows":1}`. If the vector database is unavailabl
     -H "Content-Type: application/json" \
     -d '{"question": "Hello"}'
   ```
+
+## GET Localhost embeddings API
+
+1. 运行（首次会自动下载模型）
+python offline_embed_server.py
+2. 测试接口
+
+1) 健康检查（端口就绪即返回 ok） curl -v http://127.0.0.1:9000/healthz
+2) 就绪检查（模型加载完成后返回 ready） curl -v http://127.0.0.1:9000/readyz
+3) 调用 embeddings
+
+curl http://127.0.0.1:9000/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model":"BAAI/bge-m3","input":["你好","PGVector 怎么建 HNSW？"]}'
+
+如果你要把 DEVICE 固定为 mps 并行内核，保留默认即可；如需落回 CPU：DEVICE=cpu python docs/offline_embed_server.py。
+
+## GET Localhost Ollama API
+
+用流式接收（推荐）：
+
+curl http://127.0.0.1:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-oss:20b",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Tell me three tips for optimizing HNSW in PostgreSQL."}
+    ],
+    "max_tokens": 512,
+    "stream": true
+  }'
+这样会实时输出分块数据
+
+curl http://127.0.0.1:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3:latest",
+    "messages": [{"role":"user","content":"你好，简要介绍一下自己"}],
+    "max_tokens": 200,
+    "temperature": 0.7
+  }'
+
