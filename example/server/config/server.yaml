@@ -20,11 +20,11 @@ sync:
 
 provider:
   - name: ollama
-    endpoint: http://localhost:11434/v1/chat/completions
+    endpoint: http://localhost:11434
     models:
       - 'gpt-oss:20b'
   - name: chutes
-    endpoint: https://llm.chutes.ai/v1/chat/completions
+    endpoint: https://llm.chutes.ai/v1
     token: "cpk_xxxxxxxxxxxxxxxxxx"
     models:
       - 'moonshotai/Kimi-K2-Instruct'
