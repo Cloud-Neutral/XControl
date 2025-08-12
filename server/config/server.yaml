@@ -28,7 +28,7 @@ models:
   generator:
     provider: "ollama"
     models:
-      - 'gpt-oss:20b'
+      - 'llama2:13b'
     endpoint: "http://127.0.0.1:11434/v1/chat/completions"
     token: ""
 # For PROD
@@ -36,14 +36,14 @@ models:
 #  embedder:
     #provider: "chutes"
     #models: "bge-m3"
-    #endpoint: "https://chutes-baai-bge-m3.chutes.ai/embed/v1/embeddings"
-    #token: "cpk_xxxxxxxxxxxxxxxxxxxx"
+    #endpoint: "https://chutes-baai-bge-m3.chutes.ai/embed"
+    #token: "cpk_xxxx"
 #  generator:
     #provider: "chutes"
-    #endpoint: "https://llm.chutes.ai/v1/chat/completions"
-    #token: "cpk_xxxxxxxxxxxxxxxxxxxx"
     #models:
     #  - 'moonshotai/Kimi-K2-Instruct'
+    #endpoint: "https://llm.chutes.ai/v1/chat/completions"
+    #token: "cpk_xxxx"
 
 embedding:
   max_batch: 64
