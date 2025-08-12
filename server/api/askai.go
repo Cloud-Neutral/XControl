@@ -122,10 +122,14 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 	}
 	provider = strings.ToLower(provider)
 	endpoint = strings.TrimRight(endpoint, "/")
+	endpoint = strings.TrimSuffix(endpoint, "/chat/completions")
+	endpoint = strings.TrimRight(endpoint, "/")
 	switch provider {
 	case "ollama":
+		endpoint = strings.TrimSuffix(endpoint, "/v1")
+		endpoint = strings.TrimRight(endpoint, "/")
 		if endpoint == "" {
-			endpoint = "http://localhost:11434/v1/chat/completions"
+			endpoint = "http://localhost:11434"
 		}
 		if model == "" {
 			model = "llama2:13b"
@@ -133,7 +137,7 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 		return provider, token, model, endpoint, timeout, retries
 	case "chutes":
 		if endpoint == "" {
-			endpoint = "https://llm.chutes.ai/v1/chat/completions"
+			endpoint = "https://llm.chutes.ai/v1"
 		}
 		if model == "" {
 			model = "deepseek-ai/DeepSeek-R1"
@@ -141,7 +145,7 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 		return provider, token, model, endpoint, timeout, retries
 	default:
 		if endpoint == "" {
-			endpoint = "https://llm.chutes.ai/v1/chat/completions"
+			endpoint = "https://llm.chutes.ai/v1"
 		}
 		if model == "" {
 			model = "deepseek-ai/DeepSeek-R1"

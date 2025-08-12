@@ -90,7 +90,7 @@ models:
     provider: "ollama"
     models:
       - 'llama2:13b'
-    endpoint: "http://127.0.0.1:11434/v1/chat/completions"
+    endpoint: "http://127.0.0.1:11434"
 ```
 
 For online services using Chutes:
@@ -106,7 +106,7 @@ For online services using Chutes:
 #    provider: "chutes"
 #    models:
 #      - 'moonshotai/Kimi-K2-Instruct'
-#    endpoint: "https://llm.chutes.ai/v1/chat/completions"
+#    endpoint: "https://llm.chutes.ai/v1"
 #    token: "cpk_xxxx"
 ```
 
