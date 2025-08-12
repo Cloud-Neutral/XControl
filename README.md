@@ -20,9 +20,22 @@ All UI components provide both Chinese and English interfaces.
 | Framework | Go         | 1.24    |
 | Framework | Next.js    | 14.1.0  |
 | Gateway   | OpenResty  | 1.27.1.2 |
-| Database  | PostgreSQL + pgvector | 14.18 |
 | Cache     | Redis      | 8.2.0     |
-| Model     | ollama/chutes.ai| baai/bge-m3, llama2:13b, moonshotai/Kimi-K2-Instruct |
+| Database  | PostgreSQL + pgvector | 14.18 |
+| Model (Local)  | HuggingFace Hub + Ollama | baai/bge-m3, llama2:13b |
+| Model (Online) | Chutes.AI  | baai/bge-m3, moonshotai/Kimi-K2-Instruct |
+
+## LangChainGo 核心功能一览
+
+XControl 通过 LangChainGo 统一接入多种大模型，并为 AskAI、CLI 与 Server 提供链式调用能力：
+
+- **LLM 接口层（Model I/O）**：统一调用 OpenAI、Hugging Face、Ollama、Google AI、Cohere 等模型接口。
+- **Chains（链式流程）**：将 prompt、检索结果、工具调用等组合成完整流程，支持 RAG、聊天、代码生成等场景。
+- **工具与 Agent 体系**：定义 Web 搜索、Scraper、SQL 查询等工具，并集成到 LLM Agent，实现 ReAct 风格的工具调用。
+- **向量检索与数据接入**：适配 PGVector、Weaviate、Qdrant、MongoDB Atlas Vector Search、Chroma、Pinecone、Redis Vector 等向量存储。
+- **文档加载与分块**：提供 Document Loaders 与 Text Splitters，用于处理长文本与构建向量检索块。
+- **Memory 与历史追踪**：支持 Conversation Buffer 等对话记忆机制，增强交互体验。
+
 
 ## LangChainGo 核心功能一览
 
