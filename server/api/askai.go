@@ -1,11 +1,8 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
+	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,6 +11,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
+	"github.com/tmc/langchaingo/llms/openai"
 	"gopkg.in/yaml.v3"
 )
 
@@ -128,7 +128,7 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 			endpoint = "http://localhost:11434/v1/chat/completions"
 		}
 		if model == "" {
-			model = "gpt-oss:20b"
+			model = "llama2:13b"
 		}
 		return provider, token, model, endpoint, timeout, retries
 	case "chutes":
@@ -150,150 +150,50 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 	}
 }
 
-// callChutes sends the question to the hosted LLM service and returns the reply.
-func callChutes(token, model, url string, timeout time.Duration, retries int, question string) (string, error) {
-	if token == "" || token == "cpk_xxxxxxx" {
-		return "", errors.New("chutes token not set")
-	}
-
-	reqBody := map[string]interface{}{
-		"model":       model,
-		"messages":    []interface{}{map[string]interface{}{"role": "user", "content": question}},
-		"stream":      false,
-		"max_tokens":  1024,
-		"temperature": 0.7,
-	}
-	data, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", err
-	}
-
-	client := &http.Client{Timeout: timeout}
-	var lastErr error
-	for i := 0; i <= retries; i++ {
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
-		if err != nil {
-			return "", err
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		b, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("chutes API error: %s", string(b))
-			continue
-		}
-
-		var res struct {
-			Choices []struct {
-				Message struct {
-					Content string `json:"content"`
-				} `json:"message"`
-			} `json:"choices"`
-		}
-		if err := json.Unmarshal(b, &res); err != nil {
-			lastErr = err
-			continue
-		}
-		if len(res.Choices) == 0 {
-			lastErr = errors.New("no choices returned")
-			continue
-		}
-		return res.Choices[0].Message.Content, nil
-	}
-	if lastErr == nil {
-		lastErr = errors.New("request failed")
-	}
-	return "", lastErr
-}
-
-// callOllama sends the question to a local Ollama server.
-func callOllama(model, url string, timeout time.Duration, retries int, question string) (string, error) {
-	reqBody := map[string]any{
-		"model":       model,
-		"messages":    []any{map[string]any{"role": "user", "content": question}},
-		"stream":      false,
-		"max_tokens":  1024,
-		"temperature": 0.7,
-	}
-	data, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", err
-	}
-	client := &http.Client{Timeout: timeout}
-	var lastErr error
-	for i := 0; i <= retries; i++ {
-		req, err := http.NewRequest("POST", url, bytes.NewReader(data))
-		if err != nil {
-			return "", err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		b, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("ollama API error: %s", string(b))
-			continue
-		}
-		var res struct {
-			Choices []struct {
-				Message struct {
-					Content string `json:"content"`
-				} `json:"message"`
-			} `json:"choices"`
-		}
-		if err := json.Unmarshal(b, &res); err != nil {
-			lastErr = err
-			continue
-		}
-		if len(res.Choices) == 0 {
-			lastErr = errors.New("no choices returned")
-			continue
-		}
-		return res.Choices[0].Message.Content, nil
-	}
-	if lastErr == nil {
-		lastErr = errors.New("request failed")
-	}
-	return "", lastErr
-}
-
-// callLLM dispatches the question to the configured provider.
+// callLLM dispatches the question to the configured provider using LangChainGo.
 func callLLM(question string) (string, error) {
 	provider, token, model, url, timeout, retries := loadConfig()
+
+	httpClient := &http.Client{Timeout: timeout}
+
 	var (
-		answer string
-		err    error
+		llm llms.Model
+		err error
 	)
+
 	switch provider {
 	case "ollama":
-		answer, err = callOllama(model, url, timeout, retries, question)
-	case "chutes":
-		answer, err = callChutes(token, model, url, timeout, retries, question)
+		llm, err = ollama.New(
+			ollama.WithModel(model),
+			ollama.WithServerURL(url),
+			ollama.WithHTTPClient(httpClient),
+		)
 	default:
-		answer, err = callChutes(token, model, url, timeout, retries, question)
+		llm, err = openai.New(
+			openai.WithToken(token),
+			openai.WithModel(model),
+			openai.WithBaseURL(url),
+			openai.WithHTTPClient(httpClient),
+		)
 	}
 	if err != nil {
-		return "", fmt.Errorf("%w (timeout=%s retries=%d)", err, timeout, retries)
+		return "", fmt.Errorf("init llm: %w", err)
 	}
-	return answer, nil
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var answer string
+	var lastErr error
+	for i := 0; i <= retries; i++ {
+		answer, lastErr = llms.GenerateFromSinglePrompt(ctx, llm, question)
+		if lastErr == nil {
+			return answer, nil
+		}
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("request failed")
+	}
+	return "", fmt.Errorf("%w (timeout=%s retries=%d)", lastErr, timeout, retries)
 }
