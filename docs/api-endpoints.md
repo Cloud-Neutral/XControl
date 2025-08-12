@@ -74,16 +74,51 @@ Expected response on success: `{"rows":1}`. If the vector database is unavailabl
   ```
 
 ## POST /api/askai
-- **Description:** Ask the AI service for an answer. Requires a valid Chutes token in the server configuration.
+- **Description:** Ask the AI service for an answer. The endpoint uses [LangChainGo](https://github.com/tmc/langchaingo) to communicate with the configured model provider (e.g., OpenAI-compatible services or a local Ollama instance). Ensure the server configuration includes the proper token or local server URL.
 - **Body Parameters (JSON):**
   - `question` – Question text.
-- **Configuration:** In `server/config/server.yaml` the `api.askai` section controls request behaviour:
-  ```yaml
-  api:
-    askai:
-      timeout: 60   # seconds
-      retries: 3    # retry attempts
-  ```
+**Configuration:** In `server/config/server.yaml` the `models` section selects the LLM and embedding providers.
+For local debugging with HuggingFace and Ollama:
+
+```yaml
+models:
+  embedder:
+    provider: "huggingface_hub"
+    models: "bge-m3"
+    endpoint: "http://127.0.0.1:9000/v1/embeddings"
+  generator:
+    provider: "ollama"
+    models:
+      - 'llama2:13b'
+    endpoint: "http://127.0.0.1:11434/v1/chat/completions"
+```
+
+For online services using Chutes:
+
+```yaml
+#models:
+#  embedder:
+#    provider: "chutes"
+#    models: "bge-m3"
+#    endpoint: "https://chutes-baai-bge-m3.chutes.ai/embed"
+#    token: "cpk_xxxx"
+#  generator:
+#    provider: "chutes"
+#    models:
+#      - 'moonshotai/Kimi-K2-Instruct'
+#    endpoint: "https://llm.chutes.ai/v1/chat/completions"
+#    token: "cpk_xxxx"
+```
+
+The `api.askai` section controls request behaviour:
+
+```yaml
+api:
+  askai:
+    timeout: 60   # seconds
+    retries: 3    # retry attempts
+```
+
 - **Test:**
   ```bash
   curl -X POST http://localhost:8080/api/askai \
