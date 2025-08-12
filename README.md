@@ -20,21 +20,21 @@ All UI components provide both Chinese and English interfaces.
 | Framework | Go         | 1.24    |
 | Framework | Next.js    | 14.1.0  |
 | Gateway   | OpenResty  | 1.27.1.2 |
-| Database  | PostgreSQL + pgvector | N/A |
-| Cache     | Redis      | N/A     |
-| Model (Local)  | HuggingFace Hub + Ollama | N/A |
-| Model (Online) | Chutes AskAI + CodePRobot | N/A |
+| Database  | PostgreSQL + pgvector | 14.18 |
+| Cache     | Redis      | 8.2.0     |
+| Model     | ollama/chutes.ai| baai/bge-m3, llama2:13b, moonshotai/Kimi-K2-Instruct |
 
 ## LangChainGo 核心功能一览
 
 XControl 通过 LangChainGo 统一接入多种大模型，并为 AskAI、CLI 与 Server 提供链式调用能力：
 
-- **LLM 接口层（Model I/O）**：统一调用 OpenAI、Hugging Face、Ollama、Google AI、Cohere 等模型接口。
+- **LLM 接口层（Model I/O）**：统一调用 Hugging Face、Ollama、OpenAI 兼容模型接口。
 - **Chains（链式流程）**：将 prompt、检索结果、工具调用等组合成完整流程，支持 RAG、聊天、代码生成等场景。
-- **工具与 Agent 体系**：定义 Web 搜索、Scraper、SQL 查询等工具，并集成到 LLM Agent，实现 ReAct 风格的工具调用。
-- **向量检索与数据接入**：适配 PGVector、Weaviate、Qdrant、MongoDB Atlas Vector Search、Chroma、Pinecone、Redis Vector 等向量存储。
+- **工具与 Agent 体系**：定义 Web 搜索、实现 ReAct 风格的工具调用。
+- **向量检索与数据接入**：适配 PGVector 向量存储。
 - **文档加载与分块**：提供 Document Loaders 与 Text Splitters，用于处理长文本与构建向量检索块。
 - **Memory 与历史追踪**：支持 Conversation Buffer 等对话记忆机制，增强交互体验。
+
 
 ## Supported Platforms
 
@@ -107,32 +107,6 @@ See [docs/changelog.md](./docs/changelog.md) for a list of completed changes, in
 ## Roadmap
 
 The roadmap below is also available in [docs/Roadmap.md](./docs/Roadmap.md).
-
-### Milestone 1: MVP (Completed)
-- Use default Redis port (#98) and establish PostgreSQL & Redis baseline.
-- Stream RAG sync progress for GitHub repository synchronization (#100).
-- Add client-side Markdown parsing to the CLI (#104).
-- Refactor RAG ingestion into the CLI with a server upsert endpoint (#103).
-- RAG API functional tests and per-file ingestion workflow (#115).
-- Allow RAG upsert to migrate embedding dimensions (#119) and document pgvector initialization (#120).
-- Ingest files automatically (#123).
-
-### Milestone 2: Hybrid Search
-- CLI and server dynamically support 1024-dimensional embeddings.
-- Update docs and configs to vector(1024) (#130).
-- Add embedding configuration fields (#131).
-- Add RAG API integration tests for vectors (#132).
-- Add allama support (#136).
-- Deploy homepage via rsync from CI and fix SSH directory creation (#18, #19).
-- Deploy XControl panel via GitHub Actions (#20).
-- Fix yarn lock context concatenation (#21).
-
-### Milestone 3: Production Monitoring & Optimization
-- Switch server and CLI to Cobra (#133).
-- Add repo sync proxy configuration (#135).
-- Allow custom AskAI timeout (#141).
-- Add log level support to CLI and server and log AskAI errors (#125, #140).
-- Continue performance optimization, error handling, multi-model support, permission control, hot reload, and improve RAG upsert docs (#129).
 
 ## License
 
