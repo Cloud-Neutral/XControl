@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tmc/langchaingo/llms/openai"
 	"gopkg.in/yaml.v3"
 )
@@ -166,7 +167,11 @@ func callLLM(question string) (string, error) {
 
 	switch provider {
 	case "ollama":
-		fallthrough
+		llm, err = ollama.New(
+			ollama.WithServerURL(url),
+			ollama.WithModel(model),
+			ollama.WithHTTPClient(httpClient),
+		)
 	default:
 		llm, err = openai.New(
 			openai.WithToken(token),
