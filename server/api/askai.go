@@ -173,12 +173,21 @@ func callLLM(question string) (string, error) {
 			ollama.WithHTTPClient(httpClient),
 		)
 	default:
-		llm, err = openai.New(
-			openai.WithToken(token),
-			openai.WithModel(model),
-			openai.WithBaseURL(url),
-			openai.WithHTTPClient(httpClient),
-		)
+		if token == "" {
+			// Allow running against a local Ollama server without authentication.
+			llm, err = ollama.New(
+				ollama.WithServerURL(url),
+				ollama.WithModel(model),
+				ollama.WithHTTPClient(httpClient),
+			)
+		} else {
+			llm, err = openai.New(
+				openai.WithToken(token),
+				openai.WithModel(model),
+				openai.WithBaseURL(url),
+				openai.WithHTTPClient(httpClient),
+			)
+		}
 	}
 	if err != nil {
 		return "", fmt.Errorf("init llm: %w", err)
