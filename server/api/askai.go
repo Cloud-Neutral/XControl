@@ -12,7 +12,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tmc/langchaingo/llms/openai"
 	"gopkg.in/yaml.v3"
 )
@@ -125,7 +124,7 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 	switch provider {
 	case "ollama":
 		if endpoint == "" {
-			endpoint = "http://localhost:11434/v1/chat/completions"
+			endpoint = "http://localhost:11434/v1"
 		}
 		if model == "" {
 			model = "llama2:13b"
@@ -163,11 +162,7 @@ func callLLM(question string) (string, error) {
 
 	switch provider {
 	case "ollama":
-		llm, err = ollama.New(
-			ollama.WithModel(model),
-			ollama.WithServerURL(url),
-			ollama.WithHTTPClient(httpClient),
-		)
+		fallthrough
 	default:
 		llm, err = openai.New(
 			openai.WithToken(token),
