@@ -64,6 +64,11 @@ type Runtime struct {
 	Datasources []DataSource `yaml:"datasources"`
 	Proxy       string       `yaml:"proxy"`
 	Embedding   RuntimeEmbedding
+	Reranker    ModelCfg
+	Retrieval   struct {
+		Alpha      float64 `yaml:"alpha"`
+		Candidates int     `yaml:"candidates"`
+	} `yaml:"retrieval"`
 }
 
 // ServerConfigPath points to the server configuration file.
@@ -82,6 +87,8 @@ func LoadServer() (*Runtime, error) {
 	}
 	rt.Redis = cfg.Global.Redis
 	rt.Embedding = cfg.ResolveEmbedding()
+	rt.Reranker = cfg.Models.Reranker
+	rt.Retrieval = cfg.Retrieval
 	return rt, nil
 }
 
@@ -101,6 +108,8 @@ func (rt *Runtime) ToConfig() *Config {
 	if rt.Embedding.Model != "" {
 		c.Models.Embedder.Models = []string{rt.Embedding.Model}
 	}
+	c.Models.Reranker = rt.Reranker
+	c.Retrieval = rt.Retrieval
 	c.Embedding.Dimension = rt.Embedding.Dimension
 	c.Embedding.MaxBatch = rt.Embedding.MaxBatch
 	c.Embedding.MaxChars = rt.Embedding.MaxChars

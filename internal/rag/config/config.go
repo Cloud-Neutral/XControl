@@ -118,10 +118,15 @@ type Config struct {
 	Models struct {
 		Embedder  ModelCfg `yaml:"embedder"`
 		Generator ModelCfg `yaml:"generator"`
+		Reranker  ModelCfg `yaml:"reranker"`
 	} `yaml:"models"`
 	Embedding EmbeddingCfg `yaml:"embedding"`
 	Chunking  ChunkingCfg  `yaml:"chunking"`
-	API       struct {
+	Retrieval struct {
+		Alpha      float64 `yaml:"alpha"`
+		Candidates int     `yaml:"candidates"`
+	} `yaml:"retrieval"`
+	API struct {
 		AskAI struct {
 			Timeout int `yaml:"timeout"`
 			Retries int `yaml:"retries"`
