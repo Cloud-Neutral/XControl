@@ -24,8 +24,10 @@
 - Fix yarn lock context concatenation (#21).
 
 ## Milestone 3: Production Monitoring & Optimization
+
 - Switch server and CLI to Cobra (#133).
 - Add repo sync proxy configuration (#135).
 - Allow custom AskAI timeout (#141).
 - Add log level support to CLI and server and log AskAI errors (#125, #140).
 - Continue performance optimization, error handling, multi-model support, permission control, hot reload, and improve RAG upsert docs (#129).
+

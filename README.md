@@ -37,6 +37,18 @@ XControl 通过 LangChainGo 统一接入多种大模型，并为 AskAI、CLI 与
 - **Memory 与历史追踪**：支持 Conversation Buffer 等对话记忆机制，增强交互体验。
 
 
+## LangChainGo 核心功能一览
+
+XControl 通过 LangChainGo 统一接入多种大模型，并为 AskAI、CLI 与 Server 提供链式调用能力：
+
+- **LLM 接口层（Model I/O）**：统一调用 Hugging Face、Ollama、OpenAI 兼容模型接口。
+- **Chains（链式流程）**：将 prompt、检索结果、工具调用等组合成完整流程，支持 RAG、聊天、代码生成等场景。
+- **工具与 Agent 体系**：定义 Web 搜索、实现 ReAct 风格的工具调用。
+- **向量检索与数据接入**：适配 PGVector 向量存储。
+- **文档加载与分块**：提供 Document Loaders 与 Text Splitters，用于处理长文本与构建向量检索块。
+- **Memory 与历史追踪**：支持 Conversation Buffer 等对话记忆机制，增强交互体验。
+
+
 ## Supported Platforms
 
 Tested on **Ubuntu 22.04 x64** and **macOS 26 arm64**.
