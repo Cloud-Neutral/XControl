@@ -64,6 +64,20 @@ func EnsureSchema(ctx context.Context, conn *pgx.Conn, dim int, migrate bool) er
 			return err
 		}
 	}
+	// ensure full-text search column
+	var hasTSV bool
+	err = conn.QueryRow(ctx, `SELECT EXISTS (
+               SELECT 1 FROM information_schema.columns
+               WHERE table_name='documents' AND column_name='content_tsv'
+       )`).Scan(&hasTSV)
+	if err != nil {
+		return err
+	}
+	if !hasTSV {
+		if _, err := conn.Exec(ctx, `ALTER TABLE documents ADD COLUMN content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED`); err != nil {
+			return err
+		}
+	}
 	// check dimension
 	var curDim int
 	err = conn.QueryRow(ctx, `SELECT atttypmod-4 FROM pg_attribute a JOIN pg_type t ON a.atttypid=t.oid WHERE a.attrelid='documents'::regclass AND a.attname='embedding'`).Scan(&curDim)
@@ -80,6 +94,9 @@ func EnsureSchema(ctx context.Context, conn *pgx.Conn, dim int, migrate bool) er
 	}
 	// index
 	if _, err := conn.Exec(ctx, `CREATE INDEX IF NOT EXISTS documents_embedding_idx ON documents USING hnsw (embedding vector_cosine_ops)`); err != nil {
+		return err
+	}
+	if _, err := conn.Exec(ctx, `CREATE INDEX IF NOT EXISTS documents_content_tsv_idx ON documents USING GIN (content_tsv)`); err != nil {
 		return err
 	}
 	return nil
