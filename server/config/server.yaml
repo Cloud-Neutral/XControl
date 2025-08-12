@@ -42,7 +42,7 @@ models:
     #provider: "chutes"
     #models:
     #  - 'moonshotai/Kimi-K2-Instruct'
-      #endpoint: "https://llm.chutes.ai/v1"
+    #endpoint: "https://llm.chutes.ai/v1"
     #token: "cpk_xxxx"
 
 embedding:
