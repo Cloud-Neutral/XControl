@@ -57,6 +57,7 @@ chunking:
   prefer_heading_split: true
   include_exts: [".md", ".mdx"]
   ignore_dirs: [".git", "node_modules", "dist", "build"]
+  embed_toc: true
 
 api:
   askai:
