@@ -104,11 +104,15 @@ type EmbeddingCfg struct {
 
 // ChunkingCfg controls how markdown is split into chunks.
 type ChunkingCfg struct {
-	MaxTokens          int      `yaml:"max_tokens"`
-	OverlapTokens      int      `yaml:"overlap_tokens"`
-	PreferHeadingSplit bool     `yaml:"prefer_heading_split"`
-	IncludeExts        []string `yaml:"include_exts"`
-	IgnoreDirs         []string `yaml:"ignore_dirs"`
+	MaxTokens           int      `yaml:"max_tokens"`
+	OverlapTokens       int      `yaml:"overlap_tokens"`
+	PreferHeadingSplit  bool     `yaml:"prefer_heading_split"`
+	IncludeExts         []string `yaml:"include_exts"`
+	IgnoreDirs          []string `yaml:"ignore_dirs"`
+	ByParagraph         bool     `yaml:"by_paragraph"`
+	EmbedHeadings       bool     `yaml:"embed_headings"`
+	EmbedTOC            bool     `yaml:"embed_toc"`
+	AdditionalMaxTokens []int    `yaml:"additional_max_tokens"`
 }
 
 // Config is the root configuration for ingestion.

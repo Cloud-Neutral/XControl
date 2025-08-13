@@ -30,4 +30,5 @@
 - Allow custom AskAI timeout (#141).
 - Add log level support to CLI and server and log AskAI errors (#125, #140).
 - Continue performance optimization, error handling, multi-model support, permission control, hot reload, and improve RAG upsert docs (#129).
+- Enhance chunking and embedding with TOC and heading vectors, paragraph-based multi-size chunks, summaries, and deduplication.
 
