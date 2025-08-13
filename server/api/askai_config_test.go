@@ -11,7 +11,7 @@ import (
 func TestLoadConfig_FromFile(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "server.yaml")
-	data := []byte("models:\n  generator:\n    provider: ollama\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434\n    token: t1\napi:\n  askai:\n    timeout: 10\n    retries: 2\n")
+	data := []byte("models:\n  generator:\n    provider: ollama\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\n    token: t1\napi:\n  askai:\n    timeout: 10\n    retries: 2\n")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestLoadConfig_FromFile(t *testing.T) {
 	if model != "llama2:13b" {
 		t.Fatalf("model = %q", model)
 	}
-	if endpoint != "http://localhost:11434" {
+	if endpoint != "http://localhost:11434/v1/chat/completions" {
 		t.Fatalf("endpoint = %q", endpoint)
 	}
 	if timeout != 10*time.Second {
@@ -45,7 +45,7 @@ func TestLoadConfig_FromFile(t *testing.T) {
 func TestLoadConfig_EnvOverrides(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "server.yaml")
-	data := []byte("models:\n  generator:\n    provider: ollama\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434\napi:\n  askai:\n    timeout: 50\n    retries: 5\n")
+	data := []byte("models:\n  generator:\n    provider: ollama\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\napi:\n  askai:\n    timeout: 50\n    retries: 5\n")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Cleanup(func() { ConfigPath = old })
 
 	os.Setenv("CHUTES_API_MODEL", "env-model")
-	os.Setenv("CHUTES_API_URL", "http://env.local")
+	os.Setenv("CHUTES_API_URL", "http://env.local/v1/chat/completions")
 	t.Cleanup(func() {
 		os.Unsetenv("CHUTES_API_MODEL")
 		os.Unsetenv("CHUTES_API_URL")
@@ -68,7 +68,7 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	if model != "env-model" {
 		t.Fatalf("model = %q", model)
 	}
-	if endpoint != "http://env.local" {
+	if endpoint != "http://env.local/v1/chat/completions" {
 		t.Fatalf("endpoint = %q", endpoint)
 	}
 	if timeout != 50*time.Second {
