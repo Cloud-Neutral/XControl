@@ -6,12 +6,16 @@
 
 1. 安装 pgvector zhparser
 
-   brew install make cmake gcc pgvector postgresql
+   brew install make cmake scws pgvector postgresql
    export PATH="/opt/homebrew/opt/postgresql@14/bin:$PATH"
    git clone https://github.com/amutu/zhparser.git
    cd zhparser
    # 确保使用的是你刚才设置的 pg_config 所在版本
-   make && sudo make install
+   make clean
+   make SCWS_HOME=/opt/homebrew \
+        PG_CONFIG=/opt/homebrew/opt/postgresql@14/bin/pg_config
+   sudo make install SCWS_HOME=/opt/homebrew \
+        PG_CONFIG=/opt/homebrew/opt/postgresql@14/bin/pg_config
 
 2. （重新）启动 PostgreSQL 以加载扩展：
    ```bash
