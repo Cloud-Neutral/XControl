@@ -7,10 +7,12 @@ export function ChatBubble({ message, type }: { message: string; type: 'user' | 
 
   return (
     <div className={`flex ${type === 'user' ? 'justify-end' : ''} mb-2`}>
-      <div
-        className={`${base} ${type === 'user' ? userStyle : aiStyle}`}
-        dangerouslySetInnerHTML={{ __html: message }}
-      />
+      <div className={`${base} ${type === 'user' ? userStyle : aiStyle}`}>
+        <div
+          className="space-y-2 text-sm leading-relaxed break-words"
+          dangerouslySetInnerHTML={{ __html: message }}
+        />
+      </div>
     </div>
   );
 }
