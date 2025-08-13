@@ -109,7 +109,7 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 	}
 	docsMap := map[string]*scored{}
 
-	vrows, err := conn.Query(ctx, `SELECT repo,path,chunk_id,content,metadata, embedding <-> $1 AS dist FROM documents ORDER BY embedding <-> $1 LIMIT $2`,
+	vrows, err := conn.Query(ctx, `SELECT repo,path,chunk_id,content,metadata, embedding <#> $1 AS dist FROM documents WHERE embedding IS NOT NULL ORDER BY embedding <#> $1 LIMIT $2`,
 		pgvector.NewVector(vecs[0]), cand)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 	}
 	vrows.Close()
 
-	trows, err := conn.Query(ctx, `SELECT repo,path,chunk_id,content,metadata, ts_rank_cd(content_tsv, websearch_to_tsquery($1)) AS rank FROM documents WHERE content_tsv @@ websearch_to_tsquery($1) ORDER BY rank DESC LIMIT $2`,
+	trows, err := conn.Query(ctx, `SELECT repo,path,chunk_id,content,metadata, ts_rank_cd(content_tsv, websearch_to_tsquery('zhcn_search', $1)) AS rank FROM documents WHERE content_tsv @@ websearch_to_tsquery('zhcn_search', $1) ORDER BY rank DESC LIMIT $2`,
 		question, cand)
 	if err != nil {
 		return nil, err

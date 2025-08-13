@@ -48,9 +48,40 @@
 psql -h 127.0.0.1 -U shenlan -d mydb -f docs/init.sql
 ```
 该脚本会：
-- 创建 `vector` 扩展（若尚未启用）。
-- 创建存储文档及其向量的 `documents` 表。
-- 为向量检索和 JSONB 元数据建立索引。
+- 创建 `vector` 和 `zhparser` 扩展（如未启用）。
+- 定义混合中文/英文的全文搜索配置 `zhcn_search`。
+- 创建 `documents` 表，并包含：
+  - 预计算 `doc_key` 生成列（repo:path:chunk_id）。
+  - `content_tsv` 生成列支持中文/英文全文检索。
+  - `embedding` VECTOR(1024) 字段适配 BGE-M3。
+- 建立 `HNSW` 向量索引、`GIN` 全文索引以及 `(repo, path)` 复合索引。
+
+### 示例：UPSERT 与 Hybrid 检索
+插入或更新文档：
+```sql
+INSERT INTO public.documents (
+  repo, path, chunk_id, content, embedding, metadata, content_sha
+) VALUES (
+  'docs', 'README.md', 1, '内容...', '[...]', '{}', 'abc123'
+)
+ON CONFLICT (doc_key) DO UPDATE
+SET
+  content = EXCLUDED.content,
+  embedding = EXCLUDED.embedding,
+  metadata = EXCLUDED.metadata,
+  content_sha = EXCLUDED.content_sha,
+  updated_at = now();
+```
+
+Hybrid 检索：
+```sql
+SELECT *
+FROM public.documents
+WHERE content_tsv @@ to_tsquery('zhcn_search', '大模型 & 应用')
+  AND embedding IS NOT NULL
+ORDER BY embedding <#> '[...]'
+LIMIT 5;
+```
 
 ## 5. 测试连接
 确认数据库与扩展均正常工作：
