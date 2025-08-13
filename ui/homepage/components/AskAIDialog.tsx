@@ -21,10 +21,20 @@ export function AskAIDialog({
   const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([])
   const [sources, setSources] = useState<any[]>([])
 
+  function renderMarkdown(text: string) {
+    return text
+      .replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`)
+      .replace(/`([^`]+)`/g, (_, code) => `<code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/\n/g, '<br />')
+  }
+
   async function handleAsk() {
     if (!question) return
 
-    const userMessage = { sender: 'user' as const, text: question }
+    const userMessage = { sender: 'user' as const, text: renderMarkdown(question) }
     const history = [...messages.slice(-MAX_MESSAGES + 1), userMessage]
     setMessages(prev => [...prev, userMessage])
     setQuestion('')
@@ -65,10 +75,10 @@ export function AskAIDialog({
         }
       }
 
-      const aiMessage = { sender: 'ai' as const, text: answer }
+      const aiMessage = { sender: 'ai' as const, text: renderMarkdown(answer) }
       setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
     } catch (err) {
-      const aiMessage = { sender: 'ai' as const, text: 'Something went wrong. Please try again later.' }
+      const aiMessage = { sender: 'ai' as const, text: renderMarkdown('Something went wrong. Please try again later.') }
       setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
     }
   }
@@ -98,7 +108,7 @@ export function AskAIDialog({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 text-gray-800">
+        <div className="flex-1 overflow-y-auto p-4 text-gray-800 space-y-4">
           {messages.map((m, idx) => (
             <ChatBubble key={idx} message={m.text} type={m.sender} />
           ))}
@@ -112,6 +122,12 @@ export function AskAIDialog({
             placeholder="Type your question..."
             value={question}
             onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleAsk()
+              }
+            }}
           />
           <button
             onClick={handleAsk}
