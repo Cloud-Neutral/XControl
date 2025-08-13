@@ -1,8 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -122,14 +125,10 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 	}
 	provider = strings.ToLower(provider)
 	endpoint = strings.TrimRight(endpoint, "/")
-	endpoint = strings.TrimSuffix(endpoint, "/chat/completions")
-	endpoint = strings.TrimRight(endpoint, "/")
 	switch provider {
 	case "ollama":
-		endpoint = strings.TrimSuffix(endpoint, "/v1")
-		endpoint = strings.TrimRight(endpoint, "/")
 		if endpoint == "" {
-			endpoint = "http://localhost:11434"
+			endpoint = "http://localhost:11434/v1/chat/completions"
 		}
 		if model == "" {
 			model = "llama2:13b"
@@ -154,25 +153,65 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 	}
 }
 
-// callLLM dispatches the question to the configured provider using LangChainGo.
+// callLLM dispatches the question to the configured provider.
 func callLLM(question string) (string, error) {
 	provider, token, model, url, timeout, retries := loadConfig()
 
 	httpClient := &http.Client{Timeout: timeout}
 
-	var (
-		llm llms.Model
-		err error
-	)
-
 	switch provider {
 	case "ollama":
-		llm, err = ollama.New(
-			ollama.WithServerURL(url),
-			ollama.WithModel(model),
-			ollama.WithHTTPClient(httpClient),
-		)
+		payload := map[string]any{
+			"model":    model,
+			"messages": []map[string]string{{"role": "user", "content": question}},
+		}
+		body, _ := json.Marshal(payload)
+		var lastErr error
+		for i := 0; i <= retries; i++ {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+			if err != nil {
+				cancel()
+				return "", fmt.Errorf("build request: %w", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			if token != "" {
+				req.Header.Set("Authorization", "Bearer "+token)
+			}
+			resp, err := httpClient.Do(req)
+			if err == nil && resp != nil {
+				data, readErr := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				if readErr == nil && resp.StatusCode < 300 {
+					var out struct {
+						Choices []struct {
+							Message struct {
+								Content string `json:"content"`
+							} `json:"message"`
+						} `json:"choices"`
+					}
+					if err = json.Unmarshal(data, &out); err == nil && len(out.Choices) > 0 {
+						cancel()
+						return out.Choices[0].Message.Content, nil
+					}
+				} else if readErr != nil {
+					err = readErr
+				} else {
+					err = fmt.Errorf(resp.Status)
+				}
+			}
+			cancel()
+			lastErr = err
+		}
+		if lastErr == nil {
+			lastErr = fmt.Errorf("request failed")
+		}
+		return "", fmt.Errorf("%w (timeout=%s retries=%d)", lastErr, timeout, retries)
 	default:
+		var (
+			llm llms.Model
+			err error
+		)
 		if token == "" {
 			// Allow running against a local Ollama server without authentication.
 			llm, err = ollama.New(
@@ -188,25 +227,25 @@ func callLLM(question string) (string, error) {
 				openai.WithHTTPClient(httpClient),
 			)
 		}
-	}
-	if err != nil {
-		return "", fmt.Errorf("init llm: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	var answer string
-	var lastErr error
-	for i := 0; i <= retries; i++ {
-		answer, lastErr = llms.GenerateFromSinglePrompt(ctx, llm, question)
-		if lastErr == nil {
-			return answer, nil
+		if err != nil {
+			return "", fmt.Errorf("init llm: %w", err)
 		}
-	}
 
-	if lastErr == nil {
-		lastErr = fmt.Errorf("request failed")
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		var answer string
+		var lastErr error
+		for i := 0; i <= retries; i++ {
+			answer, lastErr = llms.GenerateFromSinglePrompt(ctx, llm, question)
+			if lastErr == nil {
+				return answer, nil
+			}
+		}
+
+		if lastErr == nil {
+			lastErr = fmt.Errorf("request failed")
+		}
+		return "", fmt.Errorf("%w (timeout=%s retries=%d)", lastErr, timeout, retries)
 	}
-	return "", fmt.Errorf("%w (timeout=%s retries=%d)", lastErr, timeout, retries)
 }
