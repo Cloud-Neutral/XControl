@@ -61,6 +61,14 @@
 3. 将检索结果拼装为 Prompt，调用 GPT/Claude 等大模型生成回答。
 4. 返回答案并附带来源文档信息以便追溯。
 
+### 5.1 前端 AskAIDialog 调用流程
+
+1. 用户在 `AskAIDialog` 中输入问题，点击按钮触发 `handleAsk` 函数。
+2. 组件把用户输入与最近的对话历史组合为 `history`，`POST` 到 `/api/rag/query`。
+3. 若接口返回 `answer` 与 `chunks`，则更新聊天记录并通过 `SourceHint` 展示检索到的来源。
+4. 当 `answer` 为空或没有检索结果时，组件会回退调用 `/api/askai` 获取普通 AI 回答。
+5. 最终消息通过 `ChatBubble` 组件显示给用户，形成完整的 RAG 聊天流程。
+
 ## 6. Go 代码模块划分
 
 ```
