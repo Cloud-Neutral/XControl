@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ChatBubble } from './ChatBubble'
 import { SourceHint } from './SourceHint'
 
@@ -20,6 +20,19 @@ export function AskAIDialog({
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([])
   const [sources, setSources] = useState<any[]>([])
+  const abortRef = useRef<AbortController | null>(null)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const cacheRef = useRef(
+    new Map<string, { answer: string; sources: any[]; timestamp: number }>()
+  )
+  const requestIdRef = useRef(0)
+
+  function normalizeInput(text: string) {
+    return text
+      .trim()
+      .replace(/[\s.,!?;:，。！？；：]+$/u, '')
+      .replace(/```[\s\S]*?```/g, '')
+  }
 
   function renderMarkdown(text: string) {
     // code blocks
@@ -94,56 +107,145 @@ export function AskAIDialog({
     return html.replace(/\n+/g, '<br />')
   }
 
-  async function handleAsk() {
-    if (!question) return
+  async function streamChat(
+    url: string,
+    body: any,
+    update: (text: string, src?: any[]) => void
+  ) {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
 
-    const userMessage = { sender: 'user' as const, text: renderMarkdown(question) }
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    })
+
+    if (!res.ok) throw new Error('Request failed')
+
+    const reader = res.body?.getReader()
+    if (!reader) throw new Error('No reader')
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let answer = ''
+    let retrieved: any[] = []
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() || ''
+
+      for (const part of parts) {
+        const line = part.split('\n').find(l => l.startsWith('data:'))
+        if (!line) {
+          answer += part
+          update(answer, retrieved)
+          continue
+        }
+        const dataStr = line.replace(/^data: ?/, '').trim()
+        if (dataStr === '[DONE]') continue
+        try {
+          const json = JSON.parse(dataStr)
+          if (json.answer) answer += json.answer
+          else if (typeof json === 'string') answer += json
+          if (json.chunks) retrieved = json.chunks
+          if (json.sources) retrieved = json.sources
+        } catch {
+          answer += dataStr
+        }
+        update(answer, retrieved)
+      }
+    }
+
+    update(answer, retrieved)
+    if (abortRef.current === controller) abortRef.current = null
+    return { answer, retrieved }
+  }
+
+  async function performAsk() {
+    const normalized = normalizeInput(question)
+    if (!normalized) return
+    const now = Date.now()
+    const cached = cacheRef.current.get(normalized)
+    if (cached && now - cached.timestamp < 10000) {
+      const userMessage = {
+        sender: 'user' as const,
+        text: renderMarkdown(normalized)
+      }
+      const aiMessage = {
+        sender: 'ai' as const,
+        text: renderMarkdown(cached.answer)
+      }
+      setMessages(prev => [...prev, userMessage, aiMessage].slice(-MAX_MESSAGES))
+      setSources(cached.sources)
+      setQuestion('')
+      return
+    }
+
+    const id = ++requestIdRef.current
+    const userMessage = {
+      sender: 'user' as const,
+      text: renderMarkdown(normalized)
+    }
     const history = [...messages.slice(-MAX_MESSAGES + 1), userMessage]
-    setMessages(prev => [...prev, userMessage])
+    setMessages(prev => [...prev, userMessage, { sender: 'ai', text: '' }])
     setQuestion('')
 
-    try {
-      const res = await fetch(`${apiBase}/api/rag/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, history })
+    const updateAI = (text: string, src?: any[]) => {
+      if (id !== requestIdRef.current) return
+      setMessages(prev => {
+        const next = [...prev]
+        next[next.length - 1] = { sender: 'ai', text: renderMarkdown(text) }
+        return next
       })
+      if (src) setSources(src)
+    }
 
-      if (!res.ok) throw new Error('Request failed')
-
-      const data = await res.json()
-      const retrieved = data.chunks || []
-      setSources(retrieved)
-
-      let answer = data.answer as string
+    try {
+      let { answer, retrieved } = await streamChat(
+        `${apiBase}/api/rag/query`,
+        { question: normalized, history },
+        updateAI
+      )
 
       if (!answer || retrieved.length === 0) {
         try {
-          const aiRes = await fetch(`${apiBase}/api/askai`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, history })
-          })
-
-          if (aiRes.ok) {
-            const aiData = await aiRes.json()
-            answer = aiData.answer as string
-          }
-        } catch (err) {
-          // ignore and use generic message below
+          const result = await streamChat(
+            `${apiBase}/api/askai`,
+            { question: normalized, history },
+            updateAI
+          )
+          answer = result.answer || answer
+        } catch {
+          // ignore, fallback handled below
         }
 
         if (!answer) {
           answer = 'Sorry, I could not find an answer at this time.'
+          updateAI(answer)
         }
       }
 
-      const aiMessage = { sender: 'ai' as const, text: renderMarkdown(answer) }
-      setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
+      cacheRef.current.set(normalized, {
+        answer,
+        sources: retrieved,
+        timestamp: now
+      })
     } catch (err) {
-      const aiMessage = { sender: 'ai' as const, text: renderMarkdown('Something went wrong. Please try again later.') }
-      setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
+      if (id !== requestIdRef.current) return
+      updateAI('Something went wrong. Please try again later.')
     }
+  }
+
+  function handleAsk() {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(performAsk, 300)
   }
 
   function handleEnd() {
