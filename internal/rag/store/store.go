@@ -20,79 +20,27 @@ type DocRow struct {
 	ContentSHA string         `json:"content_sha"`
 }
 
-// EnsureSchema creates the documents table and indexes if they do not exist. It
-// also validates the embedding dimension. When migrate is true and a dimension
-// mismatch is detected, it attempts to alter the column type.
-func EnsureSchema(ctx context.Context, conn *pgx.Conn, dim int, migrate bool) error {
-	// ensure table
+// EnsureSchema creates the documents table and minimal indexes required for
+// hybrid search. It avoids extensive migrations and only ensures the basic
+// structure needed by the service.
+func EnsureSchema(ctx context.Context, conn *pgx.Conn, dim int, _ bool) error {
 	create := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS documents (
         id BIGSERIAL PRIMARY KEY,
-        repo TEXT,
-        path TEXT,
-        chunk_id INT,
-        content TEXT,
+        repo TEXT NOT NULL,
+        path TEXT NOT NULL,
+        chunk_id INT NOT NULL,
+        content TEXT NOT NULL,
         embedding VECTOR(%d),
         metadata JSONB,
         content_sha TEXT NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT now(),
+        content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         UNIQUE(repo,path,chunk_id)
     )`, dim)
 	if _, err := conn.Exec(ctx, create); err != nil {
 		return err
 	}
-
-	// older deployments may lack the unique constraint required for
-	// upserts. Ensure a unique index exists on (repo,path,chunk_id) so
-	// the ON CONFLICT clause can work reliably.
-	if _, err := conn.Exec(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS documents_repo_path_chunk_id_key ON documents (repo, path, chunk_id)`); err != nil {
-		return err
-	}
-
-	// ensure new columns
-	// content_sha was added after initial releases, so older deployments may
-	// lack the column. Add it when missing to avoid insert errors.
-	var hasContentSHA bool
-	err := conn.QueryRow(ctx, `SELECT EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_name='documents' AND column_name='content_sha'
-        )`).Scan(&hasContentSHA)
-	if err != nil {
-		return err
-	}
-	if !hasContentSHA {
-		if _, err := conn.Exec(ctx, `ALTER TABLE documents ADD COLUMN content_sha TEXT NOT NULL DEFAULT ''`); err != nil {
-			return err
-		}
-	}
-	// ensure full-text search column
-	var hasTSV bool
-	err = conn.QueryRow(ctx, `SELECT EXISTS (
-               SELECT 1 FROM information_schema.columns
-               WHERE table_name='documents' AND column_name='content_tsv'
-       )`).Scan(&hasTSV)
-	if err != nil {
-		return err
-	}
-	if !hasTSV {
-		if _, err := conn.Exec(ctx, `ALTER TABLE documents ADD COLUMN content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED`); err != nil {
-			return err
-		}
-	}
-	// check dimension
-	var curDim int
-	err = conn.QueryRow(ctx, `SELECT atttypmod-4 FROM pg_attribute a JOIN pg_type t ON a.atttypid=t.oid WHERE a.attrelid='documents'::regclass AND a.attname='embedding'`).Scan(&curDim)
-	if err == nil && curDim != dim {
-		if !migrate {
-			return fmt.Errorf("embedding dimension %d != %d", curDim, dim)
-		}
-		if _, err := conn.Exec(ctx, `DROP INDEX IF EXISTS documents_embedding_idx`); err != nil {
-			return err
-		}
-		if _, err := conn.Exec(ctx, fmt.Sprintf(`ALTER TABLE documents ALTER COLUMN embedding TYPE VECTOR(%d)`, dim)); err != nil {
-			return err
-		}
-	}
-	// index
 	if _, err := conn.Exec(ctx, `CREATE INDEX IF NOT EXISTS documents_embedding_idx ON documents USING hnsw (embedding vector_cosine_ops)`); err != nil {
 		return err
 	}
@@ -116,7 +64,8 @@ func UpsertDocuments(ctx context.Context, conn *pgx.Conn, rows []DocRow) (int, e
             SET content=EXCLUDED.content,
                 embedding=EXCLUDED.embedding,
                 metadata=EXCLUDED.metadata,
-                content_sha=EXCLUDED.content_sha
+                content_sha=EXCLUDED.content_sha,
+                updated_at=now()
             WHERE documents.content_sha<>EXCLUDED.content_sha`,
 			r.Repo, r.Path, r.ChunkID, r.Content, pgvector.NewVector(r.Embedding), meta, r.ContentSHA)
 	}
