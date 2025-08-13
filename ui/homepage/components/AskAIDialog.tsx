@@ -21,10 +21,83 @@ export function AskAIDialog({
   const [messages, setMessages] = useState<{ sender: 'user' | 'ai'; text: string }[]>([])
   const [sources, setSources] = useState<any[]>([])
 
+  function renderMarkdown(text: string) {
+    // code blocks
+    let html = text.replace(
+      /```([\s\S]*?)```/g,
+      (_, code) =>
+        `<pre class="bg-gray-100 p-2 rounded overflow-x-auto"><code>${code
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')}</code></pre>`
+    )
+
+    // inline code
+    html = html.replace(
+      /`([^`]+)`/g,
+      (_, code) =>
+        `<code class="bg-gray-100 rounded px-1">${code
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')}</code>`
+    )
+
+    // headings
+    html = html
+      .replace(/^###### (.*)$/gm, '<h6 class="font-semibold">$1</h6>')
+      .replace(/^##### (.*)$/gm, '<h5 class="font-semibold">$1</h5>')
+      .replace(/^#### (.*)$/gm, '<h4 class="font-semibold">$1</h4>')
+      .replace(/^### (.*)$/gm, '<h3 class="font-semibold">$1</h3>')
+      .replace(/^## (.*)$/gm, '<h2 class="font-semibold">$1</h2>')
+      .replace(/^# (.*)$/gm, '<h1 class="font-semibold">$1</h1>')
+
+    // bold & italics
+    html = html
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+
+    // links
+    html = html.replace(
+      /\[(.+?)\]\((.+?)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">$1</a>'
+    )
+
+    // blockquotes
+    html = html.replace(
+      /^> (.*)$/gm,
+      '<blockquote class="border-l-4 pl-4 italic text-gray-600">$1</blockquote>'
+    )
+
+    // unordered lists
+    html = html.replace(/^(?:[-+*] .*(?:\n|$))+?/gm, match => {
+      const items = match
+        .trim()
+        .split('\n')
+        .map(line => line.replace(/^[-+*] /, '').trim())
+      return `<ul class="list-disc pl-5 space-y-1">${items
+        .map(item => `<li>${item}</li>`)
+        .join('')}</ul>`
+    })
+
+    // ordered lists
+    html = html.replace(/^(?:\d+\. .*(?:\n|$))+?/gm, match => {
+      const items = match
+        .trim()
+        .split('\n')
+        .map(line => line.replace(/^\d+\. /, '').trim())
+      return `<ol class="list-decimal pl-5 space-y-1">${items
+        .map(item => `<li>${item}</li>`)
+        .join('')}</ol>`
+    })
+
+    // line breaks
+    return html.replace(/\n+/g, '<br />')
+  }
+
   async function handleAsk() {
     if (!question) return
 
-    const userMessage = { sender: 'user' as const, text: question }
+    const userMessage = { sender: 'user' as const, text: renderMarkdown(question) }
     const history = [...messages.slice(-MAX_MESSAGES + 1), userMessage]
     setMessages(prev => [...prev, userMessage])
     setQuestion('')
@@ -65,10 +138,10 @@ export function AskAIDialog({
         }
       }
 
-      const aiMessage = { sender: 'ai' as const, text: answer }
+      const aiMessage = { sender: 'ai' as const, text: renderMarkdown(answer) }
       setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
     } catch (err) {
-      const aiMessage = { sender: 'ai' as const, text: 'Something went wrong. Please try again later.' }
+      const aiMessage = { sender: 'ai' as const, text: renderMarkdown('Something went wrong. Please try again later.') }
       setMessages(prev => [...prev, aiMessage].slice(-MAX_MESSAGES))
     }
   }
@@ -98,7 +171,7 @@ export function AskAIDialog({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 text-gray-800">
+        <div className="flex-1 overflow-y-auto p-4 text-gray-800 space-y-4">
           {messages.map((m, idx) => (
             <ChatBubble key={idx} message={m.text} type={m.sender} />
           ))}
@@ -112,6 +185,12 @@ export function AskAIDialog({
             placeholder="Type your question..."
             value={question}
             onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleAsk()
+              }
+            }}
           />
           <button
             onClick={handleAsk}
