@@ -2,11 +2,17 @@
 
 本文档介绍在 macOS 上初始化 PostgreSQL 并启用 [pgvector](https://github.com/pgvector/pgvector) 扩展，以便项目的向量检索功能正常运行。
 
-## 3. 安装并启用 pgvector 扩展
-1. 安装 pgvector：
-   ```bash
-   brew install pgvector
-   ```
+## 3. 安装并启用 pg 扩展
+
+1. 安装 pgvector zhparser
+
+   brew install make cmake gcc pgvector postgresql
+   export PATH="/opt/homebrew/opt/postgresql@14/bin:$PATH"
+   git clone https://github.com/amutu/zhparser.git
+   cd zhparser
+   # 确保使用的是你刚才设置的 pg_config 所在版本
+   make && sudo make install
+
 2. （重新）启动 PostgreSQL 以加载扩展：
    ```bash
    brew services restart postgresql
@@ -49,11 +55,11 @@ CREATE DATABASE shenlan OWNER shenlan;
 -- 给用户赋权限（可选）
 GRANT ALL PRIVILEGES ON DATABASE shenlan TO shenlan;
 
-5. 在目标数据库中启用 pgvector 扩展：
-   ```bash
-   psql -h 127.0.0.1 -U shenlan -d shenlan -c "CREATE EXTENSION IF NOT EXISTS vector;"
-   ```
+5. 在目标数据库中启用扩展：
 
+  启用 pgvector 扩展：psql -h 127.0.0.1 -U shenlan -d shenlan -c "CREATE EXTENSION IF NOT EXISTS vector;"
+  启用 zhparser 扩展：psql -h 127.0.0.1 -U shenlan -d shenlan -c "CREATE EXTENSION zhparser;"
+   ```
 6. 导入项目提供的初始化脚本
 
 项目在 `docs/init.sql` 中提供了建表及索引脚本，可通过 `psql` 导入：
