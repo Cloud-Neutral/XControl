@@ -68,19 +68,7 @@ var rootCmd = &cobra.Command{
 		embCfg := cfg.ResolveEmbedding()
 		chunkCfg := cfg.ResolveChunking()
 
-		var embedder embed.Embedder
-		switch embCfg.Provider {
-		case "ollama":
-			embedder = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
-		case "chutes":
-			embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, "", embCfg.Dimension)
-		default:
-			if embCfg.Model != "" {
-				embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
-			} else {
-				embedder = embed.NewBGE(embCfg.Endpoint, embCfg.APIKey, embCfg.Dimension)
-			}
-		}
+		embedder := embed.NewClient(embCfg.Provider, embCfg.BaseURL, embCfg.APIKey, embCfg.Model)
 
 		baseURL := os.Getenv("SERVER_URL")
 		if baseURL == "" {
@@ -141,7 +129,7 @@ func main() {
 	}
 }
 
-func ingestFile(ctx context.Context, cfg *rconfig.Config, chunkCfg rconfig.ChunkingCfg, embedder embed.Embedder, baseURL, filePath string) error {
+func ingestFile(ctx context.Context, cfg *rconfig.Config, chunkCfg rconfig.ChunkingCfg, embedder embed.Client, baseURL, filePath string) error {
 	var ds *rconfig.DataSource
 	var workdir string
 	for i := range cfg.Global.Datasources {
@@ -178,7 +166,7 @@ func ingestFile(ctx context.Context, cfg *rconfig.Config, chunkCfg rconfig.Chunk
 			ContentSHA: ch.SHA256,
 		}
 	}
-	vecs, _, err := embedder.Embed(ctx, texts)
+	vecs, err := embedder.Embed(ctx, texts)
 	if err != nil {
 		return fmt.Errorf("embed %s: %w", filePath, err)
 	}

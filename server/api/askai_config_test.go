@@ -11,7 +11,7 @@ import (
 func TestLoadConfig_FromFile(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "server.yaml")
-	data := []byte("models:\n  generator:\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\n    token: t1\napi:\n  askai:\n    timeout: 10\n    retries: 2\n")
+	data := []byte("models:\n  generator:\n    models: [\"llama2:13b\"]\n    baseurl: http://localhost:11434\n    token: t1\napi:\n  askai:\n    timeout: 10\n    retries: 2\n")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestLoadConfig_FromFile(t *testing.T) {
 func TestLoadConfig_EnvOverrides(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "server.yaml")
-	data := []byte("models:\n  generator:\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\napi:\n  askai:\n    timeout: 50\n    retries: 5\n")
+	data := []byte("models:\n  generator:\n    models: [\"llama2:13b\"]\n    baseurl: http://localhost:11434\napi:\n  askai:\n    timeout: 50\n    retries: 5\n")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}

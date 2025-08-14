@@ -8,24 +8,28 @@ global:
     - name: Xstream
       repo: https://github.com/svc-design/Xstream
       path: docs
-    - name: documents
-      repo: https://github.com/svc-design/documents
-      path: /
     - name: XControl
       repo: https://github.com/svc-design/XControl
       path: docs
+    - name: documents
+      repo: https://github.com/svc-design/documents
+      path: /
 sync:
   repo:
-    proxy: socks5://127.0.0.1:1080  # 仅在同步仓库时使用代理
+    proxy: socks5://127.0.0.1:1080
 
 models:
   embedder:
+    provider: "chutes"
     models: "bge-m3"
-    baseurl: "http://127.0.0.1:9000"
+    baseurl: "https://chutes-baai-bge-m3.chutes.ai"
+    token: "cpk_xxxx"
   generator:
+    provider: "chutes"
     models:
-      - 'deepseek-r1:8b'
-    baseurl: "http://127.0.0.1:11434"
+      - 'deepseek-ai/DeepSeek-R1'
+    baseurl: "https://llm.chutes.ai/v1"
+    token: "cpk_xxxx"
 
 embedding:
   max_batch: 64

@@ -22,12 +22,12 @@ models:
   embedder:
     provider: "huggingface_hub"
     models: "bge-m3"
-    endpoint: "http://127.0.0.1:9000/v1/embeddings"
+    baseurl: "http://127.0.0.1:9000"
   generator:
     provider: "ollama"
     models:
       - 'gemma3:4b'
-    endpoint: "http://127.0.0.1:11434/v1/chat/completions"
+    baseurl: "http://127.0.0.1:11434"
 
 embedding:
   max_batch: 64

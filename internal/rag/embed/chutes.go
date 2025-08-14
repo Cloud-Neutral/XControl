@@ -10,27 +10,27 @@ import (
 	"time"
 )
 
-// OpenAIClient implements embeddings against OpenAI-compatible services.
-type OpenAIClient struct {
+// ChutesClient implements embeddings for the Chutes API.
+type ChutesClient struct {
 	endpoint string
-	apiKey   string
+	token    string
 	model    string
 	client   *http.Client
 }
 
-// NewOpenAIClient returns a new OpenAI client.
-func NewOpenAIClient(endpoint, apiKey, model string) *OpenAIClient {
-	return &OpenAIClient{
+// NewChutesClient returns a new Chutes client.
+func NewChutesClient(endpoint, token, model string) *ChutesClient {
+	return &ChutesClient{
 		endpoint: endpoint,
-		apiKey:   apiKey,
+		token:    token,
 		model:    model,
 		client:   &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-// Embed posts the inputs to the OpenAI embeddings endpoint.
-func (c *OpenAIClient) Embed(ctx context.Context, inputs []string) ([][]float32, error) {
-	payload := map[string]any{"input": inputs}
+// Embed posts the inputs to the Chutes /embed endpoint.
+func (c *ChutesClient) Embed(ctx context.Context, inputs []string) ([][]float32, error) {
+	payload := map[string]any{"inputs": inputs}
 	if c.model != "" {
 		payload["model"] = c.model
 	}
@@ -43,8 +43,8 @@ func (c *OpenAIClient) Embed(ctx context.Context, inputs []string) ([][]float32,
 			return nil, err
 		}
 		req.Header.Set("Content-Type", "application/json")
-		if c.apiKey != "" {
-			req.Header.Set("Authorization", "Bearer "+c.apiKey)
+		if c.token != "" {
+			req.Header.Set("Authorization", "Bearer "+c.token)
 		}
 		resp, err := c.client.Do(req)
 		if err != nil {
@@ -63,6 +63,13 @@ func (c *OpenAIClient) Embed(ctx context.Context, inputs []string) ([][]float32,
 				if err != nil {
 					return nil, err
 				}
+				// Try Chutes format
+				var chutes struct {
+					Data [][]float32 `json:"data"`
+				}
+				if json.Unmarshal(data, &chutes) == nil && len(chutes.Data) > 0 {
+					return chutes.Data, nil
+				}
 				// Try OpenAI format
 				var openai struct {
 					Data []struct {
@@ -75,13 +82,6 @@ func (c *OpenAIClient) Embed(ctx context.Context, inputs []string) ([][]float32,
 						vecs[i] = d.Embedding
 					}
 					return vecs, nil
-				}
-				// Try Chutes format
-				var chutes struct {
-					Data [][]float32 `json:"data"`
-				}
-				if json.Unmarshal(data, &chutes) == nil && len(chutes.Data) > 0 {
-					return chutes.Data, nil
 				}
 				return nil, fmt.Errorf("unexpected embed response")
 			}

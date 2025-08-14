@@ -17,7 +17,7 @@ type Config struct {
 		Generator struct {
 			Provider string   `yaml:"provider"`
 			Models   []string `yaml:"models"`
-			Endpoint string   `yaml:"endpoint"`
+			BaseURL  string   `yaml:"baseurl"`
 			Token    string   `yaml:"token"`
 		} `yaml:"generator"`
 	} `yaml:"models"`
@@ -43,8 +43,8 @@ func loadConfig() {
 		if g.Token != "" {
 			os.Setenv("CHUTES_API_TOKEN", g.Token)
 		}
-		if g.Endpoint != "" {
-			os.Setenv("CHUTES_API_URL", g.Endpoint)
+		if g.BaseURL != "" {
+			os.Setenv("CHUTES_API_URL", g.BaseURL)
 		}
 		if len(g.Models) > 0 {
 			os.Setenv("CHUTES_API_MODEL", g.Models[0])
