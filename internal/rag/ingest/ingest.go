@@ -72,7 +72,7 @@ func IngestRepo(ctx context.Context, cfg *cfgpkg.Config, ds cfgpkg.DataSource, o
 	case "ollama":
 		embedder = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
 	case "chutes":
-		embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+		embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, "", embCfg.Dimension)
 	default:
 		if embCfg.Model != "" {
 			embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
