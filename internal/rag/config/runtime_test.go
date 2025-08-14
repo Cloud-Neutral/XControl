@@ -21,12 +21,12 @@ func TestVectorDB_DSN(t *testing.T) {
 func TestResolveEmbedding(t *testing.T) {
 	cfg := &Config{}
 	cfg.Models.Embedder.Provider = "p1"
-	cfg.Models.Embedder.BaseURL = "https://api.example.com"
+	cfg.Models.Embedder.Endpoint = "https://api.example.com"
 	cfg.Models.Embedder.Token = "tok"
 	cfg.Models.Embedder.Models = []string{"m"}
 	e := cfg.ResolveEmbedding()
-	if e.BaseURL != "https://api.example.com" {
-		t.Fatalf("unexpected base url %q", e.BaseURL)
+	if e.Endpoint != "https://api.example.com" {
+		t.Fatalf("unexpected endpoint %q", e.Endpoint)
 	}
 	if e.APIKey != "tok" {
 		t.Fatalf("unexpected api key %q", e.APIKey)
@@ -49,12 +49,12 @@ func TestResolveChunking(t *testing.T) {
 
 func TestRuntimeToConfigEmbedding(t *testing.T) {
 	rt := &Runtime{}
-	rt.Embedding.BaseURL = "http://localhost:8080"
+	rt.Embedding.Endpoint = "http://localhost:8080"
 	rt.Embedding.APIKey = "tok"
 	rt.Embedding.Dimension = 123
 	cfg := rt.ToConfig()
-	if cfg.Models.Embedder.BaseURL != "http://localhost:8080" {
-		t.Fatalf("unexpected base url %q", cfg.Models.Embedder.BaseURL)
+	if cfg.Models.Embedder.Endpoint != "http://localhost:8080" {
+		t.Fatalf("unexpected base url %q", cfg.Models.Embedder.Endpoint)
 	}
 	if cfg.Models.Embedder.Token != "tok" {
 		t.Fatalf("unexpected token %q", cfg.Models.Embedder.Token)

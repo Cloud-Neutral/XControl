@@ -59,11 +59,23 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 		return nil, nil
 	}
 	embCfg := s.cfg.ResolveEmbedding()
-	if embCfg.BaseURL == "" {
+	if embCfg.Endpoint == "" {
 		return nil, nil
 	}
-	emb := embed.NewClient(embCfg.Provider, embCfg.BaseURL, embCfg.APIKey, embCfg.Model)
-	vecs, err := emb.Embed(ctx, []string{question})
+	var emb embed.Embedder
+	switch embCfg.Provider {
+	case "ollama":
+		emb = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
+	case "chutes":
+		emb = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, "", embCfg.Dimension)
+	default:
+		if embCfg.Model != "" {
+			emb = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+		} else {
+			emb = embed.NewBGE(embCfg.Endpoint, embCfg.APIKey, embCfg.Dimension)
+		}
+	}
+	vecs, _, err := emb.Embed(ctx, []string{question})
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +171,8 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 	// optional reranking
 	var rr rerank.Reranker
 	rCfg := s.cfg.Models.Reranker
-	if rCfg.BaseURL != "" {
-		rr = rerank.NewBGE(rCfg.BaseURL, rCfg.Token)
+	if rCfg.Endpoint != "" {
+		rr = rerank.NewBGE(rCfg.Endpoint, rCfg.Token)
 	}
 	if rr != nil {
 		docs := make([]string, len(candidates))

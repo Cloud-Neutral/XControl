@@ -68,9 +68,9 @@ var ConfigPath = filepath.Join("server", "config", "server.yaml")
 type serverConfig struct {
 	Models struct {
 		Generator struct {
-			Models  []string `yaml:"models"`
-			BaseURL string   `yaml:"baseurl"`
-			Token   string   `yaml:"token"`
+			Models   []string `yaml:"models"`
+			Endpoint string   `yaml:"endpoint"`
+			Token    string   `yaml:"token"`
 		} `yaml:"generator"`
 	} `yaml:"models"`
 	API struct {
@@ -81,11 +81,11 @@ type serverConfig struct {
 	} `yaml:"api"`
 }
 
-// loadConfig reads model, base URL, timeout and retries from ConfigPath
+// loadConfig reads model, endpoint, timeout and retries from ConfigPath
 // and environment variables.
 func loadConfig() (string, string, string, time.Duration, int) {
 	model := os.Getenv("CHUTES_API_MODEL")
-	baseURL := os.Getenv("CHUTES_API_URL")
+	endpoint := os.Getenv("CHUTES_API_URL")
 	token := ""
 	timeout := 30 * time.Second
 	retries := 3
@@ -97,8 +97,8 @@ func loadConfig() (string, string, string, time.Duration, int) {
 			if model == "" && len(g.Models) > 0 {
 				model = g.Models[0]
 			}
-			if baseURL == "" {
-				baseURL = g.BaseURL
+			if endpoint == "" {
+				endpoint = g.Endpoint
 			}
 			if token == "" {
 				token = g.Token
@@ -115,15 +115,7 @@ func loadConfig() (string, string, string, time.Duration, int) {
 	if retries > 3 {
 		retries = 3
 	}
-	baseURL = strings.TrimRight(baseURL, "/")
-	endpoint := baseURL
-	if !strings.HasSuffix(endpoint, "/chat/completions") {
-		if strings.HasSuffix(endpoint, "/v1") {
-			endpoint += "/chat/completions"
-		} else {
-			endpoint += "/v1/chat/completions"
-		}
-	}
+	endpoint = strings.TrimRight(endpoint, "/")
 	if model == "" {
 		if token == "" || strings.Contains(endpoint, "127.0.0.1") || strings.Contains(endpoint, "localhost") {
 			model = "llama2:13b"

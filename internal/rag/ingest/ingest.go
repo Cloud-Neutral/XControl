@@ -67,8 +67,20 @@ func IngestRepo(ctx context.Context, cfg *cfgpkg.Config, ds cfgpkg.DataSource, o
 	}
 	defer conn.Close(ctx)
 
-	embedder := embed.NewClient(embCfg.Provider, embCfg.BaseURL, embCfg.APIKey, embCfg.Model)
-	if err := store.EnsureSchema(ctx, conn, embCfg.Dimension, opt.MigrateDim); err != nil {
+	var embedder embed.Embedder
+	switch embCfg.Provider {
+	case "ollama":
+		embedder = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
+	case "chutes":
+		embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, "", embCfg.Dimension)
+	default:
+		if embCfg.Model != "" {
+			embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
+		} else {
+			embedder = embed.NewBGE(embCfg.Endpoint, embCfg.APIKey, embCfg.Dimension)
+		}
+	}
+	if err := store.EnsureSchema(ctx, conn, embedder.Dimension(), opt.MigrateDim); err != nil {
 		st.Errors = append(st.Errors, err)
 		return st, err
 	}
@@ -101,12 +113,13 @@ func IngestRepo(ctx context.Context, cfg *cfgpkg.Config, ds cfgpkg.DataSource, o
 				ContentSHA: ch.SHA256,
 			}
 		}
-		vecs, err := embedder.Embed(ctx, texts)
+		vecs, tokens, err := embedder.Embed(ctx, texts)
 		if err != nil {
 			st.Errors = append(st.Errors, err)
 			continue
 		}
 		st.EmbeddingsCreated += len(vecs)
+		st.TokensEstimated += tokens
 		for i := range rows {
 			rows[i].Embedding = vecs[i]
 		}
