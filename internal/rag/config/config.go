@@ -90,7 +90,7 @@ func (s *StringSlice) UnmarshalYAML(value *yaml.Node) error {
 type ModelCfg struct {
 	Provider string      `yaml:"provider"`
 	Models   StringSlice `yaml:"models"`
-	BaseURL  string      `yaml:"baseurl"`
+	Endpoint string      `yaml:"endpoint"`
 	Token    string      `yaml:"token"`
 }
 
