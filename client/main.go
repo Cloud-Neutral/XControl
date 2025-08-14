@@ -73,7 +73,7 @@ var rootCmd = &cobra.Command{
 		case "ollama":
 			embedder = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
 		case "chutes":
-			embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, "", embCfg.Dimension)
+			embedder = embed.NewChutes(embCfg.Endpoint, embCfg.APIKey, embCfg.Dimension)
 		default:
 			if embCfg.Model != "" {
 				embedder = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
