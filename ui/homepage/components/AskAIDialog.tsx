@@ -1,10 +1,13 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { ChatBubble } from './ChatBubble'
 import { SourceHint } from './SourceHint'
 
 const MAX_MESSAGES = 20
+const MAX_CACHE_SIZE = 50
 
 export function AskAIDialog({
   open,
@@ -27,6 +30,13 @@ export function AskAIDialog({
   )
   const requestIdRef = useRef(0)
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
   function normalizeInput(text: string) {
     return text
       .trim()
@@ -35,76 +45,7 @@ export function AskAIDialog({
   }
 
   function renderMarkdown(text: string) {
-    // code blocks
-    let html = text.replace(
-      /```([\s\S]*?)```/g,
-      (_, code) =>
-        `<pre class="bg-gray-100 p-2 rounded overflow-x-auto"><code>${code
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')}</code></pre>`
-    )
-
-    // inline code
-    html = html.replace(
-      /`([^`]+)`/g,
-      (_, code) =>
-        `<code class="bg-gray-100 rounded px-1">${code
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')}</code>`
-    )
-
-    // headings
-    html = html
-      .replace(/^###### (.*)$/gm, '<h6 class="font-semibold">$1</h6>')
-      .replace(/^##### (.*)$/gm, '<h5 class="font-semibold">$1</h5>')
-      .replace(/^#### (.*)$/gm, '<h4 class="font-semibold">$1</h4>')
-      .replace(/^### (.*)$/gm, '<h3 class="font-semibold">$1</h3>')
-      .replace(/^## (.*)$/gm, '<h2 class="font-semibold">$1</h2>')
-      .replace(/^# (.*)$/gm, '<h1 class="font-semibold">$1</h1>')
-
-    // bold & italics
-    html = html
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-
-    // links
-    html = html.replace(
-      /\[(.+?)\]\((.+?)\)/g,
-      '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">$1</a>'
-    )
-
-    // blockquotes
-    html = html.replace(
-      /^> (.*)$/gm,
-      '<blockquote class="border-l-4 pl-4 italic text-gray-600">$1</blockquote>'
-    )
-
-    // unordered lists
-    html = html.replace(/^(?:[-+*] .*(?:\n|$))+?/gm, match => {
-      const items = match
-        .trim()
-        .split('\n')
-        .map(line => line.replace(/^[-+*] /, '').trim())
-      return `<ul class="list-disc pl-5 space-y-1">${items
-        .map(item => `<li>${item}</li>`)
-        .join('')}</ul>`
-    })
-
-    // ordered lists
-    html = html.replace(/^(?:\d+\. .*(?:\n|$))+?/gm, match => {
-      const items = match
-        .trim()
-        .split('\n')
-        .map(line => line.replace(/^\d+\. /, '').trim())
-      return `<ol class="list-decimal pl-5 space-y-1">${items
-        .map(item => `<li>${item}</li>`)
-        .join('')}</ol>`
-    })
-
-    // line breaks
-    return html.replace(/\n+/g, '<br />')
+    return DOMPurify.sanitize(marked.parse(text))
   }
 
   async function streamChat(
@@ -180,6 +121,8 @@ export function AskAIDialog({
     const now = Date.now()
     const cached = cacheRef.current.get(normalized)
     if (cached && now - cached.timestamp < 10000) {
+      cacheRef.current.delete(normalized)
+      cacheRef.current.set(normalized, { ...cached, timestamp: now })
       const userMessage = {
         sender: 'user' as const,
         text: renderMarkdown(normalized)
@@ -253,14 +196,23 @@ export function AskAIDialog({
         }
       }
 
+      if (cacheRef.current.size >= MAX_CACHE_SIZE) {
+        const oldest = cacheRef.current.keys().next().value
+        cacheRef.current.delete(oldest)
+      }
       cacheRef.current.set(normalized, {
         answer,
         sources: retrieved,
         timestamp: now
       })
-    } catch (err) {
+    } catch (err: any) {
       if (id !== requestIdRef.current) return
-      updateAI('Something went wrong. Please try again later.')
+      let message = 'Something went wrong. Please try again later.'
+      if (err.name === 'AbortError') message = 'Request was cancelled.'
+      else if (err.message?.includes('Failed to fetch'))
+        message = 'Network error. Please check your connection.'
+      else if (err.message) message = err.message
+      updateAI(message)
     }
   }
 
