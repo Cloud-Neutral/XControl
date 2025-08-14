@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,8 +21,12 @@ type ragService interface {
 	Query(ctx context.Context, question string, limit int) ([]rag.Document, error)
 }
 
-// ragSvc handles RAG document storage and retrieval.
-var ragSvc ragService = initRAG()
+// ragSvc handles RAG document storage and retrieval. It is initialized lazily
+// on demand. ragMu guards concurrent initialization attempts.
+var (
+	ragSvc ragService
+	ragMu  sync.Mutex
+)
 
 // initRAG attempts to construct a RAG service from server configuration.
 func initRAG() ragService {
@@ -33,10 +38,21 @@ func initRAG() ragService {
 	return rag.New(cfg.ToConfig())
 }
 
+// getRAG returns an initialized ragService, creating it if necessary.
+func getRAG() ragService {
+	ragMu.Lock()
+	defer ragMu.Unlock()
+	if ragSvc == nil {
+		ragSvc = initRAG()
+	}
+	return ragSvc
+}
+
 // registerRAGRoutes wires the /api/rag upsert and query endpoints.
 func registerRAGRoutes(r *gin.RouterGroup) {
 	r.POST("/rag/upsert", func(c *gin.Context) {
-		if ragSvc == nil {
+		svc := getRAG()
+		if svc == nil {
 			c.JSON(http.StatusOK, gin.H{"rows": 0})
 			return
 		}
@@ -47,7 +63,7 @@ func registerRAGRoutes(r *gin.RouterGroup) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		n, err := ragSvc.Upsert(c.Request.Context(), req.Docs)
+		n, err := svc.Upsert(c.Request.Context(), req.Docs)
 		if err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"rows": 0, "error": err.Error()})
 			return
@@ -63,11 +79,12 @@ func registerRAGRoutes(r *gin.RouterGroup) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if ragSvc == nil {
+		svc := getRAG()
+		if svc == nil {
 			c.JSON(http.StatusOK, gin.H{"chunks": nil})
 			return
 		}
-		docs, err := ragSvc.Query(c.Request.Context(), req.Question, 5)
+		docs, err := svc.Query(c.Request.Context(), req.Question, 5)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
