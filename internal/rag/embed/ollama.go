@@ -50,7 +50,7 @@ func (a *Ollama) Embed(ctx context.Context, inputs []string) ([][]float32, int, 
 		}
 		if resp.StatusCode >= 300 {
 			resp.Body.Close()
-			return nil, 0, fmt.Errorf("embed failed: %s", resp.Status)
+			return nil, 0, &HTTPError{Code: resp.StatusCode, Status: fmt.Sprintf("embed failed: %s", resp.Status)}
 		}
 		data, err := io.ReadAll(resp.Body)
 		resp.Body.Close()

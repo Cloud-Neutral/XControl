@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"sync"
 
@@ -9,6 +10,7 @@ import (
 
 	"xcontrol/internal/rag"
 	rconfig "xcontrol/internal/rag/config"
+	ragembed "xcontrol/internal/rag/embed"
 	"xcontrol/internal/rag/store"
 	"xcontrol/server/proxy"
 )
@@ -86,7 +88,12 @@ func registerRAGRoutes(r *gin.RouterGroup) {
 		}
 		docs, err := svc.Query(c.Request.Context(), req.Question, 5)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			var httpErr *ragembed.HTTPError
+			if errors.As(err, &httpErr) {
+				c.JSON(httpErr.Code, gin.H{"error": httpErr.Error()})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"chunks": docs})
