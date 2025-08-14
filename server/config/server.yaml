@@ -22,11 +22,9 @@ sync:
 # For DEV
 models:
   embedder:
-    provider: "huggingface_hub"
     models: "bge-m3"
     endpoint: "http://127.0.0.1:9000/v1/embeddings"
   generator:
-    provider: "ollama"
     models:
       - 'llama2:13b'
     endpoint: "http://127.0.0.1:11434/v1/chat/completions"
@@ -34,12 +32,10 @@ models:
 # For PROD
 #models:
 #  embedder:
-    #provider: "chutes"
     #models: "bge-m3"
     #endpoint: "https://chutes-baai-bge-m3.chutes.ai/embed"
     #token: "cpk_xxxx"
 #  generator:
-    #provider: "chutes"
     #models:
     #  - 'moonshotai/Kimi-K2-Instruct'
     #endpoint: "https://llm.chutes.ai/v1"
