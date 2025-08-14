@@ -110,62 +110,68 @@ export function AskAIDialog({
   async function streamChat(
     url: string,
     body: any,
-    update: (text: string, src?: any[]) => void
+    update: (text: string, src?: any[]) => void,
+    timeout = 15000
   ) {
     abortRef.current?.abort()
     const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeout)
     abortRef.current = controller
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    })
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      })
 
-    if (!res.ok) throw new Error('Request failed')
+      if (!res.ok) throw new Error('Request failed')
 
-    const reader = res.body?.getReader()
-    if (!reader) throw new Error('No reader')
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No reader')
 
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let answer = ''
-    let retrieved: any[] = []
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let answer = ''
+      let retrieved: any[] = []
 
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
 
-      buffer += decoder.decode(value, { stream: true })
-      const parts = buffer.split('\n\n')
-      buffer = parts.pop() || ''
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() || ''
 
-      for (const part of parts) {
-        const line = part.split('\n').find(l => l.startsWith('data:'))
-        if (!line) {
-          answer += part
+        for (const part of parts) {
+          const line = part.split('\n').find(l => l.startsWith('data:'))
+          if (!line) {
+            answer += part
+            update(answer, retrieved)
+            continue
+          }
+          const dataStr = line.replace(/^data: ?/, '').trim()
+          if (dataStr === '[DONE]') continue
+          try {
+            const json = JSON.parse(dataStr)
+            if (json.answer) answer += json.answer
+            else if (typeof json === 'string') answer += json
+            if (json.chunks) retrieved = json.chunks
+            if (json.sources) retrieved = json.sources
+          } catch {
+            answer += dataStr
+          }
           update(answer, retrieved)
-          continue
         }
-        const dataStr = line.replace(/^data: ?/, '').trim()
-        if (dataStr === '[DONE]') continue
-        try {
-          const json = JSON.parse(dataStr)
-          if (json.answer) answer += json.answer
-          else if (typeof json === 'string') answer += json
-          if (json.chunks) retrieved = json.chunks
-          if (json.sources) retrieved = json.sources
-        } catch {
-          answer += dataStr
-        }
-        update(answer, retrieved)
       }
-    }
 
-    update(answer, retrieved)
-    if (abortRef.current === controller) abortRef.current = null
-    return { answer, retrieved }
+      update(answer, retrieved)
+      return { answer, retrieved }
+    } finally {
+      clearTimeout(timer)
+      if (abortRef.current === controller) abortRef.current = null
+    }
   }
 
   async function performAsk() {
@@ -215,6 +221,11 @@ export function AskAIDialog({
       )
 
       if (!answer || retrieved.length === 0) {
+        console.warn(
+          !answer
+            ? 'RAG query returned empty answer, falling back to /api/askai'
+            : 'RAG query returned no relevant chunks, falling back to /api/askai'
+        )
         try {
           const result = await streamChat(
             `${apiBase}/api/askai`,
@@ -227,7 +238,8 @@ export function AskAIDialog({
           if (result.retrieved && result.retrieved.length > 0) {
             retrieved = result.retrieved
           }
-        } catch {
+        } catch (err) {
+          console.error('Fallback /api/askai failed', err)
           // ignore, fallback handled below
         }
 
