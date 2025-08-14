@@ -20,21 +20,6 @@ sync:
   repo:
     proxy: socks5://127.0.0.1:1080
 
-# Local AI For Dev
-models:
-  embedder:
-    models: "bge-m3"
-      - 'deepseek-r1:8b'
-    baseurl: "http://127.0.0.1:9000"
-    endpoint: "http://127.0.0.1:9000/v1/embeddings"
-  generator:
-    provider: "chutes"
-    models:
-      - 'deepseek-r1:8b'
-    baseurl: "http://127.0.0.1:11434"
-    endpoint: "http://127.0.0.1:11434/v1/chat/completions"
-
-# SaaS AI For PROD
 models:
   embedder:
     provider: "chutes"
