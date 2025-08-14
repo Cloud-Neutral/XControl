@@ -72,6 +72,16 @@ export function AskAIDialog({
 
       if (!res.ok) throw new Error('Request failed')
 
+      const contentType = res.headers.get('content-type') || ''
+      // Handle non-streaming JSON responses directly.
+      if (!contentType.includes('text/event-stream')) {
+        const data = await res.json().catch(() => ({}))
+        let answer = typeof data === 'string' ? data : data.answer || ''
+        let retrieved = data.chunks || data.sources || []
+        update(answer, retrieved)
+        return { answer, retrieved }
+      }
+
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No reader')
 
