@@ -67,7 +67,7 @@ func (s *Service) Query(ctx context.Context, question string, limit int) ([]Docu
 	case "ollama":
 		emb = embed.NewOllama(embCfg.Endpoint, embCfg.Model, embCfg.Dimension)
 	case "chutes":
-		emb = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, "", embCfg.Dimension)
+		emb = embed.NewChutes(embCfg.Endpoint, embCfg.APIKey, embCfg.Dimension)
 	default:
 		if embCfg.Model != "" {
 			emb = embed.NewOpenAI(embCfg.Endpoint, embCfg.APIKey, embCfg.Model, embCfg.Dimension)
