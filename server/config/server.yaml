@@ -23,22 +23,22 @@ sync:
 models:
   embedder:
     models: "bge-m3"
-    endpoint: "http://127.0.0.1:9000/v1/embeddings"
+    baseurl: "http://127.0.0.1:9000"
   generator:
     models:
       - 'llama2:13b'
-    endpoint: "http://127.0.0.1:11434/v1/chat/completions"
+    baseurl: "http://127.0.0.1:11434"
     token: ""
 # For PROD
 #models:
 #  embedder:
     #models: "bge-m3"
-    #endpoint: "https://chutes-baai-bge-m3.chutes.ai/embed"
+    #baseurl: "https://chutes-baai-bge-m3.chutes.ai"
     #token: "cpk_xxxx"
 #  generator:
     #models:
     #  - 'moonshotai/Kimi-K2-Instruct'
-    #endpoint: "https://llm.chutes.ai/v1"
+    #baseurl: "https://llm.chutes.ai/v1"
     #token: "cpk_xxxx"
 
 embedding:

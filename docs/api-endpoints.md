@@ -84,26 +84,30 @@ For local debugging with HuggingFace and Ollama:
 models:
   embedder:
     models: "bge-m3"
-    endpoint: "http://127.0.0.1:9000/v1/embeddings"
+    baseurl: "http://127.0.0.1:9000"
   generator:
     models:
       - 'llama2:13b'
-    endpoint: "http://127.0.0.1:11434"
+    baseurl: "http://127.0.0.1:11434"
 ```
 
-For online services using Chutes:
+For online services using Chutes, set the provider to `chutes` and point the
+embedder base URL directly at the model host. The client automatically posts to
+`/embed` with the correct JSON payload:
 
 ```yaml
-#models:
-#  embedder:
-#    models: "bge-m3"
-#    endpoint: "https://chutes-baai-bge-m3.chutes.ai/embed"
-#    token: "cpk_xxxx"
-#  generator:
-#    models:
-#      - 'moonshotai/Kimi-K2-Instruct'
-#    endpoint: "https://llm.chutes.ai/v1"
-#    token: "cpk_xxxx"
+models:
+  embedder:
+    provider: "chutes"
+    models: "bge-m3"
+    baseurl: "https://chutes-baai-bge-m3.chutes.ai"
+    token: "cpk_xxxx"
+  generator:
+    provider: "chutes"
+    models:
+      - 'moonshotai/Kimi-K2-Instruct'
+    baseurl: "https://llm.chutes.ai/v1"
+    token: "cpk_xxxx"
 ```
 
 The `api.askai` section controls request behaviour:
