@@ -63,11 +63,11 @@
 
 ### 5.1 前端 AskAIDialog 调用流程
 
-1. 用户在 `AskAIDialog` 中输入问题，点击按钮触发 `handleAsk` 函数。
-2. 组件把用户输入与最近的对话历史组合为 `history`，`POST` 到 `/api/rag/query`。
-3. 若接口返回 `answer` 与 `chunks`，则更新聊天记录并通过 `SourceHint` 展示检索到的来源。
-4. 当 `answer` 为空或没有检索结果时，组件会回退调用 `/api/askai` 获取普通 AI 回答。
-5. 最终消息通过 `ChatBubble` 组件显示给用户，形成完整的 RAG 聊天流程。
+1. 用户在 `AskAIDialog` 中输入问题，`handleAsk` 会先做去空格、去尾标点等规整并使用防抖避免短时间内重复发送。
+2. 若 10 秒内命中过去问题的缓存，则直接返回缓存答案；否则把规整后的问题与最近对话历史组合为 `history`，POST 到 `/api/rag/query`，请求设置超时并以流式方式返回结果。
+3. 流式结果会实时更新聊天记录，若返回 `answer` 与 `chunks`，则通过 `SourceHint` 展示检索到的来源。
+4. 当 `answer` 为空或没有检索结果时，会在控制台记录回退原因，并调用 `/api/askai` 获取普通 AI 回答，同样带有超时限制。
+5. 最终的回答写入缓存并通过 `ChatBubble` 组件显示给用户，形成完整的 RAG 聊天流程。
 
 ## 6. Go 代码模块划分
 
