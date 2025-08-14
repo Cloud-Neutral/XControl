@@ -35,9 +35,9 @@ func (o *OpenAI) Dimension() int { return o.dim }
 
 // Embed embeds the inputs and returns vectors and token usage.
 func (o *OpenAI) Embed(ctx context.Context, inputs []string) ([][]float32, int, error) {
-	payload := map[string]any{
-		"model": o.model,
-		"input": inputs,
+	payload := map[string]any{"input": inputs}
+	if o.model != "" {
+		payload["model"] = o.model
 	}
 	b, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.endpoint, bytes.NewReader(b))
