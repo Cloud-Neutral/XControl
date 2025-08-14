@@ -1,7 +1,6 @@
 package embed
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -40,15 +39,11 @@ func (o *OpenAI) Embed(ctx context.Context, inputs []string) ([][]float32, int, 
 		payload["model"] = o.model
 	}
 	b, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.endpoint, bytes.NewReader(b))
-	if err != nil {
-		return nil, 0, err
-	}
-	req.Header.Set("Content-Type", "application/json")
+	headers := map[string]string{"Content-Type": "application/json"}
 	if o.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+o.apiKey)
+		headers["Authorization"] = "Bearer " + o.apiKey
 	}
-	resp, err := o.client.Do(req)
+	resp, err := postWithRetry(ctx, o.client, o.endpoint, b, headers)
 	if err != nil {
 		return nil, 0, err
 	}
