@@ -20,11 +20,9 @@ sync:
 
 models:
   embedder:
-    provider: "huggingface_hub"
     models: "bge-m3"
     endpoint: "http://127.0.0.1:9000/v1/embeddings"
   generator:
-    provider: "ollama"
     models:
       - 'deepseek-r1:8b'
     endpoint: "http://127.0.0.1:11434/v1/chat/completions"
