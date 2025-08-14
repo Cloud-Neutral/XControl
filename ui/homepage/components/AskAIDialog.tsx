@@ -221,13 +221,22 @@ export function AskAIDialog({
             { question: normalized, history },
             updateAI
           )
-          answer = result.answer || answer
+          if (result.answer) {
+            answer = result.answer
+          }
+          if (result.retrieved && result.retrieved.length > 0) {
+            retrieved = result.retrieved
+          }
         } catch {
           // ignore, fallback handled below
         }
 
         if (!answer) {
           answer = 'Sorry, I could not find an answer at this time.'
+          updateAI(answer)
+        } else if (retrieved.length === 0) {
+          answer +=
+            '\n\n_Note: No relevant documents were found; this answer may be inaccurate._'
           updateAI(answer)
         }
       }
@@ -244,6 +253,7 @@ export function AskAIDialog({
   }
 
   function handleAsk() {
+    abortRef.current?.abort()
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(performAsk, 300)
   }
