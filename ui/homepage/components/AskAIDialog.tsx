@@ -45,7 +45,10 @@ export function AskAIDialog({
   }
 
   function renderMarkdown(text: string) {
-    return DOMPurify.sanitize(marked.parse(text))
+    // marked.parse has a return type of string | Promise<string>
+    // but in our usage it executes synchronously. Cast to string to
+    // satisfy the DOMPurify.sanitize type expectations.
+    return DOMPurify.sanitize(marked.parse(text) as string)
   }
 
   async function streamChat(
@@ -186,7 +189,9 @@ export function AskAIDialog({
 
       if (cacheRef.current.size >= MAX_CACHE_SIZE) {
         const oldest = cacheRef.current.keys().next().value
-        cacheRef.current.delete(oldest)
+        if (oldest !== undefined) {
+          cacheRef.current.delete(oldest)
+        }
       }
       cacheRef.current.set(normalized, {
         answer,
