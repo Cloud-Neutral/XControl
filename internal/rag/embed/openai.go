@@ -54,7 +54,7 @@ func (o *OpenAI) Embed(ctx context.Context, inputs []string) ([][]float32, int, 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		return nil, 0, fmt.Errorf("embed failed: %s", resp.Status)
+		return nil, 0, &HTTPError{Code: resp.StatusCode, Status: fmt.Sprintf("embed failed: %s", resp.Status)}
 	}
 	var out struct {
 		Data []struct {
