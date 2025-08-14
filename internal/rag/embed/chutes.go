@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -45,12 +46,22 @@ func (c *Chutes) Embed(ctx context.Context, inputs []string) ([][]float32, int, 
 	if resp.StatusCode >= 300 {
 		return nil, 0, &HTTPError{Code: resp.StatusCode, Status: fmt.Sprintf("embed failed: %s", resp.Status)}
 	}
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	var out struct {
 		Data [][]float32 `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, 0, err
+
+	if err := json.Unmarshal(b, &out); err != nil || len(out.Data) == 0 {
+		if err := json.Unmarshal(b, &out.Data); err != nil {
+			return nil, 0, err
+		}
 	}
+
 	if len(out.Data) != len(inputs) {
 		return nil, 0, fmt.Errorf("embedding count mismatch")
 	}
