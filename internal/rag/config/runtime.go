@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -74,9 +75,33 @@ type Runtime struct {
 // ServerConfigPath points to the server configuration file.
 var ServerConfigPath = filepath.Join("server", "config", "server.yaml")
 
+// resolveServerConfigPath tries to find the server configuration relative to the
+// current working directory and the executable location. This helps when the
+// binary is invoked outside of the repository root.
+func resolveServerConfigPath() string {
+	if filepath.IsAbs(ServerConfigPath) {
+		return ServerConfigPath
+	}
+	if _, err := os.Stat(ServerConfigPath); err == nil {
+		return ServerConfigPath
+	}
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		cand := filepath.Join(dir, ServerConfigPath)
+		if _, err := os.Stat(cand); err == nil {
+			return cand
+		}
+		cand = filepath.Join(dir, "..", ServerConfigPath)
+		if _, err := os.Stat(cand); err == nil {
+			return cand
+		}
+	}
+	return ServerConfigPath
+}
+
 // LoadServer loads global configuration from ServerConfigPath.
 func LoadServer() (*Runtime, error) {
-	cfg, err := Load(ServerConfigPath)
+	cfg, err := Load(resolveServerConfigPath())
 	if err != nil {
 		return nil, err
 	}
