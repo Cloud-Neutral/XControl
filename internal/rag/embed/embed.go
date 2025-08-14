@@ -2,8 +2,8 @@ package embed
 
 import "context"
 
-// Embedder defines embedding operations.
-type Embedder interface {
-	Embed(ctx context.Context, inputs []string) ([][]float32, int, error)
-	Dimension() int
+// Client defines embedding operations for various providers.
+type Client interface {
+	// Embed converts input texts into embedding vectors.
+	Embed(ctx context.Context, inputs []string) ([][]float32, error)
 }
