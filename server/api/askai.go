@@ -14,9 +14,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/ollama"
-	"github.com/tmc/langchaingo/llms/openai"
 	"gopkg.in/yaml.v3"
 )
 
@@ -42,10 +39,10 @@ func registerAskAIRoutes(r *gin.RouterGroup) {
 
 		answer, err := askFn(req.Question)
 		if err != nil {
-			provider, _, _, _, timeout, retries := loadConfig()
+			_, _, endpoint, timeout, retries := loadConfig()
 			slog.Error("askai request failed",
 				"question", req.Question,
-				"provider", provider,
+				"endpoint", endpoint,
 				"err", err,
 			)
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -71,7 +68,6 @@ var ConfigPath = filepath.Join("server", "config", "server.yaml")
 type serverConfig struct {
 	Models struct {
 		Generator struct {
-			Provider string   `yaml:"provider"`
 			Models   []string `yaml:"models"`
 			Endpoint string   `yaml:"endpoint"`
 			Token    string   `yaml:"token"`
@@ -85,10 +81,9 @@ type serverConfig struct {
 	} `yaml:"api"`
 }
 
-// loadConfig reads provider, model, endpoint, timeout and retries from ConfigPath
+// loadConfig reads model, endpoint, timeout and retries from ConfigPath
 // and environment variables.
-func loadConfig() (string, string, string, string, time.Duration, int) {
-	provider := ""
+func loadConfig() (string, string, string, time.Duration, int) {
 	model := os.Getenv("CHUTES_API_MODEL")
 	endpoint := os.Getenv("CHUTES_API_URL")
 	token := ""
@@ -99,9 +94,6 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 		var cfg serverConfig
 		if err := yaml.Unmarshal(data, &cfg); err == nil {
 			g := cfg.Models.Generator
-			if provider == "" {
-				provider = g.Provider
-			}
 			if model == "" && len(g.Models) > 0 {
 				model = g.Models[0]
 			}
@@ -123,120 +115,67 @@ func loadConfig() (string, string, string, string, time.Duration, int) {
 	if retries > 3 {
 		retries = 3
 	}
-	provider = strings.ToLower(provider)
 	endpoint = strings.TrimRight(endpoint, "/")
-	switch provider {
-	case "ollama":
-		if model == "" {
+	if model == "" {
+		if token == "" || strings.Contains(endpoint, "127.0.0.1") || strings.Contains(endpoint, "localhost") {
 			model = "llama2:13b"
+		} else {
+			model = "moonshotai/Kimi-K2-Instruct"
 		}
-		return provider, token, model, endpoint, timeout, retries
-	case "chutes":
-		if model == "" {
-			model = "deepseek-ai/DeepSeek-R1"
-		}
-		return provider, token, model, endpoint, timeout, retries
-	default:
-		if model == "" {
-			model = "deepseek-ai/DeepSeek-R1"
-		}
-		return provider, token, model, endpoint, timeout, retries
 	}
+	return token, model, endpoint, timeout, retries
 }
 
-// callLLM dispatches the question to the configured provider.
+// callLLM dispatches the question to the configured endpoint.
 func callLLM(question string) (string, error) {
-	provider, token, model, url, timeout, retries := loadConfig()
+	token, model, url, timeout, retries := loadConfig()
 
 	httpClient := &http.Client{Timeout: timeout}
 
-	switch provider {
-	case "ollama":
-		payload := map[string]any{
-			"model":    model,
-			"messages": []map[string]string{{"role": "user", "content": question}},
-		}
-		body, _ := json.Marshal(payload)
-		var lastErr error
-		for i := 0; i <= retries; i++ {
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-			if err != nil {
-				cancel()
-				return "", fmt.Errorf("build request: %w", err)
-			}
-			req.Header.Set("Content-Type", "application/json")
-			if token != "" {
-				req.Header.Set("Authorization", "Bearer "+token)
-			}
-			resp, err := httpClient.Do(req)
-			if err == nil && resp != nil {
-				data, readErr := io.ReadAll(resp.Body)
-				resp.Body.Close()
-				if readErr == nil && resp.StatusCode < 300 {
-					var out struct {
-						Choices []struct {
-							Message struct {
-								Content string `json:"content"`
-							} `json:"message"`
-						} `json:"choices"`
-					}
-					if err = json.Unmarshal(data, &out); err == nil && len(out.Choices) > 0 {
-						cancel()
-						return out.Choices[0].Message.Content, nil
-					}
-				} else if readErr != nil {
-					err = readErr
-				} else {
-					err = fmt.Errorf(resp.Status)
-				}
-			}
-			cancel()
-			lastErr = err
-		}
-		if lastErr == nil {
-			lastErr = fmt.Errorf("request failed")
-		}
-		return "", fmt.Errorf("%w (timeout=%s retries=%d)", lastErr, timeout, retries)
-	default:
-		var (
-			llm llms.Model
-			err error
-		)
-		if token == "" {
-			// Allow running against a local Ollama server without authentication.
-			llm, err = ollama.New(
-				ollama.WithServerURL(url),
-				ollama.WithModel(model),
-				ollama.WithHTTPClient(httpClient),
-			)
-		} else {
-			llm, err = openai.New(
-				openai.WithToken(token),
-				openai.WithModel(model),
-				openai.WithBaseURL(url),
-				openai.WithHTTPClient(httpClient),
-			)
-		}
-		if err != nil {
-			return "", fmt.Errorf("init llm: %w", err)
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-
-		var answer string
-		var lastErr error
-		for i := 0; i <= retries; i++ {
-			answer, lastErr = llms.GenerateFromSinglePrompt(ctx, llm, question)
-			if lastErr == nil {
-				return answer, nil
-			}
-		}
-
-		if lastErr == nil {
-			lastErr = fmt.Errorf("request failed")
-		}
-		return "", fmt.Errorf("%w (timeout=%s retries=%d)", lastErr, timeout, retries)
+	payload := map[string]any{
+		"model":    model,
+		"messages": []map[string]string{{"role": "user", "content": question}},
 	}
+	body, _ := json.Marshal(payload)
+	var lastErr error
+	for i := 0; i <= retries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		if err != nil {
+			cancel()
+			return "", fmt.Errorf("build request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := httpClient.Do(req)
+		if err == nil && resp != nil {
+			data, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if readErr == nil && resp.StatusCode < 300 {
+				var out struct {
+					Choices []struct {
+						Message struct {
+							Content string `json:"content"`
+						} `json:"message"`
+					} `json:"choices"`
+				}
+				if err = json.Unmarshal(data, &out); err == nil && len(out.Choices) > 0 {
+					cancel()
+					return out.Choices[0].Message.Content, nil
+				}
+			} else if readErr != nil {
+				err = readErr
+			} else {
+				err = fmt.Errorf(resp.Status)
+			}
+		}
+		cancel()
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("request failed")
+	}
+	return "", fmt.Errorf("%w (timeout=%s retries=%d)", lastErr, timeout, retries)
 }

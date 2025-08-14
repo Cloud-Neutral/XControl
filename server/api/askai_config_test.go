@@ -11,7 +11,7 @@ import (
 func TestLoadConfig_FromFile(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "server.yaml")
-	data := []byte("models:\n  generator:\n    provider: ollama\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\n    token: t1\napi:\n  askai:\n    timeout: 10\n    retries: 2\n")
+	data := []byte("models:\n  generator:\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\n    token: t1\napi:\n  askai:\n    timeout: 10\n    retries: 2\n")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -20,10 +20,7 @@ func TestLoadConfig_FromFile(t *testing.T) {
 	ConfigPath = cfgPath
 	t.Cleanup(func() { ConfigPath = old })
 
-	provider, token, model, endpoint, timeout, retries := loadConfig()
-	if provider != "ollama" {
-		t.Fatalf("provider = %q", provider)
-	}
+	token, model, endpoint, timeout, retries := loadConfig()
 	if token != "t1" {
 		t.Fatalf("token = %q", token)
 	}
@@ -45,7 +42,7 @@ func TestLoadConfig_FromFile(t *testing.T) {
 func TestLoadConfig_EnvOverrides(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "server.yaml")
-	data := []byte("models:\n  generator:\n    provider: ollama\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\napi:\n  askai:\n    timeout: 50\n    retries: 5\n")
+	data := []byte("models:\n  generator:\n    models: [\"llama2:13b\"]\n    endpoint: http://localhost:11434/v1/chat/completions\napi:\n  askai:\n    timeout: 50\n    retries: 5\n")
 	if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -61,10 +58,7 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 		os.Unsetenv("CHUTES_API_URL")
 	})
 
-	provider, token, model, endpoint, timeout, retries := loadConfig()
-	if provider != "ollama" {
-		t.Fatalf("provider = %q", provider)
-	}
+	token, model, endpoint, timeout, retries := loadConfig()
 	if model != "env-model" {
 		t.Fatalf("model = %q", model)
 	}
