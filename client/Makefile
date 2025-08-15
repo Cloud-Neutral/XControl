@@ -1,5 +1,6 @@
 APP_NAME := xcontrol-cli
 MAIN_FILE := main.go
+export PATH := /usr/local/go/bin:$(PATH)
 
 .PHONY: build run clean
 

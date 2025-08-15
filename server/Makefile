@@ -3,6 +3,7 @@ MAIN_FILE := ../cmd/xcontrol-server/main.go
 MODULE := xcontrol
 PORT := 8080
 OS := $(shell uname -s)
+export PATH := /usr/local/go/bin:$(PATH)
 
 .PHONY: all build start stop restart clean init help dev test
 

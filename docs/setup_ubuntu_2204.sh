@@ -1,6 +1,95 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+install-go() {
+    local version="${GO_VERSION:-1.24.5}"
+    local tarball="go${version}.linux-amd64.tar.gz"
+    local url="https://go.dev/dl/${tarball}"
+
+    echo "=== 安装 Go ${version} (linux/amd64) ==="
+
+    # 1. 下载 Go 安装包
+    echo "下载 ${url} ..."
+    if ! wget -q --show-progress "$url" -O "$tarball"; then
+        echo "❌ 无法下载 Go 安装包，请检查网络"
+        exit 1
+    fi
+
+    # 2. 删除旧版本（如果有）
+    if [ -d /usr/local/go ]; then
+        echo "移除旧版本 Go..."
+        sudo rm -rf /usr/local/go
+    fi
+
+    # 3. 解压到 /usr/local
+    echo "解压到 /usr/local ..."
+    sudo tar -C /usr/local -xzf "$tarball"
+
+    # 4. 配置环境变量（全局）
+    echo "配置全局 PATH ..."
+    echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee /etc/profile.d/go.sh >/dev/null
+    sudo chmod +x /etc/profile.d/go.sh
+
+    # 5. 立即生效（当前终端）
+    export PATH=$PATH:/usr/local/go/bin
+
+    # 6. 验证安装
+    if go version >/dev/null 2>&1; then
+        echo "✅ Go 安装成功: $(go version)"
+    else
+        echo "❌ Go 安装失败，请检查"
+        exit 1
+    fi
+
+    # 清理 tar.gz
+    rm -f "$tarball"
+}
+
+install-nodejs() {
+    set -euo pipefail
+    # 选择 Node 主版本，默认 22（LTS）
+    local NODE_MAJOR="${NODE_MAJOR:-22}"
+
+    echo "=== 安装 Node.js ${NODE_MAJOR}.x（Ubuntu 22.04）==="
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg
+
+    # NodeSource 官方仓库（更稳妥的 GPG 方式）
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+      | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+      | sudo tee /etc/apt/sources.list.d/nodesource.list >/dev/null
+
+    sudo apt-get update
+    sudo apt-get install -y nodejs
+
+    # 启用 Corepack，激活 Yarn（Berry）
+    sudo corepack enable || true
+    corepack prepare yarn@stable --activate || true
+
+    # 版本校验
+    local node_v
+    node_v="$(node -v 2>/dev/null || true)"
+    if [ -z "$node_v" ]; then
+        echo "❌ Node 未安装成功"
+        exit 1
+    fi
+    echo "Node: $node_v"
+    echo "Yarn: $(yarn -v 2>/dev/null || echo '未启用（可忽略）')"
+
+    # 要求 >= 20
+    local major="${node_v#v}"
+    major="${major%%.*}"
+    if [ "$major" -lt 20 ]; then
+        echo "❌ Node 主版本过低（$node_v），请设置 NODE_MAJOR=20 或以上后重试"
+        exit 1
+    fi
+
+    echo "✅ Node.js 安装完成，满足 >=20"
+}
+
 install-postgresql() {
     echo "=== 安装 PostgreSQL 14 ==="
     sudo apt-get update
