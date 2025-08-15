@@ -1,5 +1,9 @@
 OS := $(shell uname -s)
+SHELL := /bin/bash
+O_BIN ?= /usr/local/go/bin
+export PATH := $(GO_BIN):$(PATH)
 PG_DSN ?= postgres://user:password@127.0.0.1:5432/postgres
+NODE_MAJOR ?= 22
 
 .PHONY: install install-openresty install-redis install-postgresql install-pgvector install-zhparser init-db \
         build build-server build-homepage build-panel \
@@ -10,7 +14,27 @@ PG_DSN ?= postgres://user:password@127.0.0.1:5432/postgres
 # Dependency installation
 # -----------------------------------------------------------------------------
 
-install: install-openresty install-redis install-postgresql install-pgvector install-zhparser
+install: install-nodejs install-go install-openresty install-redis install-postgresql install-pgvector install-zhparser
+
+install-nodejs:
+ifeq ($(OS),Darwin)
+	# 尽量装新 LTS；若 node@22 不可用，可退回 brew install node
+	( brew install node@22 && brew link --overwrite --force node@22 ) || brew install node
+	# 启用 Corepack + Yarn
+	corepack enable || true
+	corepack prepare yarn@stable --activate || true
+	@echo "Node: $$(node -v)"; echo "Yarn: $$(yarn -v 2>/dev/null || echo n/a)"
+else
+	@echo "Using setup_ubuntu_2204.sh to install Node.js..."
+	NODE_MAJOR=$(NODE_MAJOR) bash docs/setup_ubuntu_2204.sh install-nodejs
+endif
+
+install-go:
+ifeq ($(OS),Darwin)
+	brew install go
+else
+	GO_VERSION=$(GO_VERSION) bash docs/setup_ubuntu_2204.sh install-go
+endif
 
 install-openresty:
 ifeq ($(OS),Darwin)
