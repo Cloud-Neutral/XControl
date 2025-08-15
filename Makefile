@@ -1,7 +1,7 @@
 OS := $(shell uname -s)
 PG_DSN ?= postgres://user:password@127.0.0.1:5432/postgres
 
-.PHONY: install install-openresty install-redis install-postgresql install-pgvector init-db \
+.PHONY: install install-openresty install-redis install-postgresql install-pgvector install-zhparser init-db \
         build build-server build-homepage build-panel \
         start start-openresty start-server start-homepage start-panel \
         stop stop-server stop-homepage stop-panel stop-openresty restart
@@ -10,7 +10,7 @@ PG_DSN ?= postgres://user:password@127.0.0.1:5432/postgres
 # Dependency installation
 # -----------------------------------------------------------------------------
 
-install: install-openresty install-redis install-postgresql install-pgvector
+install: install-openresty install-redis install-postgresql install-pgvector install-zhparser
 
 install-openresty:
 ifeq ($(OS),Darwin)
@@ -26,28 +26,37 @@ install-redis:
 ifeq ($(OS),Darwin)
 	brew install redis && brew services start redis
 else
-	sudo apt-get update && \
-	sudo apt-get install -y redis-server && \
-	sudo systemctl enable --now redis-server
+	@echo "Using setup_ubuntu_2204.sh to install Redis..."
+	bash docs/setup_ubuntu_2204.sh install-redis
 endif
 
 install-postgresql:
 ifeq ($(OS),Darwin)
-	brew install postgresql && brew services start postgresql
+	brew install postgresql@14 && brew services start postgresql@14
 else
-	sudo apt-get update && \
-	sudo apt-get install -y postgresql postgresql-contrib && \
-	sudo systemctl enable --now postgresql
+	@echo "Using setup-ubuntu-2204.sh to install PostgreSQL 14..."
+	bash docs/setup_ubuntu_2204.sh install-postgresql
 endif
 
 install-pgvector:
 ifeq ($(OS),Darwin)
 	brew install pgvector
 else
-	sudo apt-get update && \
-	( sudo apt-get install -y postgresql-15-pgvector || \
-	  sudo apt-get install -y postgresql-14-pgvector || \
-	  echo "Please install pgvector manually." )
+	@echo "Using setup-ubuntu-2204.sh to install pgvector..."
+	bash docs/setup_ubuntu_2204.sh install-pgvector
+endif
+
+install-zhparser:
+ifeq ($(OS),Darwin)
+	brew install scws && \
+	tmp_dir=$$(mktemp -d) && cd $$tmp_dir && \
+	git clone https://github.com/amutu/zhparser.git && \
+	cd zhparser && make SCWS_HOME=/opt/homebrew PG_CONFIG=$$(brew --prefix postgresql@14)/bin/pg_config && \
+	sudo make install SCWS_HOME=/opt/homebrew PG_CONFIG=$$(brew --prefix postgresql@14)/bin/pg_config && \
+	cd / && rm -rf $$tmp_dir
+else
+	@echo "Using setup-ubuntu-2204.sh to install zhparser..."
+	bash docs/setup_ubuntu_2204.sh install-zhparser
 endif
 
 # -----------------------------------------------------------------------------
