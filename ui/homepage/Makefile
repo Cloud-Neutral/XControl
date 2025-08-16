@@ -71,6 +71,7 @@ test:
 	@yarn test || echo "No tests configured"
 
 build: init
+	yarn config set npmRegistryServer https://registry.npmmirror.com
 	@echo "🔨 Building homepage..."
 	yarn next build
 
