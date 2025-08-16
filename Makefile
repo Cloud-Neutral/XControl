@@ -1,9 +1,10 @@
 OS := $(shell uname -s)
 SHELL := /bin/bash
 O_BIN ?= /usr/local/go/bin
-export PATH := $(GO_BIN):$(PATH)
 PG_DSN ?= postgres://user:password@127.0.0.1:5432/postgres
 NODE_MAJOR ?= 22
+
+export PATH := $(GO_BIN):$(PATH)
 
 .PHONY: install install-openresty install-redis install-postgresql install-pgvector install-zhparser init-db \
         build build-server build-homepage build-panel \
