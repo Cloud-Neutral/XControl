@@ -23,6 +23,69 @@
 
 ## 初始化数据库集群
 
+## macOS vs Ubuntu 22.04 初始化对比
+
+在 **安装好 `postgresql-14-pgvector` 与 `zhparser`** 之后，数据库内部的操作基本一致。区别主要在环境与服务管理方式。下面分为 **差异部分** 和 **公共部分**。
+
+---
+
+### 🟡 差异部分（环境相关）
+
+这些仅影响数据库服务启动和工具链，SQL 操作不变。
+
+| 项目 | macOS | Ubuntu 22.04 |
+|------|-------|--------------|
+| **服务管理** | `brew services start/stop/restart postgresql` | `sudo systemctl start/stop/restart postgresql` |
+| **数据目录** | 常见为 `/opt/homebrew/var/postgres`，需手动 `initdb` 初始化 | 安装包自动初始化，默认 `/var/lib/postgresql/14/main` |
+| **pg_config 路径**（编译 zhparser 用） | `/opt/homebrew/opt/postgresql@14/bin/pg_config` | `/usr/lib/postgresql/14/bin/pg_config` |
+| **环境变量** | 需手动 `export PATH="/opt/homebrew/opt/postgresql@14/bin:$PATH"` | 通常无需设置，APT 安装自动在 PATH 中 |
+
+---
+
+### 🟢 公共部分（数据库操作相同）
+
+无论 macOS / Ubuntu，只要 PostgreSQL 与扩展安装完成，以下数据库操作完全一致。
+
+1. **切换到 postgres 管理员账号**
+   ```bash
+   sudo -u postgres psql
+创建业务用户和数据库
+
+sql
+复制
+编辑
+-- 创建用户（若已存在可跳过）
+CREATE USER shenlan WITH PASSWORD '你的密码';
+
+-- 创建业务数据库，并指定所有者
+CREATE DATABASE shenlan OWNER shenlan;
+
+-- 给用户赋权限（可选）
+GRANT ALL PRIVILEGES ON DATABASE shenlan TO shenlan;
+在业务数据库中启用扩展
+
+sql
+复制
+编辑
+\c shenlan   -- 切换到业务库
+
+-- 启用向量扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 启用中文分词扩展（可选）
+CREATE EXTENSION IF NOT EXISTS zhparser;
+
+导入初始化 SQL（例如 docs/init.sql） psql -h 127.0.0.1 -U shenlan -d shenlan -f docs/init.sql
+验证扩展与表结构
+
+psql -h 127.0.0.1 -U shenlan -d shenlan -c "\d+ documents"
+若能看到字段：
+
+nginx
+复制
+编辑
+embedding | vector(1024)
+说明 pgvector 已成功启用。
 1. 停止可能运行的 PostgreSQL 服务，避免与初始化过程冲突：
 
    brew services stop postgresql
