@@ -1,202 +1,208 @@
 #!/usr/bin/env bash
-# Tiny Observe Agent (node_exporter + textfile proc metrics + optional sysstat/atop)
-# Debian/Ubuntu only. Run as root.
-
+# install_tiny_agent.sh - Install Prometheus node_exporter (+ optional process-exporter)
+# Debian/Ubuntu. Run as root.
 set -euo pipefail
 
-# ======= Config (you can edit) =======
-BIND_ADDR="${BIND_ADDR:-0.0.0.0:9100}"     # node_exporter 监听地址
-INSTALL_DIR="${INSTALL_DIR:-/opt/metrics-agent}"
-TEXT_DIR="${TEXT_DIR:-/var/lib/node_exporter}"
-NODE_EXPORTER_VERSION="${NODE_EXPORTER_VERSION:-1.8.2}"   # 可手动固定版本
-WITH_SYSSTAT="${WITH_SYSSTAT:-1}"          # 1=启用 sysstat(推荐)  0=关闭
-WITH_ATOP="${WITH_ATOP:-0}"                # 1=启用 atop(10min)   0=关闭
-# =====================================
+# ====== Config (env overridable) ======
+NODE_EXP_VER="${NODE_EXP_VER:-1.8.2}"
+PROC_EXP_VER="${PROC_EXP_VER:-0.7.10}"
+INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+VERIFY="${VERIFY:-1}"                 # 1=verify sha256, 0=skip
+WITH_PROCESS="${WITH_PROCESS:-0}"     # 1=also install process-exporter
+CURL_INSECURE="${CURL_INSECURE:-0}"   # 1=allow -k
+BIND_ADDR="${BIND_ADDR:-0.0.0.0}"     # 监听地址（node_exporter）
+NODE_PORT="${NODE_PORT:-9100}"
+PROC_PORT="${PROC_PORT:-9256}"
 
-echo "[*] Install prereqs & create dirs"
-apt-get update -y
-apt-get install -y curl tar coreutils
-mkdir -p "$INSTALL_DIR" "$TEXT_DIR"
+# ====== Helpers ======
+curl_get() {
+  # $1=url $2=outfile
+  local u="$1" o="$2"
+  local extra=()
+  [[ "$CURL_INSECURE" = "1" ]] && extra+=(-k)
+  curl -fL --retry 6 --retry-all-errors --connect-timeout 20 --max-time 600 \
+       --speed-time 30 --speed-limit 10240 \
+       -o "$o" "${extra[@]}" "$u"
+}
 
-echo "[*] Detect arch & download node_exporter v${NODE_EXPORTER_VERSION}"
-ARCH="$(uname -m)"
-case "$ARCH" in
-  x86_64|amd64)  TAR="node_exporter-${NODE_EXPORTER_VERSION}.linux-amd64.tar.gz" ;;
-  aarch64|arm64) TAR="node_exporter-${NODE_EXPORTER_VERSION}.linux-arm64.tar.gz" ;;
-  *) echo "Unsupported arch: $ARCH"; exit 1 ;;
-esac
-URL="https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXPORTER_VERSION}/${TAR}"
-curl -fsSL "$URL" | tar xz --strip-components=1 -C "$INSTALL_DIR" --wildcards '*/node_exporter'
-chmod 0755 "${INSTALL_DIR}/node_exporter"
+cleanup_bad_tar() {
+  local f="$1"
+  # 若 tar 失败，删除坏文件，避免下次继续解压同一个坏包
+  [[ -f "$f" ]] && rm -f "$f"
+}
 
-echo "[*] Write systemd unit for node_exporter"
-cat >/etc/systemd/system/node-exporter.service <<EOF
+arch_norm() {
+  case "$(uname -m)" in
+    x86_64|amd64) echo amd64 ;;
+    aarch64|arm64) echo arm64 ;;
+    *) echo "Unsupported arch $(uname -m)" >&2; exit 1 ;;
+  esac
+}
+
+install_binary() {
+  # $1=src $2=dst
+  install -m 0755 "$1" "$2"
+}
+
+ensure_user() {
+  # $1=user
+  id -u "$1" >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin "$1"
+}
+
+# ====== Paths/URLs ======
+ARCH="$(arch_norm)"
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+NODE_NAME="node_exporter-${NODE_EXP_VER}.linux-${ARCH}"
+NODE_TGZ="${NODE_NAME}.tar.gz"
+NODE_URLS=(
+  "https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXP_VER}/${NODE_TGZ}"
+)
+NODE_SUM_URL="https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXP_VER}/sha256sums.txt"
+
+PROC_NAME="process-exporter-${PROC_EXP_VER}.linux-${ARCH}"
+PROC_TGZ="${PROC_NAME}.tar.gz"
+PROC_URLS=(
+  "https://github.com/ncabatoff/process-exporter/releases/download/v${PROC_EXP_VER}/${PROC_TGZ}"
+)
+
+# ====== Download with retries & checksum ======
+download_with_fallback() {
+  # $1: array name of URLs; $2: out path
+  local -n arr="$1"
+  local out="$2"
+  local ok=0
+  for u in "${arr[@]}"; do
+    echo "→ Downloading: $u"
+    if curl_get "$u" "$out"; then
+      ok=1; break
+    else
+      echo "WARN: failed: $u"
+    fi
+  done
+  [[ $ok -eq 1 ]] || { echo "ERROR: all mirrors failed for $out"; exit 2; }
+}
+
+verify_sha256() {
+  # $1=tar.gz path; $2=sum_url; $3=expected file name in sums
+  local f="$1" url="$2" fname="$3" sums="$TMPDIR/sha256sums.txt"
+  echo "→ Fetching checksum list..."
+  if ! curl_get "$url" "$sums"; then
+    echo "WARN: cannot fetch checksums; skip verification."
+    return 0
+  fi
+  echo "→ Verifying sha256 for $fname"
+  local expect
+  expect="$(grep " ${fname}$" "$sums" | awk '{print $1}')"
+  if [[ -z "${expect:-}" ]]; then
+    echo "WARN: no checksum entry for $fname; skip verify."
+    return 0
+  fi
+  local got
+  got="$(sha256sum "$f" | awk '{print $1}')"
+  if [[ "$got" != "$expect" ]]; then
+    echo "ERROR: sha256 mismatch for $fname"; return 1
+  fi
+}
+
+# ====== Install node_exporter ======
+echo "[*] Install node_exporter v${NODE_EXP_VER} (${ARCH})"
+NODE_TAR="$TMPDIR/${NODE_TGZ}"
+download_with_fallback NODE_URLS "$NODE_TAR"
+
+if [[ "$VERIFY" = "1" ]]; then
+  if ! verify_sha256 "$NODE_TAR" "$NODE_SUM_URL" "$NODE_TGZ"; then
+    cleanup_bad_tar "$NODE_TAR"
+    echo "Retrying download due to checksum mismatch..."
+    download_with_fallback NODE_URLS "$NODE_TAR"
+    verify_sha256 "$NODE_TAR" "$NODE_SUM_URL" "$NODE_TGZ" || { echo "FATAL: checksum still bad"; exit 3; }
+  fi
+fi
+
+echo "→ Extracting $NODE_TGZ"
+tar xzf "$NODE_TAR" -C "$TMPDIR" || { cleanup_bad_tar "$NODE_TAR"; echo "FATAL: tar extract failed"; exit 4; }
+install_binary "$TMPDIR/$NODE_NAME/node_exporter" "$INSTALL_DIR/node_exporter"
+ensure_user node_exporter
+
+cat >/etc/systemd/system/node_exporter.service <<EOF
 [Unit]
-Description=Prometheus Node Exporter (tiny, LAN)
-After=network.target
+Description=Prometheus Node Exporter
+Wants=network-online.target
+After=network-online.target
 
 [Service]
-User=nobody
-Group=nogroup
-ExecStart=${INSTALL_DIR}/node_exporter \\
-  --web.listen-address=${BIND_ADDR} \\
-  --collector.disable-defaults \\
-  --collector.cpu \\
-  --collector.meminfo \\
-  --collector.loadavg \\
-  --collector.filesystem \\
-  --collector.diskstats \\
-  --collector.netdev \\
-  --collector.textfile \\
-  --collector.textfile.directory=${TEXT_DIR}
+User=node_exporter
+Group=node_exporter
+ExecStart=${INSTALL_DIR}/node_exporter \
+  --web.listen-address=${BIND_ADDR}:${NODE_PORT} \
+  --collector.tcpstat \
+  --collector.processes
 Restart=always
-RestartSec=2
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-echo "[*] Write ultra-light process group metrics script"
-cat >/usr/local/bin/proc_metrics.sh <<'EOSH'
-#!/usr/bin/env bash
-# Generate Prometheus textfile metrics for process groups (ultra-light)
-# Groups: nginx, redis, postgres, xcontrol
-set -euo pipefail
+systemctl daemon-reload
+systemctl enable --now node_exporter
+sleep 1
+systemctl --no-pager -l status node_exporter || true
 
-OUT="/var/lib/node_exporter/proc.prom"
-TMP="$(mktemp)"
-PAGESIZE="$(getconf PAGESIZE 2>/dev/null || echo 4096)"
+echo "→ Probe node_exporter"
+if ! curl -fsS "http://${BIND_ADDR}:${NODE_PORT}/metrics" >/dev/null 2>&1; then
+  echo "NOTE: cannot fetch metrics via ${BIND_ADDR}:${NODE_PORT} (OK if binding to 127.0.0.1 and you ran from remote)."
+fi
 
-declare -A MATCH
-MATCH[nginx]='(^/usr/local/openresty/nginx/sbin/nginx$)|(^nginx$)|nginx'
-MATCH[redis]='(^/usr/bin/redis-server$)|(^/usr/local/bin/redis-server$)|(^redis-server$)|redis-server'
-MATCH[postgres]='(^/.*?/postgres$)|(^/.*?/postmaster$)|(^postgres$)|(^postmaster$)|postgres|postmaster'
-MATCH[xcontrol]='(^/usr/bin/xcontrol-server$)|(^xcontrol-server$)|xcontrol-server'
+# ====== Optional: process-exporter ======
+if [[ "$WITH_PROCESS" = "1" ]]; then
+  echo "[*] Install process-exporter v${PROC_EXP_VER} (${ARCH})"
+  PROC_TAR="$TMPDIR/${PROC_TGZ}"
+  download_with_fallback PROC_URLS "$PROC_TAR"
+  echo "→ Extracting $PROC_TGZ"
+  tar xzf "$PROC_TAR" -C "$TMPDIR" || { cleanup_bad_tar "$PROC_TAR"; echo "FATAL: tar extract failed"; exit 5; }
+  install_binary "$TMPDIR/$PROC_NAME/process-exporter" "$INSTALL_DIR/process-exporter"
+  ensure_user process_exporter
 
-{
-  echo "# HELP proc_group_memory_rss_bytes RSS memory by group"
-  echo "# TYPE proc_group_memory_rss_bytes gauge"
-  echo "# HELP proc_group_open_fds Open file descriptors by group"
-  echo "# TYPE proc_group_open_fds gauge"
-  echo "# HELP proc_group_cpu_jiffies_total Cumulative CPU jiffies (utime+stime) by group"
-  echo "# TYPE proc_group_cpu_jiffies_total counter"
-  echo "# HELP proc_group_io_read_bytes_total /proc/<pid>/io read_bytes summed by group"
-  echo "# TYPE proc_group_io_read_bytes_total counter"
-  echo "# HELP proc_group_io_write_bytes_total /proc/<pid>/io write_bytes summed by group"
-  echo "# TYPE proc_group_io_write_bytes_total counter"
-  echo "# HELP proc_group_threads Threads by group"
-  echo "# TYPE proc_group_threads gauge"
-} >"$TMP"
+  cat >/etc/process-exporter.yml <<'YML'
+process_names:
+  - name: "{{.Comm}}"
+    cmdline: [".+"]
+YML
 
-for g in nginx redis postgres xcontrol; do
-  rss=0; fds=0; cpu=0; rbytes=0; wbytes=0; threads=0
-  pat="${MATCH[$g]}"
-
-  for p in /proc/[0-9]*; do
-    pid="${p#/proc/}"
-    # Fast skip if cannot read
-    [[ -r "$p/stat" ]] || continue
-
-    comm="$(tr -d '\0' <"$p/comm" 2>/dev/null || true)"
-    exe="$(readlink -f "$p/exe" 2>/dev/null || true)"
-    cmd="$(tr '\0' ' ' <"$p/cmdline" 2>/dev/null || true)"
-
-    if [[ "$comm" =~ $pat || "$exe" =~ $pat || "$cmd" =~ $pat ]]; then
-      # RSS from /proc/<pid>/statm (field 2 = resident pages)
-      if read -r size resident _ <"$p/statm" 2>/dev/null; then
-        rss=$(( rss + resident * PAGESIZE ))
-      fi
-
-      # FDs
-      if [[ -d "$p/fd" ]]; then
-        n=$(ls -U1 "$p/fd" 2>/dev/null | wc -l | tr -d ' ' || echo 0)
-        fds=$(( fds + n ))
-      fi
-
-      # CPU jiffies from /proc/<pid>/stat (fields 14,15)
-      read -r statline <"$p/stat" || true
-      # shellcheck disable=SC2206
-      arr=($statline)
-      ut=${arr[13]:-0}; st=${arr[14]:-0}
-      cpu=$(( cpu + ut + st ))
-
-      # IO
-      if [[ -r "$p/io" ]]; then
-        rb=$(awk '/read_bytes/ {print $2}' "$p/io" 2>/dev/null || echo 0)
-        wb=$(awk '/write_bytes/ {print $2}' "$p/io" 2>/dev/null || echo 0)
-        rbytes=$(( rbytes + rb ))
-        wbytes=$(( wbytes + wb ))
-      fi
-
-      # Threads
-      ths=$(awk -F: '/Threads/ {gsub(/ /,"",$2); print $2}' "$p/status" 2>/dev/null || echo 0)
-      [[ -n "$ths" ]] || ths=0
-      threads=$(( threads + ths ))
-    fi
-  done
-
-  echo "proc_group_memory_rss_bytes{group=\"$g\"} $rss" >>"$TMP"
-  echo "proc_group_open_fds{group=\"$g\"} $fds" >>"$TMP"
-  echo "proc_group_cpu_jiffies_total{group=\"$g\"} $cpu" >>"$TMP"
-  echo "proc_group_io_read_bytes_total{group=\"$g\"} $rbytes" >>"$TMP"
-  echo "proc_group_io_write_bytes_total{group=\"$g\"} $wbytes" >>"$TMP"
-  echo "proc_group_threads{group=\"$g\"} $threads" >>"$TMP"
-done
-
-mv "$TMP" "$OUT"
-EOSH
-chmod 0755 /usr/local/bin/proc_metrics.sh
-
-echo "[*] Write systemd oneshot + timer for proc metrics (every 5s)"
-cat >/etc/systemd/system/proc-metrics.service <<EOF
+  cat >/etc/systemd/system/process-exporter.service <<EOF
 [Unit]
-Description=Generate process group metrics (textfile)
-After=local-fs.target
+Description=process-exporter
+Wants=network-online.target
+After=network-online.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/local/bin/proc_metrics.sh
-EOF
-
-cat >/etc/systemd/system/proc-metrics.timer <<EOF
-[Unit]
-Description=Run process group metrics every 5s
-
-[Timer]
-OnBootSec=5
-OnUnitActiveSec=5s
-AccuracySec=1s
-Unit=proc-metrics.service
+User=process_exporter
+Group=process_exporter
+ExecStart=${INSTALL_DIR}/process-exporter \
+  --config.path /etc/process-exporter.yml \
+  --web.listen-address=${BIND_ADDR}:${PROC_PORT}
+Restart=always
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
 
 [Install]
-WantedBy=timers.target
+WantedBy=multi-user.target
 EOF
 
-if [[ "$WITH_SYSSTAT" == "1" ]]; then
-  echo "[*] Enable sysstat (1min sampling, 7 days retention)"
-  apt-get install -y sysstat
-  sed -ri 's/^ENABLED=.*/ENABLED="true"/' /etc/default/sysstat || true
-  echo '* * * * * root sa1 60 1' >/etc/cron.d/sysstat
-  systemctl enable --now sysstat || true
+  systemctl daemon-reload
+  systemctl enable --now process-exporter
+  sleep 1
+  systemctl --no-pager -l status process-exporter || true
 fi
 
-if [[ "$WITH_ATOP" == "1" ]]; then
-  echo "[*] Enable atop (10min sampling, 7 generations)"
-  apt-get install -y atop
-  sed -ri 's/^LOGINTERVAL=.*/LOGINTERVAL=600/' /etc/default/atop || true
-  sed -ri 's/^LOGGENERATIONS=.*/LOGGENERATIONS=7/' /etc/default/atop || true
-  systemctl enable --now atop || true
-fi
-
-echo "[*] Reload & start services"
-systemctl daemon-reload
-systemctl enable --now node-exporter.service
-systemctl enable --now proc-metrics.timer
-
-echo "[OK] Tiny agent is up."
-echo "    - node_exporter : ${BIND_ADDR}/metrics"
-echo "    - textfile dir  : ${TEXT_DIR} (proc.prom will appear within 5s)"
-echo
-echo "Quick check:"
-echo "  curl -s http://${BIND_ADDR}/metrics | head"
-echo "  curl -s http://${BIND_ADDR}/metrics | grep -E 'proc_group_(memory|cpu|io|threads)' || true"
+echo "OK: node_exporter on ${BIND_ADDR}:${NODE_PORT}"
+[[ "$WITH_PROCESS" = "1" ]] && echo "OK: process-exporter on ${BIND_ADDR}:${PROC_PORT}"
