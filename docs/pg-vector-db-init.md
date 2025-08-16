@@ -249,4 +249,104 @@ LIMIT 5;
 文本内容大致是什么
 
 
+2) 本地导出（建议用自定义格式，便于并行恢复）
+
+自定义格式（.dump）
+
+# 生成压缩备份文件（包含结构+数据）
+pg_dump -h 127.0.0.1 -U shenlan -d shenlan \
+  -Fc -Z 6 \
+  -f shenlan_$(date +%F).dump
+
+
+大库可用目录格式 + 并行导出：
+
+pg_dump -h 127.0.0.1 -U shenlan -d shenlan \
+  -Fd -j 4 -Z 0 \
+  -f shenlan_dumpdir/
+
+3) 传输到远端
+scp shenlan_2025-08-16.dump user@REMOTE_HOST:/tmp/
+# 或：scp -r shenlan_dumpdir/ user@REMOTE_HOST:/tmp/
+
+4) 远端恢复
+# 清理并恢复（避免 owner/privileges 冲突，按需去掉 --clean）
+pg_restore -h REMOTE_HOST -U shenlan -d shenlan \
+  --clean --if-exists --no-owner --no-privileges \
+  /tmp/shenlan_2025-08-16.dump
+
+
+目录格式可并行恢复：
+
+pg_restore -h REMOTE_HOST -U shenlan -d shenlan \
+  --clean --if-exists --no-owner --no-privileges \
+  -j 4 /tmp/shenlan_dumpdir/
+
+5) 验证
+psql -h REMOTE_HOST -U shenlan -d shenlan -c "\d+ public.documents"
+psql -h REMOTE_HOST -U shenlan -d shenlan -c "SELECT COUNT(*) FROM public.documents;"
+psql -h REMOTE_HOST -U shenlan -d shenlan -c "SELECT vector_dims(embedding) FROM public.documents WHERE embedding IS NOT NULL LIMIT 1;"
+
+方案 B：不落地文件的「管道直传」（快）
+
+边导出边导入，省去中间文件；网络稳定时很好用。
+
+自定义格式 + 远端 pg_restore：
+
+pg_dump -h 127.0.0.1 -U shenlan -d shenlan -Fc \
+| ssh user@REMOTE_HOST "pg_restore -U shenlan -d shenlan --clean --if-exists --no-owner --no-privileges"
+
+
+SQL 文本直灌（更通用，但不可并行）：
+
+pg_dump -h 127.0.0.1 -U shenlan -d shenlan -x -O \
+| psql -h REMOTE_HOST -U shenlan -d shenlan
+
+
+-x 去掉权限语句；-O 去掉 OWNER 语句，避免远端角色不一致时报错。
+
+（可选）角色/权限全局对象同步
+
+如果你需要把角色、默认权限一起迁过去（不仅仅是库内容），先在本地导出「全局对象」，再在远端导入：
+
+# 本地导出全局（角色等），需要有 postgres 超级用户
+pg_dumpall -h 127.0.0.1 -U postgres --globals-only > globals.sql
+
+# 远端导入（同样需要超级用户）
+psql -h REMOTE_HOST -U postgres -f globals.sql
+
+
+若仅用同一个业务用户（如 shenlan），且远端已手动创建并授权，这步可以省略。
+
+小贴士 / 排障
+
+扩展要先装：远端必须已安装 pgvector、zhparser 包且能 CREATE EXTENSION，否则恢复视图/索引会失败。
+
+版本兼容：pg_dump → pg_restore 支持跨小版本恢复；主版本跨越（如 PG13 → PG14）通常没问题，但推荐目标版本 ≥ 源版本。
+
+性能优化（恢复时）：
+
+临时关闭同步提交：ALTER SYSTEM SET synchronous_commit = off;（或会话级）
+
+增大维护内存：SET maintenance_work_mem='1GB';
+
+并行恢复：pg_restore -j N -Fd
+
+恢复后 ANALYZE; REINDEX 以优化查询
+
+连接/网络：
+
+远端 pg_hba.conf 放行你的 IP（host … md5/scram）
+
+防火墙开放 5432：ufw allow 5432/tcp
+
+最省事：如果只是「把本地覆盖到远端」且不在乎中间文件：
+
+pg_dump -h 127.0.0.1 -U shenlan -d shenlan -Fc \
+| ssh user@REMOTE_HOST "dropdb -U shenlan --if-exists shenlan && createdb -U shenlan shenlan && \
+                        psql -U shenlan -d shenlan -c \"CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS zhparser;\" && \
+                        pg_restore -U shenlan -d shenlan --no-owner --no-privileges"
+
+
+需要的话我可以根据你的远端连接串（域名/端口/用户名）和数据规模，帮你生成一键脚本（含并行度和恢复优化参数）。
 
