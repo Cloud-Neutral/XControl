@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # ===== Required =====
-: "${GIT_URL:?GIT_URL is required, e.g. http://git.lan/ops/grafana-as-code.git}"
+: "${GIT_URL:-https://github.com/svc-design/gitops.git}"
 
 # ===== Config (env overrides allowed) =====
 PROM_VERSION="${PROM_VERSION:-2.49.0}"
@@ -47,14 +47,27 @@ apt-get update -y
 apt-get install -y curl tar git jq adduser ca-certificates gnupg apt-transport-https nginx
 
 echo "[2/9] Install Grafana 12 (OSS stable)"
+
+echo "[2/9] Install Grafana 12 (OSS stable)"
 if ! dpkg -s grafana >/dev/null 2>&1; then
+  echo "→ Setting up Grafana APT repo and keyring..."
+
+  # 1. 确保 keyring 目录存在
   install -d -m 0755 /etc/apt/keyrings
-  curl -fsSL https://packages.grafana.com/oss/deb/gpg.key | gpg --dearmor -o /etc/apt/keyrings/grafana.gpg
-  echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://packages.grafana.com/oss/deb stable main" \
-    >/etc/apt/sources.list.d/grafana.list
+
+  # 2. 获取 Grafana GPG 公钥并转换格式（避免用旧地址）
+  curl -fsSL https://apt.grafana.com/gpg.key | \
+    gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+
+  # 3. 添加 APT 源（signed-by 指向 keyring）
+  echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" \
+    | sudo tee /etc/apt/sources.list.d/grafana.list > /dev/null
+
+  # 4. 更新 & 安装
   apt-get update -y
   apt-get install -y grafana
 fi
+
 
 echo "[3/9] Clone GitOps repo -> ${ROOT_DIR}"
 mkdir -p "$(dirname "${ROOT_DIR}")"
@@ -268,21 +281,28 @@ EOF
 
 echo "[9/9] Enable services + 5m Git pull timer"
 # Git pull timer
-cat >/etc/systemd/system/grafana-dash-pull.service <<EOF
-[Unit] Description=git pull dashboards
-[Service]
-Type=oneshot
-WorkingDirectory=${ROOT_DIR}
-ExecStart=/usr/bin/git pull --ff-only
-EOF
-cat >/etc/systemd/system/grafana-dash-pull.timer <<'EOF'
-[Unit] Description=git pull dashboards every 5m
+
+cat >/etc/systemd/system/grafana-dash-pull.timer <<EOF
+[Unit]
+Description=git pull dashboards every 5m
+
 [Timer]
 OnBootSec=30s
 OnUnitActiveSec=5m
 AccuracySec=30s
+
 [Install]
 WantedBy=timers.target
+EOF
+
+cat >/etc/systemd/system/grafana-dash-pull.service <<EOF
+[Unit]
+Description=git pull dashboards
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/grafana/grafana-as-code
+ExecStart=/usr/bin/git pull --ff-only
 EOF
 
 systemctl daemon-reload
