@@ -37,14 +37,14 @@ const features = [
     },
   },
   {
-    icon: '🤖',
+    icon: '📡',
     title: {
-      en: 'XCodeAgent - AI Code Assistant',
-      zh: 'XCodeAgent - AI 代码助手',
+      en: 'XScopeHub - Observability Hub',
+      zh: 'XScopeHub - 可观察性平台',
     },
     desc: {
-      en: 'Automatically generate PRs from GitHub Issues via AI-powered patch generation, code review and testing automation.',
-      zh: '通过 AI 驱动的补丁生成、代码审查与测试自动化，从 GitHub Issue 自动生成 PR。',
+      en: 'Bridges exporters, OpenTelemetry, and OpenObserve with ETL pipelines for metrics, logs, and traces.',
+      zh: '通过 OpenTelemetry 框架连接 Exporter、OpenObserve 与 ETL 流程，实现指标、日志与调用的统一聚合。',
     },
   },
   {
