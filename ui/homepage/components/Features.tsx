@@ -48,14 +48,14 @@ const features = [
     },
   },
   {
-    icon: '📊',
+    icon: '🧭',
     title: {
-      en: 'XOpsAgent - AIOps Assistant',
-      zh: 'XOpsAgent - AIOps 助手',
+      en: 'Navi - Task Assistant',
+      zh: 'Navi - 任务助手',
     },
     desc: {
-      en: 'Monitor system metrics, detect anomalies, perform root cause analysis, and generate intelligent operational insights.',
-      zh: '监控系统指标，检测异常，执行根因分析，生成智能运维洞察。',
+      en: 'Guiding your tasks, helping you get things done faster.',
+      zh: '引导你的任务，帮助你更快完成工作。',
     },
   },
   {
