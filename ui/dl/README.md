@@ -18,6 +18,9 @@ example:
 NEXT_PUBLIC_DL_BASE_URL=https://storage.example.com/my-bucket yarn dev
 ```
 
+from a location other than the default `https://dl.svc.plus`.
+
+
 ## Build & Deploy
 
 ```bash
@@ -33,3 +36,6 @@ point the exported site at your own storage endpoint and bucket, e.g.:
 ```bash
 NEXT_PUBLIC_DL_BASE_URL=https://storage.example.com/my-bucket yarn build
 ```
+
+point the exported site at your own storage endpoint and bucket.
+

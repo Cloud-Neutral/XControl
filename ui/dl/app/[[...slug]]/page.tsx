@@ -4,6 +4,7 @@ export async function generateStaticParams() {
   return [{ slug: [] }];
 }
 
+
 import CardGrid from "../../components/CardGrid";
 import FileTable from "../../components/FileTable";
 import Breadcrumbs from "../../components/Breadcrumbs";
