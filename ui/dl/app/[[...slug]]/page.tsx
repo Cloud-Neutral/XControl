@@ -1,10 +1,3 @@
-export const dynamic = "force-static";
-export const dynamicParams = false;
-export async function generateStaticParams() {
-  return [{ slug: [] }];
-}
-
-
 import CardGrid from "../../components/CardGrid";
 import FileTable from "../../components/FileTable";
 import Breadcrumbs from "../../components/Breadcrumbs";
@@ -12,9 +5,6 @@ import MarkdownPanel from "../../components/MarkdownPanel";
 import CopyButton from "../../components/CopyButton";
 import { formatDate } from "../../utils/format";
 
-// Base URL for object storage hosting `manifest.json` and per-directory
-// `dir.json` files. It can be overridden at build time with the
-// `NEXT_PUBLIC_DL_BASE_URL` environment variable.
 const BASE_URL = process.env.NEXT_PUBLIC_DL_BASE_URL || "https://dl.svc.plus";
 
 interface DirItem {
@@ -36,19 +26,34 @@ async function getManifest() {
 }
 
 async function getDir(path: string) {
-  const res = await fetch(`${BASE_URL}${path}dir.json`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}${path}dir.json`, { cache: "no-store" });
   if (!res.ok) {
-    throw new Error('Failed to load dir');
+    throw new Error("Failed to load dir");
   }
   return res.json();
 }
+
+export function generateStaticParams() {
+  return [{ slug: [] }];
+}
+
+export const dynamicParams = false;
+export const dynamic = "force-static";
 
 export default async function Page({ params }: { params: { slug?: string[] } }) {
   const segs = params.slug ?? [];
   if (segs.length === 0) {
     const data = await getManifest();
     return (
-      <main className="p-4 max-w-6xl mx-auto">
+      <main className="p-4 max-w-6xl mx-auto space-y-6">
+        <section className="space-y-2">
+          <h1 className="text-2xl font-bold">dl.svc.plus Downloads</h1>
+          <p className="text-sm text-gray-600">
+            Browse public downloads hosted on <a href="https://dl.svc.plus" className="underline">dl.svc.plus</a>. Each directory
+            is described by <code>manifest.json</code> and <code>dir.json</code> files with optional <code>tldr.md</code> and
+            <code>README.md</code> documentation.
+          </p>
+        </section>
         <CardGrid roots={data.roots} />
       </main>
     );
@@ -68,7 +73,7 @@ export default async function Page({ params }: { params: { slug?: string[] } }) 
                 <CopyButton text={`curl -LO ${BASE_URL}${first.href}`} />
               )}
             </div>
-            <FileTable basePath={path} items={dir.items} />
+            <FileTable basePath={path} items={dir.items as DirItem[]} />
           </div>
           <div className="w-full lg:w-72 space-y-4">
             {dir.tldr && <MarkdownPanel url={dir.tldr} title="TL;DR" />}
