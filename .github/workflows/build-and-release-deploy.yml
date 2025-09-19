@@ -1,4 +1,4 @@
-name: Build and Release
+name: Build Release and Deploy
 
 on:
   pull_request:
@@ -127,7 +127,7 @@ jobs:
     uses: ./.github/workflows/update-mirror.yml
     secrets: inherit
 
-  pre-setup:
+  deploy:
     needs:
       - release
       - deploy-panel
@@ -297,65 +297,10 @@ jobs:
             ssh "$REMOTE_HOST" "$cmd"
           fi
 
-  deploy:
-    needs: pre-setup
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        site: [global-homepage.svc.plus, cn-homepage.svc.plus]
-    env:
-      DEPLOY_ACTION: ${{ github.event.inputs.deploy_action || 'upgrade' }}
-      DEPLOY_DRY_RUN: ${{ github.event.inputs.deploy_dry_run || 'true' }}
-      ANSIBLE_USER: ${{ secrets.VPS_USER }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Normalise deployment parameters
-        run: |
-          set -euo pipefail
-          action="${DEPLOY_ACTION:-upgrade}"
-          action="$(echo "$action" | tr '[:upper:]' '[:lower:]')"
-          case "$action" in
-            magrate)
-              action="migrate"
-              ;;
-            backup-rollout)
-              action="backup-rollout"
-              ;;
-            init|migrate|upgrade|destroy)
-              ;;
-            *)
-              action="upgrade"
-              ;;
-          esac
-          echo "EFFECTIVE_DEPLOY_ACTION=$action" >> "$GITHUB_ENV"
-
-          raw="${DEPLOY_DRY_RUN:-true}"
-          raw="$(echo "$raw" | tr '[:upper:]' '[:lower:]')"
-          case "$raw" in
-            false|no|off|0)
-              echo "EFFECTIVE_DRY_RUN=false" >> "$GITHUB_ENV"
-              ;;
-            *)
-              echo "EFFECTIVE_DRY_RUN=true" >> "$GITHUB_ENV"
-              ;;
-          esac
-
       - name: Install Ansible
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install ansible
-
-      - name: Configure SSH access
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          install -m 700 -d ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ matrix.site }}" >> ~/.ssh/known_hosts
 
       - name: Run provisioning playbook
         run: |
