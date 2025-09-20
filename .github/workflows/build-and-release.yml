@@ -246,7 +246,7 @@ jobs:
 
           rm -rf "${dest_root}"
           mkdir -p "${dest_root}"
-          tar -xvpf "${artifact}" -d "${dest_root}"
+          tar -xvzf "${artifact}" -C "${dest_root}"
 
           src="${dest_root}"
           if [[ -d "${dest_root}/out" ]]; then
