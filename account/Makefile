@@ -2,7 +2,7 @@ APP_NAME := xcontrol-account
 MAIN_FILE := ./cmd/accountsvc/main.go
 PORT ?= 8080
 OS := $(shell uname -s)
-ACCOUNT_DB_DSN ?= postgres://postgres:postgres@localhost:5432/account?sslmode=disable
+ACCOUNT_DB_DSN ?= postgres://shenlan:password@127.0.0.1:5432/account?sslmode=disable
 SCHEMA_FILE := ./sql/schema.sql
 export PATH := /usr/local/go/bin:$(PATH)
 
