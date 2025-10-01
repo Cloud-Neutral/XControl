@@ -387,7 +387,9 @@ export const translations: Record<'en' | 'zh', Translation> = {
       register: {
         badge: 'Create account',
         title: 'Join CloudNative Suite',
+
         subtitle: 'Bring open source tools and AI services together to craft your cloud native workspace.',
+
         highlights: [
           {
             title: 'Explore open source solutions',
@@ -639,6 +641,7 @@ export const translations: Record<'en' | 'zh', Translation> = {
         badge: '立即注册',
         title: '加入 CloudNative Suite',
         subtitle: '把开源工具和 AI 服务放到一起，打造属于你的云原生工作台。',
+
         highlights: [
           {
             title: '试试各种开源解决方案',
