@@ -1,8 +1,8 @@
 'use client'
 
-import { ReactNode, useMemo } from 'react'
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Github } from 'lucide-react'
 
 import Navbar from '@components/Navbar'
@@ -22,36 +22,142 @@ export default function LoginContent({ children }: LoginContentProps) {
   const t = translations[language].auth.login
   const alerts = t.alerts
   const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    const sensitiveKeys = ['username', 'password', 'email']
+    const hasSensitiveParams = sensitiveKeys.some((key) => searchParams.has(key))
+
+    if (!hasSensitiveParams) {
+      return
+    }
+
+    const sanitized = new URLSearchParams(searchParams.toString())
+    sensitiveKeys.forEach((key) => sanitized.delete(key))
+
+    const queryString = sanitized.toString()
+    router.replace(queryString ? `/login?${queryString}` : '/login', { scroll: false })
+  }, [router, searchParams])
 
   const errorParam = searchParams.get('error')
   const registeredParam = searchParams.get('registered')
 
-  const normalize = (value: string) =>
-    value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
+  const normalize = useCallback(
+    (value: string) =>
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, ''),
+    [],
+  )
 
-  let alert: { type: 'error' | 'success'; message: string } | null = null
-  if (registeredParam === '1') {
-    alert = { type: 'success', message: alerts.registered }
-  } else if (errorParam) {
+  const githubAuthUrl = process.env.NEXT_PUBLIC_GITHUB_AUTH_URL || '/api/auth/github'
+  const wechatAuthUrl = process.env.NEXT_PUBLIC_WECHAT_AUTH_URL || '/api/auth/wechat'
+  const loginUrl = process.env.NEXT_PUBLIC_LOGIN_URL || '/api/auth/login'
+
+  const socialButtonsDisabled = true
+
+  const initialAlert = useMemo(() => {
+    if (registeredParam === '1') {
+      return { type: 'success', message: alerts.registered } as const
+    }
+
+    if (!errorParam) {
+      return null
+    }
+
     const normalizedError = normalize(errorParam)
     const errorMap: Record<string, string> = {
       missing_credentials: alerts.missingCredentials,
       email_and_password_are_required: alerts.missingCredentials,
       invalid_credentials: alerts.invalidCredentials,
       user_not_found: alerts.userNotFound ?? alerts.genericError,
+      credentials_in_query: alerts.genericError,
+      invalid_request: alerts.genericError,
     }
     const message = errorMap[normalizedError] ?? alerts.genericError
-    alert = { type: 'error', message }
-  }
+    return { type: 'error', message } as const
+  }, [alerts, errorParam, normalize, registeredParam])
 
-  const githubAuthUrl = process.env.NEXT_PUBLIC_GITHUB_AUTH_URL || '/api/auth/github'
-  const wechatAuthUrl = process.env.NEXT_PUBLIC_WECHAT_AUTH_URL || '/api/auth/wechat'
+  const [alert, setAlert] = useState(initialAlert)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const socialButtonsDisabled = true
+  useEffect(() => {
+    setAlert(initialAlert)
+  }, [initialAlert])
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      if (isSubmitting) {
+        return
+      }
+
+      const formData = new FormData(event.currentTarget)
+      const username = String(formData.get('username') ?? '').trim()
+      const password = String(formData.get('password') ?? '')
+      const remember = formData.get('remember') === 'on'
+
+      if (!username || !password) {
+        setAlert({ type: 'error', message: alerts.missingCredentials })
+        return
+      }
+
+      setIsSubmitting(true)
+      setAlert(null)
+
+      try {
+        const response = await fetch(loginUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            username,
+            password,
+            remember,
+          }),
+        })
+
+        if (!response.ok) {
+          let errorCode = 'invalid_credentials'
+          try {
+            const data = await response.json()
+            if (typeof data?.error === 'string') {
+              errorCode = data.error
+            }
+          } catch (error) {
+            console.error('Failed to parse login response', error)
+          }
+
+          const errorMap: Record<string, string> = {
+            invalid_credentials: alerts.invalidCredentials,
+            missing_credentials: alerts.missingCredentials,
+            user_not_found: alerts.userNotFound ?? alerts.genericError,
+            invalid_request: alerts.genericError,
+            credentials_in_query: alerts.genericError,
+          }
+
+          setAlert({ type: 'error', message: errorMap[normalize(errorCode)] ?? alerts.genericError })
+          return
+        }
+
+        const data: { redirectTo?: string } = await response
+          .json()
+          .catch(() => ({}))
+        router.push(data?.redirectTo || '/')
+        router.refresh()
+      } catch (error) {
+        console.error('Failed to submit login request', error)
+        setAlert({ type: 'error', message: alerts.genericError })
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [alerts, isSubmitting, loginUrl, normalize, router],
+  )
 
   const socialButtonClass = `flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-800 ${
     socialButtonsDisabled
@@ -65,7 +171,7 @@ export default function LoginContent({ children }: LoginContentProps) {
     }
 
     return (
-      <form className="space-y-6" method="post" action={process.env.NEXT_PUBLIC_LOGIN_URL || '/api/auth/login'}>
+      <form className="space-y-6" method="post" onSubmit={handleSubmit} noValidate>
         <div className="space-y-2">
           <label htmlFor="login-username" className="text-sm font-medium text-gray-700">
             {t.form.email}
@@ -109,13 +215,15 @@ export default function LoginContent({ children }: LoginContentProps) {
         </label>
         <button
           type="submit"
-          className="w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-600/20 transition hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+          disabled={isSubmitting}
+          aria-busy={isSubmitting}
+          className="w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-600/20 transition hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {t.form.submit}
+          {isSubmitting ? t.form.submitting ?? t.form.submit : t.form.submit}
         </button>
       </form>
     )
-  }, [children, t])
+  }, [children, handleSubmit, isSubmitting, t])
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
