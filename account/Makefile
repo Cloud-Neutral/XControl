@@ -90,7 +90,7 @@ start: build
 	@echo ">>> 运行 postgresql on port 5432 (后台运行)"
 	brew services start postgresql
 	@echo ">>> 运行 $(APP_NAME) on port $(PORT) (后台运行)"
-	@nohup ./xcontrol-account --config  config/account.yaml
+	@./xcontrol-account --config  config/account.yaml
 
 stop:
 	@echo ">>> 停止 $(APP_NAME)"
