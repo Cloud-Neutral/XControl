@@ -8,8 +8,6 @@ import { useLanguage } from '@i18n/LanguageProvider'
 import { translations } from '@i18n/translations'
 import { useUser } from '@lib/userStore'
 
-const MFA_STORAGE_KEY = 'account_mfa_token'
-
 type TotpStatus = {
   totpEnabled?: boolean
   totpPending?: boolean
@@ -22,13 +20,13 @@ type ProvisionResponse = {
   uri?: string
   issuer?: string
   account?: string
-  mfaToken?: string
   user?: { mfa?: TotpStatus }
+  error?: string
 }
 
 type VerifyResponse = {
-  token?: string
-  expiresAt?: string
+  success?: boolean
+  recoveryCodes?: string[]
   user?: { mfa?: TotpStatus }
   error?: string
 }
@@ -47,12 +45,12 @@ function formatTimestamp(value?: string) {
 export default function MfaSetupPanel() {
   const { language } = useLanguage()
   const copy = translations[language].userCenter.mfa
+  const recoveryTemplate = translations[language].auth.login.alerts.mfa.recoveryCodes
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, refresh } = useUser()
 
   const [status, setStatus] = useState<TotpStatus | null>(null)
-  const [mfaToken, setMfaToken] = useState('')
   const [secret, setSecret] = useState('')
   const [uri, setUri] = useState('')
   const [code, setCode] = useState('')
@@ -63,23 +61,6 @@ export default function MfaSetupPanel() {
   const hasPendingMfa = Boolean(status?.totpPending && !status?.totpEnabled)
   const setupRequested = searchParams.get('setupMfa') === '1'
 
-  const ensureTokenPersisted = useCallback((token: string) => {
-    if (!token) {
-      return
-    }
-    setMfaToken(token)
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(MFA_STORAGE_KEY, token)
-    }
-  }, [])
-
-  const clearToken = useCallback(() => {
-    setMfaToken('')
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem(MFA_STORAGE_KEY)
-    }
-  }, [])
-
   const fetchStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/mfa/status', { cache: 'no-store' })
@@ -89,8 +70,6 @@ export default function MfaSetupPanel() {
       }
       if (response.ok) {
         setStatus(payload?.mfa ?? payload?.user?.mfa ?? null)
-      } else if (response.status === 401) {
-        setStatus(payload?.mfa ?? null)
       }
     } catch (err) {
       console.warn('Failed to fetch MFA status', err)
@@ -98,12 +77,6 @@ export default function MfaSetupPanel() {
   }, [])
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem(MFA_STORAGE_KEY)
-      if (stored) {
-        setMfaToken(stored)
-      }
-    }
     void fetchStatus()
   }, [fetchStatus])
 
@@ -114,16 +87,15 @@ export default function MfaSetupPanel() {
       const response = await fetch('/api/auth/mfa/totp/provision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mfaToken ? { token: mfaToken } : {}),
+        body: JSON.stringify({}),
       })
-      const payload = (await response.json().catch(() => ({}))) as ProvisionResponse & { error?: string }
+      const payload = (await response.json().catch(() => ({}))) as ProvisionResponse
       if (!response.ok || !payload?.secret) {
         setError(payload?.error ?? copy.error)
         return
       }
       setSecret(payload.secret)
       setUri(payload?.uri ?? '')
-      ensureTokenPersisted(payload?.mfaToken ?? mfaToken)
       setStatus(payload?.user?.mfa ?? status)
     } catch (err) {
       console.warn('Provision TOTP failed', err)
@@ -131,7 +103,7 @@ export default function MfaSetupPanel() {
     } finally {
       setIsProvisioning(false)
     }
-  }, [copy.error, ensureTokenPersisted, mfaToken, status])
+  }, [copy.error, status])
 
   const handleVerify = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -146,20 +118,30 @@ export default function MfaSetupPanel() {
         const response = await fetch('/api/auth/mfa/totp/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: mfaToken, code: code.trim() }),
+          body: JSON.stringify({ code: code.trim() }),
         })
         const payload = (await response.json().catch(() => ({}))) as VerifyResponse
-        if (!response.ok || !payload?.token) {
+        if (!response.ok || !payload?.success) {
           setError(payload?.error ?? copy.error)
           return
         }
         setStatus(payload?.user?.mfa ?? { totpEnabled: true })
-        clearToken()
         setSecret('')
         setUri('')
         setCode('')
         await refresh()
-        router.replace('/panel/account')
+        if (Array.isArray(payload.recoveryCodes) && payload.recoveryCodes.length > 0) {
+          const message = recoveryTemplate
+            ? recoveryTemplate.replace('{codes}', payload.recoveryCodes.join(', '))
+            : `Recovery codes: ${payload.recoveryCodes.join(', ')}`
+          alert(message)
+        }
+        if (setupRequested) {
+          alert('Registration complete with MFA enabled')
+          router.replace('/')
+        } else {
+          router.replace('/panel/account')
+        }
         router.refresh()
       } catch (err) {
         console.warn('Verify TOTP failed', err)
@@ -168,7 +150,7 @@ export default function MfaSetupPanel() {
         setIsVerifying(false)
       }
     },
-    [clearToken, code, copy.codePlaceholder, copy.error, mfaToken, refresh, router],
+    [code, copy.codePlaceholder, copy.error, refresh, router, setupRequested],
   )
 
   const showProvisionButton = !status?.totpEnabled
@@ -201,89 +183,71 @@ export default function MfaSetupPanel() {
           </p>
         </div>
 
-        {displayStatus?.totpEnabled ? (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-            <p className="font-medium">{copy.successTitle}</p>
-            <p className="mt-1">{copy.successBody}</p>
-            <dl className="mt-3 grid gap-2 text-xs text-green-700 sm:grid-cols-2">
-              <div>
-                <dt className="font-semibold uppercase tracking-wide">{copy.status.issuedAt}</dt>
-                <dd>{formatTimestamp(displayStatus?.totpSecretIssuedAt)}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold uppercase tracking-wide">{copy.status.confirmedAt}</dt>
-                <dd>{formatTimestamp(displayStatus?.totpConfirmedAt)}</dd>
-              </div>
-            </dl>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              {hasPendingMfa ? copy.pendingHint : copy.subtitle}
-            </p>
+        <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">{copy.secretLabel}</span>
             {showProvisionButton ? (
               <button
                 type="button"
                 onClick={handleProvision}
                 disabled={isProvisioning}
-                className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isProvisioning ? `${provisionLabel}…` : provisionLabel}
+                {isProvisioning ? `${copy.generate}…` : provisionLabel}
               </button>
             ) : null}
-
-            {secret ? (
-              <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">{copy.secretLabel}</p>
-                  <code className="mt-1 block break-all rounded bg-purple-50 px-3 py-2 text-sm text-purple-700">{secret}</code>
-                </div>
-                {uri ? (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">{copy.uriLabel}</p>
-                    <a
-                      href={uri}
-                      className="mt-1 block break-all text-sm text-purple-600 underline"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {uri}
-                    </a>
-                  </div>
-                ) : null}
-                <p className="text-xs text-gray-500">{copy.manualHint}</p>
-              </div>
-            ) : null}
-
-            {secret ? (
-              <form onSubmit={handleVerify} className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700" htmlFor="mfa-code">
-                  {copy.codeLabel}
-                </label>
-                <input
-                  id="mfa-code"
-                  name="code"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  placeholder={copy.codePlaceholder}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
-                />
-                <button
-                  type="submit"
-                  disabled={isVerifying}
-                  className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {isVerifying ? copy.verifying : copy.verify}
-                </button>
-              </form>
-            ) : null}
           </div>
-        )}
+          <code className="block rounded-md bg-white px-3 py-2 text-sm text-purple-600 shadow-inner">
+            {secret || '••••••••••••'}
+          </code>
+          {uri ? (
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-gray-700">{copy.uriLabel}</span>
+              <code className="block break-all rounded-md bg-white px-3 py-2 text-xs text-purple-600 shadow-inner">{uri}</code>
+            </div>
+          ) : null}
+        </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <div className="grid gap-3 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600 sm:grid-cols-2">
+          <div>
+            <span className="font-medium text-gray-700">{copy.status.issuedAt}</span>
+            <p className="mt-1">{formatTimestamp(displayStatus?.totpSecretIssuedAt)}</p>
+          </div>
+          <div>
+            <span className="font-medium text-gray-700">{copy.status.confirmedAt}</span>
+            <p className="mt-1">{formatTimestamp(displayStatus?.totpConfirmedAt)}</p>
+          </div>
+        </div>
+
+        {showProvisionButton ? (
+          <form onSubmit={handleVerify} className="space-y-3">
+            <div className="space-y-2">
+              <label htmlFor="mfa-code" className="block text-sm font-medium text-gray-700">
+                {copy.codeLabel}
+              </label>
+              <input
+                id="mfa-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder={copy.codePlaceholder}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-4 py-2 text-gray-900 shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+              />
+            </div>
+
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+            <button
+              type="submit"
+              disabled={isVerifying}
+              className="inline-flex items-center justify-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isVerifying ? copy.verifying : copy.verify}
+            </button>
+          </form>
+        ) : null}
       </div>
     </Card>
   )

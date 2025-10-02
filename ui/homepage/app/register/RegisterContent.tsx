@@ -157,6 +157,7 @@ export default function RegisterContent() {
             missing_credentials: alerts.missingFields,
             invalid_email: alerts.invalidEmail,
             password_too_short: alerts.weakPassword,
+            weak_password: alerts.weakPassword,
             email_already_exists: alerts.userExists,
             name_already_exists: alerts.usernameExists ?? alerts.userExists,
             invalid_name: alerts.invalidName ?? alerts.genericError,

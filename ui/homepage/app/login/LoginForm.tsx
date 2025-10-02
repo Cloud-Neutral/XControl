@@ -15,28 +15,31 @@ export function LoginForm() {
   const authCopy = translations[language].auth.login
   const navCopy = translations[language].nav.account
   const { user, login } = useUser()
-  const [identifier, setIdentifier] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [totpCode, setTotpCode] = useState('')
-  const [loginMode, setLoginMode] = useState<'password_totp' | 'email_totp'>('password_totp')
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [step, setStep] = useState<'credentials' | 'mfa'>('credentials')
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (step === 'credentials') {
+      await submitCredentials()
+    } else {
+      await submitMfa()
+    }
+  }
 
-    const trimmedIdentifier = identifier.trim()
-    if (!trimmedIdentifier) {
+  const submitCredentials = async () => {
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
       setError(pageCopy.missingUsername)
       return
     }
-    if (loginMode === 'password_totp' && !password) {
+    if (!password) {
       setError(pageCopy.missingPassword)
-      return
-    }
-    if (!totpCode.trim()) {
-      setError(pageCopy.missingTotp ?? authCopy.alerts.mfa.missing)
       return
     }
 
@@ -49,41 +52,86 @@ export function LoginForm() {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: JSON.stringify({
-          identifier: trimmedIdentifier,
-          password: loginMode === 'password_totp' ? password : undefined,
-          totpCode: totpCode.trim(),
-          remember,
-        }),
+        body: JSON.stringify({ email: trimmedEmail, password, remember }),
         credentials: 'include',
       })
 
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+        needMfa?: boolean
+        mfaSetupRequired?: boolean
+        redirectTo?: string
+      }
+
       if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as { error?: string; mfaToken?: string }
-        const messageKey = payload.error ?? 'generic_error'
-        switch (messageKey) {
-          case 'missing_credentials':
-            setError(authCopy.alerts.missingCredentials)
-            break
-          case 'invalid_credentials':
-            setError(pageCopy.invalidCredentials)
-            break
-          case 'user_not_found':
-            setError(pageCopy.userNotFound)
-            break
+        handleCredentialError(payload?.error)
+        return
+      }
+
+      if (payload.needMfa) {
+        setStep('mfa')
+        setTotpCode('')
+        setError(null)
+        return
+      }
+
+      if (payload.mfaSetupRequired) {
+        await login()
+        const destination = payload.redirectTo ?? '/panel/account?setupMfa=1'
+        router.replace(destination)
+        router.refresh()
+        return
+      }
+
+      await login()
+      router.replace(payload.redirectTo ?? '/')
+      router.refresh()
+    } catch (submitError) {
+      console.warn('Login failed', submitError)
+      setError(pageCopy.genericError)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const submitMfa = async () => {
+    if (!totpCode.trim()) {
+      setError(pageCopy.missingTotp ?? authCopy.alerts.mfa.missing)
+      return
+    }
+
+    setError(null)
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('/api/auth/mfa/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ code: totpCode.trim() }),
+        credentials: 'include',
+      })
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+        redirectTo?: string
+        recoveryCodes?: string[]
+      }
+
+      if (!response.ok) {
+        switch (payload.error) {
           case 'mfa_code_required':
             setError(authCopy.alerts.mfa.missing)
             break
           case 'invalid_mfa_code':
             setError(authCopy.alerts.mfa.invalid)
             break
-          case 'mfa_setup_required':
-            if (typeof window !== 'undefined' && typeof payload.mfaToken === 'string') {
-              sessionStorage.setItem('account_mfa_token', payload.mfaToken)
-            }
-            router.replace('/panel/account?setupMfa=1')
-            router.refresh()
-            return
+          case 'mfa_token_expired':
+          case 'mfa_token_invalid':
+            setError(authCopy.alerts.mfa.invalid)
+            setStep('credentials')
+            break
           default:
             setError(pageCopy.genericError)
             break
@@ -92,13 +140,39 @@ export function LoginForm() {
       }
 
       await login()
-      router.replace('/')
+      if (Array.isArray(payload.recoveryCodes) && payload.recoveryCodes.length > 0) {
+        alert(authCopy.alerts.mfa.recoveryCodes?.replace('{codes}', payload.recoveryCodes.join(', ')) ?? 'Recovery codes generated.')
+      }
+      router.replace(payload.redirectTo ?? '/')
       router.refresh()
-    } catch (submitError) {
-      console.warn('Login failed', submitError)
+    } catch (error) {
+      console.warn('MFA verification failed', error)
       setError(pageCopy.genericError)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleCredentialError = (errorCode?: string) => {
+    switch (errorCode) {
+      case 'missing_credentials':
+        setError(authCopy.alerts.missingCredentials)
+        break
+      case 'invalid_credentials':
+        setError(pageCopy.invalidCredentials)
+        break
+      case 'user_not_found':
+        setError(pageCopy.userNotFound)
+        break
+      case 'email_not_verified':
+        setError(pageCopy.emailNotVerified ?? pageCopy.genericError)
+        break
+      case 'credentials_in_query':
+        setError(pageCopy.genericError)
+        break
+      default:
+        setError(pageCopy.genericError)
+        break
     }
   }
 
@@ -122,9 +196,9 @@ export function LoginForm() {
             <button
               type="button"
               onClick={handleGoHome}
-              className="inline-flex items-center justify-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2"
+              className="inline-flex items-center justify-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:ring-offset-2"
             >
-              {pageCopy.goHome}
+              {navCopy.home}
             </button>
             <button
               type="button"
@@ -140,46 +214,23 @@ export function LoginForm() {
       {!user ? (
         <form method="post" onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div className="space-y-2">
-            <label htmlFor="login-identifier" className="text-sm font-medium text-gray-700">
+            <label htmlFor="login-email" className="text-sm font-medium text-gray-700">
               {authCopy.form.email}
             </label>
             <input
-              id="login-identifier"
-              name="identifier"
-              type="text"
+              id="login-email"
+              name="email"
+              type="email"
               autoComplete="username"
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder={authCopy.form.emailPlaceholder}
               className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+              disabled={step === 'mfa'}
             />
           </div>
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-gray-700">{authCopy.form.mfa.mode}</legend>
-            <div className="flex flex-col gap-2 text-sm text-gray-600">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="login-mode"
-                  value="password_totp"
-                  checked={loginMode === 'password_totp'}
-                  onChange={() => setLoginMode('password_totp')}
-                />
-                {authCopy.form.mfa.passwordAndTotp}
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="login-mode"
-                  value="email_totp"
-                  checked={loginMode === 'email_totp'}
-                  onChange={() => setLoginMode('email_totp')}
-                />
-                {authCopy.form.mfa.emailAndTotp}
-              </label>
-            </div>
-          </fieldset>
-          {loginMode === 'password_totp' ? (
+
+          {step === 'credentials' ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <label htmlFor="login-password" className="font-medium text-gray-700">
@@ -201,22 +252,26 @@ export function LoginForm() {
               />
             </div>
           ) : null}
-          <div className="space-y-2">
-            <label htmlFor="login-totp" className="text-sm font-medium text-gray-700">
-              {authCopy.form.mfa.codeLabel}
-            </label>
-            <input
-              id="login-totp"
-              name="totpCode"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={totpCode}
-              onChange={(event) => setTotpCode(event.target.value)}
-              placeholder={authCopy.form.mfa.codePlaceholder}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
-            />
-          </div>
+
+          {step === 'mfa' ? (
+            <div className="space-y-2">
+              <label htmlFor="login-totp" className="text-sm font-medium text-gray-700">
+                {authCopy.form.mfa.codeLabel}
+              </label>
+              <input
+                id="login-totp"
+                name="totpCode"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={totpCode}
+                onChange={(event) => setTotpCode(event.target.value)}
+                placeholder={authCopy.form.mfa.codePlaceholder}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+              />
+            </div>
+          ) : null}
+
           <label className="flex items-center gap-3 text-sm text-gray-600">
             <input
               type="checkbox"
@@ -224,6 +279,7 @@ export function LoginForm() {
               className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
               checked={remember}
               onChange={(event) => setRemember(event.target.checked)}
+              disabled={step === 'mfa'}
             />
             {authCopy.form.remember}
           </label>
@@ -235,7 +291,11 @@ export function LoginForm() {
             disabled={isSubmitting}
             className="w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-600/20 transition hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {isSubmitting ? `${authCopy.form.submit}…` : authCopy.form.submit}
+            {step === 'mfa'
+              ? authCopy.form.mfa.submit ?? authCopy.form.submit
+              : isSubmitting
+                ? `${authCopy.form.submit}…`
+                : authCopy.form.submit}
           </button>
           <p className="text-xs text-gray-500">* {pageCopy.disclaimer}</p>
         </form>

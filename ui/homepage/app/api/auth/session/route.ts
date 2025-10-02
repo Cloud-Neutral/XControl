@@ -1,87 +1,54 @@
-import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
-
-const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
-const SESSION_COOKIE_NAME = 'account_session'
-
-type AccountUser = {
-  id?: string
-  uuid?: string
-  name?: string
-  username?: string
-  email: string
-  mfaEnabled?: boolean
-  mfa?: {
-    totpEnabled?: boolean
-    totpPending?: boolean
-    totpSecretIssuedAt?: string
-    totpConfirmedAt?: string
-  }
-}
-
-async function fetchSession(token: string) {
-  try {
-    const response = await fetch(`${ACCOUNT_SERVICE_URL}/api/auth/session`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    })
-
-    const data = await response.json().catch(() => ({}))
-    return { response, data }
-  } catch (error) {
-    console.error('Session lookup failed', error)
-    return { response: null, data: null }
-  }
-}
+import {
+  clearMfaChallengeCookie,
+  clearSessionCookie,
+  deleteSessionByToken,
+  findSessionByToken,
+  readSessionTokenFromCookies,
+} from '@lib/auth/session'
 
 export async function GET(request: NextRequest) {
   void request
-  const token = cookies().get(SESSION_COOKIE_NAME)?.value
+  const token = readSessionTokenFromCookies()
   if (!token) {
     return NextResponse.json({ user: null })
   }
 
-  const { response, data } = await fetchSession(token)
-  if (!response || !response.ok || !data?.user) {
-    const res = NextResponse.json({ user: null })
-    res.cookies.set({ name: SESSION_COOKIE_NAME, value: '', maxAge: 0, path: '/' })
-    return res
+  const session = await findSessionByToken(token)
+  if (!session) {
+    await clearSessionCookie()
+    return NextResponse.json({ user: null })
   }
 
-  const rawUser = data.user as AccountUser
-  const identifier =
-    typeof rawUser.uuid === 'string' && rawUser.uuid.trim().length > 0
-      ? rawUser.uuid.trim()
-      : typeof rawUser.id === 'string'
-        ? rawUser.id.trim()
-        : undefined
+  const user = session.user
+  const identifier = user.id
+  const responsePayload = {
+    user: {
+      id: identifier,
+      uuid: identifier,
+      email: user.email,
+      username: user.username ?? user.email,
+      mfaEnabled: user.mfaEnabled,
+      mfa: {
+        totpEnabled: user.mfaEnabled,
+        totpPending: Boolean(user.mfaTempSecretEncrypted && !user.mfaEnabled),
+        totpSecretIssuedAt: user.mfaSecretIssuedAt?.toISOString(),
+        totpConfirmedAt: user.mfaSecretConfirmedAt?.toISOString(),
+      },
+    },
+  }
 
-  const normalizedUser = identifier
-    ? { ...rawUser, id: identifier, uuid: identifier }
-    : rawUser
-
-  return NextResponse.json({ user: normalizedUser })
+  return NextResponse.json(responsePayload)
 }
 
 export async function DELETE(request: NextRequest) {
   void request
-  const cookieStore = cookies()
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value
+  const token = readSessionTokenFromCookies()
   if (token) {
-    await fetch(`${ACCOUNT_SERVICE_URL}/api/auth/session`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    }).catch(() => null)
+    await deleteSessionByToken(token)
   }
-
-  const response = NextResponse.json({ success: true })
-  response.cookies.set({ name: SESSION_COOKIE_NAME, value: '', maxAge: 0, path: '/' })
-  return response
+  clearMfaChallengeCookie()
+  await clearSessionCookie()
+  return NextResponse.json({ success: true })
 }

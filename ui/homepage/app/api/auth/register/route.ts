@@ -1,33 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
-
-const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
+import prisma from '@lib/prisma'
+import { sendVerificationEmail } from '@lib/auth/email'
+import { EMAIL_VERIFICATION_TTL_MINUTES } from '@lib/auth/constants'
+import { generateVerificationCode, hashValue } from '@lib/auth/crypto'
+import { hashPassword } from '@lib/auth/password'
+import { normalizeEmail, normalizeUsername, validatePasswordStrength } from '@lib/auth/validation'
 
 type RegistrationBody = {
   name: string
   email: string
   password: string
   confirmPassword: string
-}
-
-async function registerWithAccountService(body: Record<string, string>) {
-  try {
-    const response = await fetch(`${ACCOUNT_SERVICE_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    })
-
-    const data = await response.json().catch(() => ({}))
-    return { response, data }
-  } catch (error) {
-    console.error('Registration request failed', error)
-    return { response: null, data: { error: 'registration_failed' } }
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -53,32 +37,81 @@ export async function POST(request: NextRequest) {
   }
 
   const name = fields.name.trim()
-  const email = fields.email.trim().toLowerCase()
+  const email = normalizeEmail(fields.email)
   const password = fields.password
   const confirmPassword = fields.confirmPassword
 
-  if (!email || !password) {
-    const redirectURL = new URL('/register', request.url)
-    redirectURL.searchParams.set('error', 'missing_fields')
-    return NextResponse.redirect(redirectURL, { status: 303 })
+  if (!email || !password || !name) {
+    return respondWithError(request, 'missing_fields')
   }
 
   if (password !== confirmPassword) {
-    const redirectURL = new URL('/register', request.url)
-    redirectURL.searchParams.set('error', 'password_mismatch')
-    return NextResponse.redirect(redirectURL, { status: 303 })
+    return respondWithError(request, 'password_mismatch')
   }
 
-  const { response, data } = await registerWithAccountService({ name, email, password })
-  if (!response || !response.ok) {
-    const message = typeof data?.error === 'string' ? data.error : 'registration_failed'
-    const redirectURL = new URL('/register', request.url)
-    redirectURL.searchParams.set('error', message)
-    return NextResponse.redirect(redirectURL, { status: 303 })
+  if (!validatePasswordStrength(password)) {
+    return respondWithError(request, 'weak_password')
+  }
+
+  const username = normalizeUsername(name)
+  if (!username) {
+    return respondWithError(request, 'invalid_name')
+  }
+
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [{ email }, { username }],
+    },
+    select: { email: true, username: true },
+  })
+
+  if (existingUser) {
+    if (existingUser.email === email) {
+      return respondWithError(request, 'email_already_exists')
+    }
+    return respondWithError(request, 'name_already_exists')
+  }
+
+  try {
+    const passwordHash = await hashPassword(password)
+    const verificationCode = generateVerificationCode()
+    const verificationHash = hashValue(`${verificationCode}:${email}`)
+    const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MINUTES * 60 * 1000)
+
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          username,
+          email,
+          passwordHash,
+          status: 'pending',
+          mfaEnabled: false,
+        },
+        select: { id: true },
+      })
+
+      await tx.emailVerification.deleteMany({ where: { userId: user.id } })
+      await tx.emailVerification.create({
+        data: {
+          userId: user.id,
+          codeHash: verificationHash,
+          expiresAt,
+        },
+      })
+    })
+
+    await sendVerificationEmail(email, verificationCode)
+  } catch (error) {
+    console.error('Failed to create user during registration', error)
+    return respondWithError(request, 'user_creation_failed')
+  }
+
+  if (prefersJson(request)) {
+    return NextResponse.json({ success: true, message: 'verification_sent' })
   }
 
   const redirectURL = new URL('/login', request.url)
-  redirectURL.searchParams.set('registered', '1')
+  redirectURL.searchParams.set('verify', '1')
   return NextResponse.redirect(redirectURL, { status: 303 })
 }
 
@@ -133,4 +166,20 @@ export function GET() {
       },
     },
   )
+}
+
+function prefersJson(request: NextRequest) {
+  const accept = request.headers.get('accept')?.toLowerCase() ?? ''
+  const contentType = request.headers.get('content-type')?.toLowerCase() ?? ''
+  return accept.includes('application/json') || contentType.includes('application/json')
+}
+
+function respondWithError(request: NextRequest, errorCode: string) {
+  if (prefersJson(request)) {
+    return NextResponse.json({ error: errorCode }, { status: 400 })
+  }
+
+  const redirectURL = new URL('/register', request.url)
+  redirectURL.searchParams.set('error', errorCode)
+  return NextResponse.redirect(redirectURL, { status: 303 })
 }

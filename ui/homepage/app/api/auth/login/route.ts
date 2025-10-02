@@ -1,36 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
-
-const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
-const SESSION_COOKIE_NAME = 'account_session'
-const MFA_COOKIE_NAME = 'account_mfa_token'
-
-type AccountLoginResponse = {
-  token?: string
-  error?: string
-  mfaToken?: string
-  message?: string
-}
-
-async function authenticateWithAccountService(payload: Record<string, unknown>) {
-  try {
-    const response = await fetch(`${ACCOUNT_SERVICE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-    })
-
-    const data = (await response.json().catch(() => ({}))) as AccountLoginResponse
-    return { response, data }
-  } catch (error) {
-    console.error('Login request failed', error)
-    return { response: null, data: { error: 'request_failed' } }
-  }
-}
+import prisma from '@lib/prisma'
+import { normalizeEmail } from '@lib/auth/validation'
+import { verifyPassword } from '@lib/auth/password'
+import {
+  clearMfaChallengeCookie,
+  clearSessionCookie,
+  createMfaChallenge,
+  createSession,
+  setSessionCookie,
+} from '@lib/auth/session'
 
 export async function POST(request: NextRequest) {
   const sensitiveKeys = ['username', 'password', 'token']
@@ -49,54 +28,61 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(url, { status: 303 })
   }
 
-  const { credentials, remember } = await extractCredentials(request)
+  const { email, password, remember } = await extractCredentials(request)
 
-  if (!credentials.identifier) {
+  if (!email || !password) {
     return handleErrorResponse(request, 'missing_credentials')
   }
 
-  const { response, data } = await authenticateWithAccountService(credentials)
-  if (!response || !response.ok || !data?.token) {
-    const message = typeof data?.error === 'string' ? data.error : 'invalid_credentials'
-    const errorResponse = handleErrorResponse(request, message, data)
-    if (message === 'mfa_setup_required' && typeof data?.mfaToken === 'string') {
-      errorResponse.cookies.set({
-        name: MFA_COOKIE_NAME,
-        value: data.mfaToken,
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 60 * 10,
-      })
-    } else {
-      errorResponse.cookies.set({ name: MFA_COOKIE_NAME, value: '', maxAge: 0, path: '/' })
-    }
-    return errorResponse
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      passwordHash: true,
+      status: true,
+      mfaEnabled: true,
+    },
+  })
+
+  if (!user) {
+    return handleErrorResponse(request, 'user_not_found')
   }
 
-  const cookieMaxAge = remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24
-  const wantsJSON = prefersJson(request)
-  const successResponse = wantsJSON
-    ? NextResponse.json({
-        success: true,
-        message: data?.message ?? 'login_success',
-        redirectTo: '/',
-      })
-    : NextResponse.redirect(new URL('/', request.url), { status: 303 })
+  if (user.status !== 'active') {
+    return handleErrorResponse(request, 'email_not_verified')
+  }
 
-  successResponse.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: String(data.token),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: cookieMaxAge,
-    path: '/',
-  })
-  successResponse.cookies.set({ name: MFA_COOKIE_NAME, value: '', maxAge: 0, path: '/' })
+  const passwordValid = await verifyPassword(user.passwordHash, password)
+  if (!passwordValid) {
+    return handleErrorResponse(request, 'invalid_credentials')
+  }
 
-  return successResponse
+  if (user.mfaEnabled) {
+    await clearSessionCookie()
+    await createMfaChallenge(user.id, remember)
+
+    if (prefersJson(request)) {
+      return NextResponse.json({ needMfa: true })
+    }
+
+    const redirectURL = new URL('/login', request.url)
+    redirectURL.searchParams.set('mfa', '1')
+    return NextResponse.redirect(redirectURL, { status: 303 })
+  }
+
+  const { token, expiresAt } = await createSession(user.id, remember, false)
+  clearMfaChallengeCookie()
+  setSessionCookie(token, expiresAt)
+
+  if (prefersJson(request)) {
+    return NextResponse.json({ success: true, mfaSetupRequired: true, redirectTo: '/panel/account?setupMfa=1' })
+  }
+
+  const redirectURL = new URL('/panel/account', request.url)
+  redirectURL.searchParams.set('setupMfa', '1')
+  return NextResponse.redirect(redirectURL, { status: 303 })
 }
 
 function prefersJson(request: NextRequest) {
@@ -109,75 +95,46 @@ async function extractCredentials(request: NextRequest) {
   const contentType = request.headers.get('content-type')?.toLowerCase() ?? ''
 
   if (contentType.includes('application/json')) {
-    const body = (await request.json().catch(() => ({}))) as Partial<CredentialPayload> & {
+    const body = (await request.json().catch(() => ({}))) as {
+      email?: string
+      identifier?: string
+      password?: string
       remember?: boolean
     }
     return {
-      credentials: {
-        identifier: normalizeIdentifier(body),
-        password: String(body?.password ?? ''),
-        totpCode: String(body?.totpCode ?? '').trim(),
-      },
+      email: normalizeEmail(String(body?.email ?? body?.identifier ?? '')),
+      password: String(body?.password ?? ''),
       remember: Boolean(body?.remember),
     }
   }
 
   const formData = await request.formData()
-  const identifier = normalizeIdentifier({
-    identifier: formData.get('identifier'),
-    username: formData.get('username'),
-    email: formData.get('email'),
-  })
+  const email = normalizeEmail(
+    String(
+      formData.get('email') ??
+        formData.get('identifier') ??
+        formData.get('username') ??
+        '',
+    ),
+  )
   const password = String(formData.get('password') ?? '')
-  const totpCode = String(formData.get('totpCode') ?? '').trim()
   const remember = formData.get('remember') === 'on'
-  return {
-    credentials: { identifier, password, totpCode },
-    remember,
-  }
+  return { email, password, remember }
 }
 
-function handleErrorResponse(
-  request: NextRequest,
-  errorCode: string,
-  data?: AccountLoginResponse,
-) {
+function handleErrorResponse(request: NextRequest, errorCode: string) {
   if (prefersJson(request)) {
     const statusMap: Record<string, number> = {
       user_not_found: 404,
       invalid_credentials: 401,
       missing_credentials: 400,
       credentials_in_query: 400,
-      mfa_setup_required: 401,
-      mfa_code_required: 400,
+      email_not_verified: 403,
     }
-    return NextResponse.json(
-      {
-        error: errorCode,
-        mfaToken: data?.mfaToken,
-      },
-      { status: statusMap[errorCode] ?? 400 },
-    )
+    return NextResponse.json({ error: errorCode }, { status: statusMap[errorCode] ?? 400 })
   }
 
   const redirectURL = new URL('/login', request.url)
   redirectURL.searchParams.set('error', errorCode)
   return NextResponse.redirect(redirectURL, { status: 303 })
-}
-
-type CredentialPayload = {
-  identifier?: string
-  username?: string
-  email?: string
-  password?: string
-  totpCode?: string
-  remember?: boolean
-}
-
-function normalizeIdentifier(payload: Partial<CredentialPayload>) {
-  const candidate =
-    String(payload?.identifier ?? '').trim() ||
-    String(payload?.username ?? '').trim() ||
-    String(payload?.email ?? '').trim()
-  return candidate
 }

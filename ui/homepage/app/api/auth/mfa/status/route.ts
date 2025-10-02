@@ -1,38 +1,73 @@
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
-
-const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
-const SESSION_COOKIE_NAME = 'account_session'
-const MFA_COOKIE_NAME = 'account_mfa_token'
+import prisma from '@lib/prisma'
+import { MFA_CHALLENGE_COOKIE } from '@lib/auth/constants'
+import { hashToken } from '@lib/auth/crypto'
+import { findSessionByToken, readSessionTokenFromCookies } from '@lib/auth/session'
 
 export async function GET(request: NextRequest) {
   const cookieStore = cookies()
-  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? ''
-  const storedMfaToken = cookieStore.get(MFA_COOKIE_NAME)?.value ?? ''
+  const sessionToken = readSessionTokenFromCookies()
+  const storedMfaToken = cookieStore.get(MFA_CHALLENGE_COOKIE)?.value ?? ''
 
   const url = new URL(request.url)
   const queryToken = String(url.searchParams.get('token') ?? '').trim()
-  const token = queryToken || storedMfaToken
+  const challengeToken = queryToken || storedMfaToken
 
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-  }
+  const payload: Record<string, unknown> = {}
+
   if (sessionToken) {
-    headers.Authorization = `Bearer ${sessionToken}`
+    const session = await findSessionByToken(sessionToken)
+    if (session) {
+      payload.user = {
+        mfa: {
+          totpEnabled: session.user.mfaEnabled,
+          totpPending: Boolean(session.user.mfaTempSecretEncrypted && !session.user.mfaEnabled),
+          totpSecretIssuedAt: session.user.mfaSecretIssuedAt?.toISOString(),
+          totpConfirmedAt: session.user.mfaSecretConfirmedAt?.toISOString(),
+        },
+      }
+    }
   }
 
-  const endpoint = token
-    ? `${ACCOUNT_SERVICE_URL}/api/auth/mfa/status?token=${encodeURIComponent(token)}`
-    : `${ACCOUNT_SERVICE_URL}/api/auth/mfa/status`
+  if (challengeToken) {
+    const tokenHash = hashToken(challengeToken)
+    const challenge = await prisma.mfaChallenge.findUnique({
+      where: { tokenHash },
+      select: {
+        expiresAt: true,
+        user: {
+          select: {
+            mfaEnabled: true,
+            mfaTempSecretEncrypted: true,
+            mfaSecretIssuedAt: true,
+            mfaSecretConfirmedAt: true,
+          },
+        },
+      },
+    })
 
-  const response = await fetch(endpoint, {
-    method: 'GET',
-    headers,
-    cache: 'no-store',
-  })
+    if (challenge) {
+      payload.mfa = {
+        totpEnabled: challenge.user.mfaEnabled,
+        totpPending: Boolean(challenge.user.mfaTempSecretEncrypted && !challenge.user.mfaEnabled),
+        totpSecretIssuedAt: challenge.user.mfaSecretIssuedAt?.toISOString(),
+        totpConfirmedAt: challenge.user.mfaSecretConfirmedAt?.toISOString(),
+      }
+      payload.mfaToken = challengeToken
+    }
+  }
 
-  const payload = await response.json().catch(() => ({}))
-  return NextResponse.json(payload, { status: response.status })
+  return NextResponse.json(payload)
+}
+
+export function POST() {
+  return NextResponse.json(
+    { error: 'method_not_allowed' },
+    {
+      status: 405,
+      headers: { Allow: 'GET' },
+    },
+  )
 }

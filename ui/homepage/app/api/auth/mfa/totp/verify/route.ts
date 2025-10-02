@@ -1,60 +1,90 @@
-import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
-
-const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
-const SESSION_COOKIE_NAME = 'account_session'
-const MFA_COOKIE_NAME = 'account_mfa_token'
+import prisma from '@lib/prisma'
+import { decryptSecret } from '@lib/auth/crypto'
+import { verifyTotpCode } from '@lib/auth/totp'
+import { generateRecoveryCodes, hashRecoveryCode } from '@lib/auth/recovery'
+import { findSessionByToken, readSessionTokenFromCookies } from '@lib/auth/session'
 
 export async function POST(request: NextRequest) {
-  const cookieStore = cookies()
-  const currentToken = cookieStore.get(MFA_COOKIE_NAME)?.value ?? ''
+  const sessionToken = readSessionTokenFromCookies()
+  if (!sessionToken) {
+    return NextResponse.json({ error: 'authentication_required' }, { status: 401 })
+  }
+
+  const session = await findSessionByToken(sessionToken)
+  if (!session) {
+    return NextResponse.json({ error: 'authentication_required' }, { status: 401 })
+  }
+
   const body = (await request.json().catch(() => ({}))) as {
-    token?: string
     code?: string
   }
-
-  const token = String(body?.token ?? currentToken ?? '').trim()
   const code = String(body?.code ?? '').trim()
-
-  if (!token) {
-    return NextResponse.json({ error: 'mfa_token_required' }, { status: 400 })
-  }
   if (!code) {
     return NextResponse.json({ error: 'mfa_code_required' }, { status: 400 })
   }
 
-  const response = await fetch(`${ACCOUNT_SERVICE_URL}/api/auth/mfa/totp/verify`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      mfaTempSecretEncrypted: true,
+      mfaSecretEncrypted: true,
     },
-    body: JSON.stringify({ token, code }),
-    cache: 'no-store',
   })
 
-  const payload = await response.json().catch(() => ({}))
-  if (!response.ok || !payload?.token) {
-    return NextResponse.json(payload, { status: response.status })
+  if (!user?.mfaTempSecretEncrypted) {
+    return NextResponse.json({ error: 'mfa_setup_not_started' }, { status: 400 })
   }
 
-  const res = NextResponse.json(payload)
-  const expiresAt = typeof payload?.expiresAt === 'string' ? Date.parse(payload.expiresAt) : NaN
-  const ttl = Number.isFinite(expiresAt)
-    ? Math.max(60, Math.floor((expiresAt - Date.now()) / 1000))
-    : 60 * 60 * 24
+  const secret = decryptSecret(user.mfaTempSecretEncrypted)
+  const isValid = verifyTotpCode(secret, code)
+  if (!isValid) {
+    return NextResponse.json({ error: 'invalid_mfa_code' }, { status: 401 })
+  }
 
-  res.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: String(payload.token),
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: ttl,
+  const recoveryCodes = generateRecoveryCodes()
+  const confirmedAt = new Date()
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: session.userId },
+      data: {
+        mfaEnabled: true,
+        mfaSecretEncrypted: user.mfaTempSecretEncrypted,
+        mfaTempSecretEncrypted: null,
+        mfaSecretConfirmedAt: confirmedAt,
+      },
+    })
+
+    await tx.recoveryCode.deleteMany({ where: { userId: session.userId } })
+    await tx.recoveryCode.createMany({
+      data: recoveryCodes.map((value) => ({
+        userId: session.userId,
+        codeHash: hashRecoveryCode(value),
+      })),
+    })
   })
-  res.cookies.set({ name: MFA_COOKIE_NAME, value: '', maxAge: 0, path: '/' })
 
-  return res
+  return NextResponse.json({
+    success: true,
+    recoveryCodes,
+    user: {
+      mfa: {
+        totpEnabled: true,
+        totpPending: false,
+        totpConfirmedAt: confirmedAt.toISOString(),
+      },
+    },
+  })
+}
+
+export function GET() {
+  return NextResponse.json(
+    { error: 'method_not_allowed' },
+    {
+      status: 405,
+      headers: { Allow: 'POST' },
+    },
+  )
 }
