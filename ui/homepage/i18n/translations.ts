@@ -157,6 +157,7 @@ type AuthLoginTranslation = {
     passwordPlaceholder: string
     remember: string
     submit: string
+    submitting?: string
   }
   forgotPassword: string
   social: {
@@ -469,6 +470,7 @@ export const translations: Record<'en' | 'zh', Translation> = {
           passwordPlaceholder: 'Enter your password',
           remember: 'Remember this device',
           submit: 'Sign in',
+          submitting: 'Signing in…',
         },
         forgotPassword: 'Forgot password?',
         social: {
@@ -707,6 +709,7 @@ export const translations: Record<'en' | 'zh', Translation> = {
           passwordPlaceholder: '请输入密码',
           remember: '记住这台设备',
           submit: '登录',
+          submitting: '登录中…',
         },
         forgotPassword: '忘记密码？',
         social: {
