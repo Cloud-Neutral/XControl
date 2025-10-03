@@ -50,9 +50,9 @@ make init-db   # initialize database (optional)
 
 ## Frontend configuration
 
-The Next.js homepage now resolves service endpoints through `ui/homepage/config/runtime-service-config.json`. The runtime
+The Next.js homepage now resolves service endpoints through `ui/homepage/config/runtime-service-config.yaml`. The runtime
 configuration selects values based on `NEXT_PUBLIC_RUNTIME_ENV` (falling back to `NODE_ENV` and the file's
-`defaultEnvironment`). Use `NEXT_PUBLIC_ACCOUNT_SERVICE_URL` for ad-hoc overrides, otherwise adjust the JSON file to specify
+`defaultEnvironment`). Use `NEXT_PUBLIC_ACCOUNT_SERVICE_URL` for ad-hoc overrides, otherwise adjust the YAML file to specify
 environment-specific URLs such as `http://localhost:8080` for development/test and `https://account.svc.plus` for production.
 
 ## Account service configuration
