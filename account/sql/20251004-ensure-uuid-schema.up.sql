@@ -18,6 +18,254 @@ ALTER TABLE public.users
 ALTER TABLE public.users
     ALTER COLUMN uuid SET NOT NULL;
 
+=======
+-- Ensure uuid columns are of the UUID type
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users'
+          AND column_name = 'uuid'
+          AND udt_name <> 'uuid'
+    ) THEN
+        ALTER TABLE public.users
+            ALTER COLUMN uuid TYPE uuid USING uuid::uuid;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'identities'
+          AND column_name = 'uuid'
+          AND udt_name <> 'uuid'
+    ) THEN
+        ALTER TABLE public.identities
+            ALTER COLUMN uuid TYPE uuid USING uuid::uuid;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'identities'
+          AND column_name = 'user_uuid'
+          AND udt_name <> 'uuid'
+    ) THEN
+        ALTER TABLE public.identities
+            ALTER COLUMN user_uuid TYPE uuid USING user_uuid::uuid;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'sessions'
+          AND column_name = 'uuid'
+          AND udt_name <> 'uuid'
+    ) THEN
+        ALTER TABLE public.sessions
+            ALTER COLUMN uuid TYPE uuid USING uuid::uuid;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'sessions'
+          AND column_name = 'user_uuid'
+          AND udt_name <> 'uuid'
+    ) THEN
+        ALTER TABLE public.sessions
+            ALTER COLUMN user_uuid TYPE uuid USING user_uuid::uuid;
+    END IF;
+END
+$$;
+
+-- Fill missing UUIDs before enforcing constraints
+UPDATE public.users SET uuid = gen_random_uuid() WHERE uuid IS NULL;
+UPDATE public.identities SET uuid = gen_random_uuid() WHERE uuid IS NULL;
+UPDATE public.sessions SET uuid = gen_random_uuid() WHERE uuid IS NULL;
+
+-- Ensure NOT NULL on uuid columns
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users'
+          AND column_name = 'uuid'
+          AND is_nullable = 'YES'
+    ) THEN
+        ALTER TABLE public.users
+            ALTER COLUMN uuid SET NOT NULL;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'identities'
+          AND column_name = 'uuid'
+          AND is_nullable = 'YES'
+    ) THEN
+        ALTER TABLE public.identities
+            ALTER COLUMN uuid SET NOT NULL;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'sessions'
+          AND column_name = 'uuid'
+          AND is_nullable = 'YES'
+    ) THEN
+        ALTER TABLE public.sessions
+            ALTER COLUMN uuid SET NOT NULL;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'identities'
+          AND column_name = 'user_uuid'
+          AND is_nullable = 'YES'
+    ) THEN
+        ALTER TABLE public.identities
+            ALTER COLUMN user_uuid SET NOT NULL;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'sessions'
+          AND column_name = 'user_uuid'
+          AND is_nullable = 'YES'
+    ) THEN
+        ALTER TABLE public.sessions
+            ALTER COLUMN user_uuid SET NOT NULL;
+    END IF;
+END
+$$;
+
+-- Ensure defaults for uuid columns
+DO $$
+DECLARE
+    current_default text;
+    target_attnum int;
+BEGIN
+    SELECT attnum INTO target_attnum
+    FROM pg_attribute
+    WHERE attrelid = 'public.users'::regclass
+      AND attname = 'uuid'
+      AND NOT attisdropped;
+
+    IF target_attnum IS NOT NULL THEN
+        SELECT pg_get_expr(adbin, adrelid)
+        INTO current_default
+        FROM pg_attrdef
+        WHERE adrelid = 'public.users'::regclass
+          AND adnum = target_attnum;
+
+        IF current_default IS DISTINCT FROM 'gen_random_uuid()' THEN
+            ALTER TABLE public.users
+                ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
+        END IF;
+    END IF;
+END
+$$;
+
+DO $$
+DECLARE
+    current_default text;
+    target_attnum int;
+BEGIN
+    SELECT attnum INTO target_attnum
+    FROM pg_attribute
+    WHERE attrelid = 'public.identities'::regclass
+      AND attname = 'uuid'
+      AND NOT attisdropped;
+
+    IF target_attnum IS NOT NULL THEN
+        SELECT pg_get_expr(adbin, adrelid)
+        INTO current_default
+        FROM pg_attrdef
+        WHERE adrelid = 'public.identities'::regclass
+          AND adnum = target_attnum;
+
+        IF current_default IS DISTINCT FROM 'gen_random_uuid()' THEN
+            ALTER TABLE public.identities
+                ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
+        END IF;
+    END IF;
+END
+$$;
+
+DO $$
+DECLARE
+    current_default text;
+    target_attnum int;
+BEGIN
+    SELECT attnum INTO target_attnum
+    FROM pg_attribute
+    WHERE attrelid = 'public.sessions'::regclass
+      AND attname = 'uuid'
+      AND NOT attisdropped;
+
+    IF target_attnum IS NOT NULL THEN
+        SELECT pg_get_expr(adbin, adrelid)
+        INTO current_default
+        FROM pg_attrdef
+        WHERE adrelid = 'public.sessions'::regclass
+          AND adnum = target_attnum;
+
+        IF current_default IS DISTINCT FROM 'gen_random_uuid()' THEN
+            ALTER TABLE public.sessions
+                ALTER COLUMN uuid SET DEFAULT gen_random_uuid();
+        END IF;
+    END IF;
+END
+$$;
+
+
 ALTER TABLE public.users
     ADD COLUMN IF NOT EXISTS email_verified_at timestamptz;
 
@@ -25,6 +273,7 @@ ALTER TABLE public.users
     ADD COLUMN IF NOT EXISTS updated_at timestamptz;
 
 UPDATE public.users
+
 SET updated_at = COALESCE(updated_at, now());
 
 DO $$
@@ -83,6 +332,7 @@ BEGIN
 END;
 $$;
 
+
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -118,6 +368,7 @@ BEGIN
     END IF;
 END
 $$;
+
 
 DO $$
 DECLARE
@@ -176,6 +427,7 @@ BEGIN
     END IF;
 END
 $$;
+
 
 -- IDENTITIES --------------------------------------------------------------
 ALTER TABLE public.identities
@@ -240,6 +492,7 @@ BEGIN
 END
 $$;
 
+
 DO $$
 DECLARE
     constraint_name text;
@@ -276,6 +529,7 @@ BEGIN
 END
 $$;
 
+
 DO $$
 DECLARE
     fk_name text;
@@ -303,12 +557,15 @@ DECLARE
     att smallint;
 BEGIN
     SELECT attnum INTO att
+
     FROM pg_attribute
     WHERE attrelid = 'public.identities'::regclass
       AND attname = 'user_uuid'
       AND NOT attisdropped;
 
+
     IF att IS NOT NULL THEN
+
         SELECT cls.relname INTO idx_name
         FROM pg_index idx
         JOIN pg_class cls ON cls.oid = idx.indexrelid
@@ -332,10 +589,12 @@ DECLARE
     att smallint;
 BEGIN
     SELECT attnum INTO att
+
     FROM pg_attribute
     WHERE attrelid = 'public.identities'::regclass
       AND attname = 'provider'
       AND NOT attisdropped;
+
 
     IF att IS NOT NULL THEN
         SELECT cls.relname INTO idx_name
@@ -344,6 +603,7 @@ BEGIN
         WHERE idx.indrelid = 'public.identities'::regclass
           AND idx.indisunique = FALSE
           AND idx.indkey = ARRAY[att]::int2vector
+
         LIMIT 1;
 
         IF idx_name IS NULL THEN
@@ -445,18 +705,22 @@ DECLARE
     att smallint;
 BEGIN
     SELECT attnum INTO att
+
     FROM pg_attribute
     WHERE attrelid = 'public.sessions'::regclass
       AND attname = 'user_uuid'
       AND NOT attisdropped;
 
+
     IF att IS NOT NULL THEN
+
         SELECT cls.relname INTO idx_name
         FROM pg_index idx
         JOIN pg_class cls ON cls.oid = idx.indexrelid
         WHERE idx.indrelid = 'public.sessions'::regclass
           AND idx.indisunique = FALSE
           AND idx.indkey = ARRAY[att]::int2vector
+
         LIMIT 1;
 
         IF idx_name IS NULL THEN
