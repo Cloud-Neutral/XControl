@@ -2,14 +2,16 @@ APP_NAME := xcontrol-account
 MAIN_FILE := ./cmd/accountsvc/main.go
 PORT ?= 8080
 OS := $(shell uname -s)
-ACCOUNT_DB_DSN ?= postgres://shenlan:password@127.0.0.1:5432/account?sslmode=disable
+DB_URL ?= postgres://shenlan:password@127.0.0.1:5432/account?sslmode=disable
 SCHEMA_FILE := ./sql/schema.sql
+ENSURE_UUID_SCHEMA_UP := ./sql/20251004-ensure-uuid-schema.up.sql
+ENSURE_UUID_SCHEMA_DOWN := ./sql/20251004-ensure-uuid-schema.down.sql
 UUID_MIGRATION_FILE := ./sql/20251001-migrate_to_uuid.sql
 UUID_SWITCH_FILE := ./sql/20251001-switch_uuid.sql
 MFA_MIGRATION_FILE := ./sql/20251002-add-mfa-columns.sql
 export PATH := /usr/local/go/bin:$(PATH)
 
-.PHONY: all init init-go init-db migrate-db migrate-uuid migrate-mfa build start stop restart clean help dev test
+.PHONY: all init init-go init-db migrate-db migrate-down dump-schema migrate-uuid migrate-mfa build start stop restart clean help dev test
 
 all: build
 
@@ -40,17 +42,51 @@ init-go:
 init-db:
 	@echo ">>> 初始化数据库 schema"
 	@if [ ! -f $(SCHEMA_FILE) ]; then \
-		echo "未找到数据库 schema 文件: $(SCHEMA_FILE)"; \
-		exit 1; \
+	        echo "未找到数据库 schema 文件: $(SCHEMA_FILE)"; \
+	        exit 1; \
 	fi
 	@if ! command -v psql >/dev/null 2>&1; then \
-		echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
-		exit 1; \
-		fi
-	@echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
-	@psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
+	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	        fi
+	@echo "使用数据库连接: $(DB_URL)"
+	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
 
-migrate-db: migrate-uuid migrate-mfa
+migrate-db:
+	@echo ">>> 执行统一 UUID schema 迁移"
+	@if [ ! -f $(ENSURE_UUID_SCHEMA_UP) ]; then \
+	        echo "未找到迁移脚本: $(ENSURE_UUID_SCHEMA_UP)"; \
+	        exit 1; \
+	fi
+	@if ! command -v psql >/dev/null 2>&1; then \
+	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	fi
+	@echo "使用数据库连接: $(DB_URL)"
+	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(ENSURE_UUID_SCHEMA_UP)
+	@$(MAKE) dump-schema
+
+migrate-down:
+	@echo ">>> 回滚统一 UUID schema 迁移"
+	@if [ ! -f $(ENSURE_UUID_SCHEMA_DOWN) ]; then \
+	        echo "未找到回滚脚本: $(ENSURE_UUID_SCHEMA_DOWN)"; \
+	        exit 1; \
+	fi
+	@if ! command -v psql >/dev/null 2>&1; then \
+	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	fi
+	@echo "使用数据库连接: $(DB_URL)"
+	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(ENSURE_UUID_SCHEMA_DOWN)
+	@$(MAKE) dump-schema
+
+dump-schema:
+	@echo ">>> 导出数据库 schema 快照"
+	@if ! command -v pg_dump >/dev/null 2>&1; then \
+	        echo "未检测到 pg_dump，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	fi
+	@pg_dump -s -O -x "$(DB_URL)" > $(SCHEMA_FILE)
 
 migrate-uuid:
 	@echo ">>> 执行 UUID 主键迁移"
@@ -59,14 +95,14 @@ migrate-uuid:
 		exit 1; \
 		fi
 	@if ! command -v psql >/dev/null 2>&1; then \
-		echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
-		exit 1; \
+	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
     fi
-	@echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
-	@psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(UUID_MIGRATION_FILE)
+	@echo "使用数据库连接: $(DB_URL)"
+	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(UUID_MIGRATION_FILE)
 	@if [ -f $(UUID_SWITCH_FILE) ]; then \
 	        echo ">>> 应用 UUID 切换脚本: $(UUID_SWITCH_FILE)"; \
-	        psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(UUID_SWITCH_FILE); \
+	        psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(UUID_SWITCH_FILE); \
 	fi
 
 migrate-mfa:
@@ -79,8 +115,8 @@ migrate-mfa:
 	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
 	        exit 1; \
 	fi
-	@echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
-	@psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(MFA_MIGRATION_FILE)
+	@echo "使用数据库连接: $(DB_URL)"
+	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(MFA_MIGRATION_FILE)
 
 build:
 	@echo ">>> 编译 $(APP_NAME)"
@@ -111,7 +147,9 @@ help:
 	@echo " XControl Account Service Makefile"
 	@echo ""
 	@echo "make init       初始化开发环境（包含 Go 依赖与数据库 schema）"
-	@echo "make migrate-db 执行所有数据库迁移脚本"
+	@echo "make migrate-db 执行统一 UUID schema 迁移并导出 schema 快照"
+	@echo "make migrate-down 回滚统一 UUID schema 迁移并导出 schema 快照"
+	@echo "make dump-schema 仅导出数据库 schema 快照"
 	@echo "make migrate-uuid 仅运行 UUID 主键迁移脚本"
 	@echo "make migrate-mfa 仅运行 MFA 列迁移脚本"
 	@echo "make build      编译 account service 可执行文件"
