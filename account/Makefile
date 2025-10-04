@@ -38,49 +38,49 @@ init-go:
 	go mod tidy
 
 init-db:
-        @echo ">>> 初始化数据库 schema"
-        @if [ ! -f $(SCHEMA_FILE) ]; then \
-                echo "未找到数据库 schema 文件: $(SCHEMA_FILE)"; \
-                exit 1; \
-        fi
-        @if ! command -v psql >/dev/null 2>&1; then \
-                echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
-                exit 1; \
-        fi
-        @echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
-        @psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
+	@echo ">>> 初始化数据库 schema"
+	@if [ ! -f $(SCHEMA_FILE) ]; then \
+		echo "未找到数据库 schema 文件: $(SCHEMA_FILE)"; \
+		exit 1; \
+	fi
+	@if ! command -v psql >/dev/null 2>&1; then \
+		echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+		exit 1; \
+		fi
+	@echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
+	@psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
 
 migrate-db: migrate-uuid migrate-mfa
 
 migrate-uuid:
-        @echo ">>> 执行 UUID 主键迁移"
-        @if [ ! -f $(UUID_MIGRATION_FILE) ]; then \
-                echo "未找到 UUID 迁移脚本: $(UUID_MIGRATION_FILE)"; \
-                exit 1; \
-        fi
-        @if ! command -v psql >/dev/null 2>&1; then \
-                echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
-                exit 1; \
-        fi
-        @echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
-        @psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(UUID_MIGRATION_FILE)
-        @if [ -f $(UUID_SWITCH_FILE) ]; then \
-                echo ">>> 应用 UUID 切换脚本: $(UUID_SWITCH_FILE)"; \
-                psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(UUID_SWITCH_FILE); \
-        fi
+	@echo ">>> 执行 UUID 主键迁移"
+	@if [ ! -f $(UUID_MIGRATION_FILE) ]; then \
+		echo "未找到 UUID 迁移脚本: $(UUID_MIGRATION_FILE)"; \
+		exit 1; \
+		fi
+	@if ! command -v psql >/dev/null 2>&1; then \
+		echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+		exit 1; \
+    fi
+	@echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
+	@psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(UUID_MIGRATION_FILE)
+	@if [ -f $(UUID_SWITCH_FILE) ]; then \
+	        echo ">>> 应用 UUID 切换脚本: $(UUID_SWITCH_FILE)"; \
+	        psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(UUID_SWITCH_FILE); \
+	fi
 
 migrate-mfa:
-        @echo ">>> 执行 MFA 列迁移"
-        @if [ ! -f $(MFA_MIGRATION_FILE) ]; then \
-                echo "未找到 MFA 迁移脚本: $(MFA_MIGRATION_FILE)"; \
-                exit 1; \
-        fi
-        @if ! command -v psql >/dev/null 2>&1; then \
-                echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
-                exit 1; \
-        fi
-        @echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
-        @psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(MFA_MIGRATION_FILE)
+	@echo ">>> 执行 MFA 列迁移"
+	@if [ ! -f $(MFA_MIGRATION_FILE) ]; then \
+	        echo "未找到 MFA 迁移脚本: $(MFA_MIGRATION_FILE)"; \
+	        exit 1; \
+	fi
+	@if ! command -v psql >/dev/null 2>&1; then \
+	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	fi
+	@echo "使用数据库连接: $(ACCOUNT_DB_DSN)"
+	@psql "$(ACCOUNT_DB_DSN)" -v ON_ERROR_STOP=1 -f $(MFA_MIGRATION_FILE)
 
 build:
 	@echo ">>> 编译 $(APP_NAME)"
@@ -108,17 +108,17 @@ clean:
 	rm -f $(APP_NAME) $(APP_NAME).log $(APP_NAME).pid
 
 help:
-        @echo " XControl Account Service Makefile"
-        @echo ""
-        @echo "make init       初始化开发环境（包含 Go 依赖与数据库 schema）"
-        @echo "make migrate-db 执行所有数据库迁移脚本"
-        @echo "make migrate-uuid 仅运行 UUID 主键迁移脚本"
-        @echo "make migrate-mfa 仅运行 MFA 列迁移脚本"
-        @echo "make build      编译 account service 可执行文件"
-        @echo "make start      后台运行 account service (默认端口: $(PORT))"
-        @echo "make stop       停止运行 account service"
-        @echo "make restart    重启 account service"
-        @echo "make test       运行账号服务相关单元测试"
+	@echo " XControl Account Service Makefile"
+	@echo ""
+	@echo "make init       初始化开发环境（包含 Go 依赖与数据库 schema）"
+	@echo "make migrate-db 执行所有数据库迁移脚本"
+	@echo "make migrate-uuid 仅运行 UUID 主键迁移脚本"
+	@echo "make migrate-mfa 仅运行 MFA 列迁移脚本"
+	@echo "make build      编译 account service 可执行文件"
+	@echo "make start      后台运行 account service (默认端口: $(PORT))"
+	@echo "make stop       停止运行 account service"
+	@echo "make restart    重启 account service"
+	@echo "make test       运行账号服务相关单元测试"
 	@echo "make dev        开发模式运行 (自动检测 air，如无则用 go run)"
 	@echo "make clean      清理构建产物"
 
