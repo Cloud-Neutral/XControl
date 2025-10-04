@@ -2,8 +2,15 @@ APP_NAME := xcontrol-account
 MAIN_FILE := ./cmd/accountsvc/main.go
 PORT ?= 8080
 OS := $(shell uname -s)
-DB_URL ?= postgres://shenlan:password@127.0.0.1:5432/account?sslmode=disable
 SCHEMA_FILE := ./sql/schema.sql
+
+DB_NAME    := account
+DB_USER    := shenlan
+DB_PASS    := password
+DB_HOST    := 127.0.0.1
+DB_PORT    := 5432
+DB_URL     := postgres://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
+
 ENSURE_UUID_SCHEMA_UP := ./sql/20251004-ensure-uuid-schema.up.sql
 ENSURE_UUID_SCHEMA_DOWN := ./sql/20251004-ensure-uuid-schema.down.sql
 UUID_MIGRATION_FILE := ./sql/20251001-migrate_to_uuid.sql
@@ -51,6 +58,25 @@ init-db:
 	        fi
 	@echo "使用数据库连接: $(DB_URL)"
 	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
+
+# 删除数据库（安全防呆）
+drop-db:
+	@echo "⚠️  即将删除数据库 $(DB_NAME) ..."
+	@read -p "确定要删除数据库 $(DB_NAME)? [y/N] " confirm && \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		echo ">>> 正在删除数据库 $(DB_NAME) ..."; \
+		psql -h $(DB_HOST) -U $(DB_USER) -p $(DB_PORT) -d postgres -c "DROP DATABASE IF EXISTS $(DB_NAME);" && \
+		echo ">>> 数据库已删除"; \
+	else \
+		echo "取消删除"; \
+	fi
+
+# 重新创建数据库（drop + init）
+reinit-db:
+	@make drop-db
+	@echo ">>> 创建新数据库 $(DB_NAME)"
+	psql -h $(DB_HOST) -U $(DB_USER) -p $(DB_PORT) -d postgres -c "CREATE DATABASE $(DB_NAME) OWNER $(DB_USER);"
+	@make init-db
 
 migrate-db:
 	@echo ">>> 执行统一 UUID schema 迁移"
