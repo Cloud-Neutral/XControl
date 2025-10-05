@@ -74,12 +74,12 @@ reinit-db:
 	@make init-db
 
 dump-schema:
-        @echo ">>> 导出数据库 schema 快照"
-        @if ! command -v pg_dump >/dev/null 2>&1; then \
-                echo "未检测到 pg_dump，请先安装 PostgreSQL 客户端"; \
-                exit 1; \
-        fi
-        @pg_dump -s -O -x "$(DB_URL)" > $(SCHEMA_FILE)
+	@echo ">>> 导出数据库 schema 快照"
+	@if ! command -v pg_dump >/dev/null 2>&1; then \
+	        echo "未检测到 pg_dump，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	Fi
+	@pg_dump -s -O -x "$(DB_URL)" > $(SCHEMA_FILE)
 
 build:
 	@echo ">>> 编译 $(APP_NAME)"
@@ -110,8 +110,8 @@ help:
 	@echo " XControl Account Service Makefile"
 	@echo ""
 	@echo "make init       初始化开发环境（包含 Go 依赖与数据库 schema）"
-        @echo "make dump-schema 仅导出数据库 schema 快照"
-        @echo "make build      编译 account service 可执行文件"
+	@echo "make dump-schema 仅导出数据库 schema 快照"
+	@echo "make build      编译 account service 可执行文件"
 	@echo "make start      后台运行 account service (默认端口: $(PORT))"
 	@echo "make stop       停止运行 account service"
 	@echo "make restart    重启 account service"
