@@ -707,7 +707,9 @@ func (s *postgresStore) selectUserQuery(caps schemaCapabilities, whereClause str
 
 func arrayForQuery(values []string) any {
 	if len(values) == 0 {
-		return nil
+		return pq.StringArray{}
 	}
-	return values
+	normalized := make(pq.StringArray, len(values))
+	copy(normalized, values)
+	return normalized
 }
