@@ -248,8 +248,12 @@ type UserCenterMfaTranslation = {
   codePlaceholder: string
   verify: string
   verifying: string
+  generating: string
+  regenerating: string
   successTitle: string
   successBody: string
+  invalidCode: string
+  locked: string
   guide: {
     step1Title: string
     step1Description: string
@@ -691,8 +695,12 @@ export const translations: Record<'en' | 'zh', Translation> = {
         codePlaceholder: 'Enter the 6-digit code',
         verify: 'Verify and enable',
         verifying: 'Verifying…',
+        generating: 'Generating…',
+        regenerating: 'Regenerating…',
         successTitle: 'Authenticator connected',
         successBody: 'Your account now requires an authenticator code at sign-in.',
+        invalidCode: 'The verification code is invalid or expired. Try again.',
+        locked: 'Too many invalid attempts. Please wait a few minutes and try again.',
         guide: {
           step1Title: '1. Install an authenticator app',
           step1Description:
@@ -1052,8 +1060,12 @@ export const translations: Record<'en' | 'zh', Translation> = {
         codePlaceholder: '请输入 6 位数字验证码',
         verify: '验证并启用',
         verifying: '验证中…',
+        generating: '生成中…',
+        regenerating: '重新生成…',
         successTitle: '认证器绑定成功',
         successBody: '以后登录时将需要动态验证码，账号更安全。',
+        invalidCode: '动态验证码无效或已过期，请重试。',
+        locked: '多次输错验证码，请稍后再试。',
         guide: {
           step1Title: '1 下载并安装身份验证器',
           step1Description: '在手机应用商店搜索 “Google Authenticator” 并完成安装，准备开始绑定。',

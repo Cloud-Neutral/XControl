@@ -134,6 +134,25 @@ export default function MfaSetupPanel() {
     }
   }, [setupRequested])
 
+  const resolveErrorMessage = useCallback(
+    (code?: string | null) => {
+      if (!code) {
+        return copy.error
+      }
+      switch (code) {
+        case 'mfa_code_required':
+          return copy.codePlaceholder
+        case 'invalid_mfa_code':
+          return copy.invalidCode
+        case 'mfa_challenge_locked':
+          return copy.locked
+        default:
+          return copy.error
+      }
+    },
+    [copy.codePlaceholder, copy.error, copy.invalidCode, copy.locked],
+  )
+
   const handleProvision = useCallback(async () => {
     setIsProvisioning(true)
     setError(null)
@@ -150,7 +169,7 @@ export default function MfaSetupPanel() {
         data?: ProvisionResponse
       }
       if (!payload?.success || !payload?.data) {
-        setError(payload?.error ?? copy.error)
+        setError(resolveErrorMessage(payload?.error))
         return
       }
       const data = payload.data
@@ -166,12 +185,13 @@ export default function MfaSetupPanel() {
     } finally {
       setIsProvisioning(false)
     }
-  }, [copy.error, formatQrImage])
+  }, [copy.error, formatQrImage, resolveErrorMessage])
 
   const handleVerify = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault()
-      if (!code.trim()) {
+      const sanitized = code.replace(/\D/g, '').slice(0, 6)
+      if (sanitized.length !== 6) {
         setError(copy.codePlaceholder)
         return
       }
@@ -182,7 +202,7 @@ export default function MfaSetupPanel() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ code: code.trim() }),
+          body: JSON.stringify({ code: sanitized }),
         })
         const payload = (await response.json().catch(() => ({}))) as {
           success?: boolean
@@ -190,7 +210,7 @@ export default function MfaSetupPanel() {
           needMfa?: boolean
         }
         if (!payload?.success || !response.ok) {
-          setError(payload?.error ?? copy.error)
+          setError(resolveErrorMessage(payload?.error))
           return
         }
         setStatus({ totpEnabled: true })
@@ -199,6 +219,7 @@ export default function MfaSetupPanel() {
         setQrImage('')
         setCode('')
         await refresh()
+        await fetchStatus()
         setIsDialogOpen(false)
         router.replace('/panel/account')
         router.refresh()
@@ -209,7 +230,7 @@ export default function MfaSetupPanel() {
         setIsVerifying(false)
       }
     },
-    [code, copy.codePlaceholder, copy.error, refresh, router],
+    [code, copy.codePlaceholder, copy.error, fetchStatus, refresh, resolveErrorMessage, router],
   )
 
   const displayStatus = useMemo(() => status ?? user?.mfa ?? null, [status, user?.mfa])
@@ -260,7 +281,7 @@ export default function MfaSetupPanel() {
         data?: { user?: { mfa?: TotpStatus } }
       }
       if (!response.ok || !payload?.success) {
-        setError(payload?.error ?? copy.error)
+        setError(resolveErrorMessage(payload?.error))
         return
       }
       const nextStatus = payload?.data?.user?.mfa ?? null
@@ -270,6 +291,7 @@ export default function MfaSetupPanel() {
       setQrImage('')
       setCode('')
       await refresh()
+      await fetchStatus()
       router.refresh()
     } catch (err) {
       console.warn('Disable TOTP failed', err)
@@ -277,7 +299,30 @@ export default function MfaSetupPanel() {
     } finally {
       setIsDisabling(false)
     }
-  }, [copy.error, refresh, router])
+  }, [copy.error, fetchStatus, refresh, resolveErrorMessage, router])
+
+  const handleProvisionClick = useCallback(() => {
+    if (isProvisioning) {
+      return
+    }
+    void handleProvision()
+  }, [handleProvision, isProvisioning])
+
+  const formattedSecret = useMemo(() => {
+    const trimmed = secret.trim()
+    if (!trimmed) {
+      return ''
+    }
+    return trimmed.replace(/(.{4})/g, '$1 ').trim()
+  }, [secret])
+
+  const provisionButtonLabel = isProvisioning
+    ? secret
+      ? copy.regenerating
+      : copy.generating
+    : secret
+      ? copy.regenerate
+      : copy.generate
 
   const closeDialog = useCallback(() => {
     setIsDialogOpen(false)
@@ -412,6 +457,18 @@ export default function MfaSetupPanel() {
                       {hasPendingMfa ? copy.pendingHint : copy.subtitle}
                     </p>
 
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-medium text-gray-800">{copy.steps.intro}</p>
+                      <button
+                        type="button"
+                        onClick={handleProvisionClick}
+                        disabled={isProvisioning}
+                        className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {provisionButtonLabel}
+                      </button>
+                    </div>
+
                     <ol className="space-y-4">
                       <li className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -443,6 +500,33 @@ export default function MfaSetupPanel() {
                           ) : null}
                         </div>
 
+                        {secret || uri ? (
+                          <div className="mt-6 space-y-4 rounded-2xl border border-purple-100 bg-purple-50 p-4 text-sm text-gray-800">
+                            {secret ? (
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">{copy.secretLabel}</p>
+                                <p className="mt-2 break-words rounded-lg border border-purple-200 bg-white px-3 py-2 font-mono text-base text-purple-800 shadow-sm">
+                                  {formattedSecret}
+                                </p>
+                              </div>
+                            ) : null}
+                            {uri ? (
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">{copy.uriLabel}</p>
+                                <a
+                                  href={uri}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-2 block break-words rounded-lg border border-purple-200 bg-white px-3 py-2 font-mono text-xs text-purple-700 underline-offset-2 hover:underline"
+                                >
+                                  {uri}
+                                </a>
+                              </div>
+                            ) : null}
+                            <p className="text-xs text-purple-700">{copy.manualHint}</p>
+                          </div>
+                        ) : null}
+
                         <div className="mt-6 border-t border-dashed border-gray-200" />
 
                         <div className="mt-6">
@@ -465,7 +549,10 @@ export default function MfaSetupPanel() {
                                 maxLength={6}
                                 autoComplete="one-time-code"
                                 value={code}
-                                onChange={(event) => setCode(event.target.value)}
+                                onChange={(event) => {
+                                  const sanitized = event.target.value.replace(/\D/g, '').slice(0, 6)
+                                  setCode(sanitized)
+                                }}
                                 placeholder={copy.codePlaceholder}
                                 className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-2xl font-mono tracking-[0.6em] text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
                               />
