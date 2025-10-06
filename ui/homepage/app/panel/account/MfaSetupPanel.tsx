@@ -59,14 +59,26 @@ export default function MfaSetupPanel() {
   const hasPendingMfa = Boolean(status?.totpPending && !status?.totpEnabled)
   const requiresSetup = Boolean(user && (!user.mfaEnabled || user.mfaPending))
 
-  const generateQrImage = useCallback((value: string) => {
+  const generateQrImage = useCallback(async (value: string) => {
     if (!value) {
       return ''
     }
 
     try {
-      const encoded = encodeURIComponent(value)
-      return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encoded}`
+      const qrModule = (await import('qrcode')) as {
+        default?: { toDataURL?: (text: string, options?: Record<string, unknown>) => Promise<unknown> }
+        toDataURL?: (text: string, options?: Record<string, unknown>) => Promise<unknown>
+      }
+      const toDataURL = qrModule?.toDataURL ?? qrModule?.default?.toDataURL
+      if (!toDataURL) {
+        return ''
+      }
+      const dataUrl = await toDataURL(value, {
+        width: 240,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      })
+      return typeof dataUrl === 'string' ? dataUrl : ''
     } catch (err) {
       console.warn('Failed to build MFA QR code URL', err)
       return ''
@@ -74,7 +86,7 @@ export default function MfaSetupPanel() {
   }, [])
 
   const formatQrImage = useCallback(
-    (raw?: string | null, fallbackUri?: string) => {
+    async (raw?: string | null, fallbackUri?: string) => {
       if (raw) {
         const trimmed = raw.trim()
         if (!trimmed) {
@@ -145,7 +157,7 @@ export default function MfaSetupPanel() {
       setSecret(data?.secret ?? '')
       const nextUri = data?.otpauth_url ?? ''
       setUri(nextUri)
-      const nextQr = formatQrImage(data?.qr, nextUri)
+      const nextQr = await formatQrImage(data?.qr, nextUri)
       setQrImage(nextQr)
       setStatus((previous) => data?.mfa ?? data?.user?.mfa ?? previous ?? null)
     } catch (err) {
