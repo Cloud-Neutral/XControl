@@ -108,6 +108,26 @@ func (s *postgresStore) CreateUser(ctx context.Context, user *User) error {
 		verifiedAt = time.Now().UTC()
 	}
 
+	if normalizedEmail != "" {
+		const emailExistsQuery = "SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = $1)"
+		emailExists, err := s.userExists(ctx, emailExistsQuery, normalizedEmail)
+		if err != nil {
+			return err
+		}
+		if emailExists {
+			return ErrEmailExists
+		}
+	}
+
+	const nameExistsQuery = "SELECT EXISTS(SELECT 1 FROM users WHERE lower(username) = lower($1))"
+	nameExists, err := s.userExists(ctx, nameExistsQuery, normalizedName)
+	if err != nil {
+		return err
+	}
+	if nameExists {
+		return ErrNameExists
+	}
+
 	query := `INSERT INTO users (username, password, email, email_verified_at)
       VALUES ($1, $2, $3, $4)
       RETURNING uuid, coalesce(created_at, now()), coalesce(updated_at, now()), email_verified`
@@ -147,6 +167,31 @@ func (s *postgresStore) CreateUser(ctx context.Context, user *User) error {
 	user.UpdatedAt = updatedAt.UTC()
 	user.EmailVerified = emailVerified.Bool
 	return nil
+}
+
+func (s *postgresStore) userExists(ctx context.Context, query string, arg any) (bool, error) {
+	var exists bool
+	err := s.db.QueryRowContext(ctx, query, arg).Scan(&exists)
+	if err != nil {
+		if isDatabaseEmptyError(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return exists, nil
+}
+
+func isDatabaseEmptyError(err error) bool {
+	if errors.Is(err, sql.ErrNoRows) {
+		return true
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "42P01" { // undefined_table
+			return true
+		}
+	}
+	return false
 }
 
 func (s *postgresStore) GetUserByEmail(ctx context.Context, email string) (*User, error) {
