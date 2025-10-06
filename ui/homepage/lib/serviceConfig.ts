@@ -122,6 +122,16 @@ function resolveRuntimeEnvironment(): RuntimeEnvironmentName | undefined {
   return undefined
 }
 
+function getRuntimeAccountServiceBaseUrl(): string | undefined {
+  const environmentName = resolveRuntimeEnvironment()
+  const runtimeDefaults = runtimeServiceConfig.defaults?.accountService?.baseUrl
+  const environmentValue = environmentName
+    ? runtimeEnvironments[environmentName]?.accountService?.baseUrl
+    : undefined
+
+  return runtimeDefaults ?? environmentValue
+}
+
 function readEnvValue(...keys: string[]): string | undefined {
   for (const key of keys) {
     const raw = process.env[key]
