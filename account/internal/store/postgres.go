@@ -14,6 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/lib/pq"
+
+	"xcontrol/internal/roles"
 )
 
 // Config describes how to construct a Store implementation.
@@ -79,6 +82,10 @@ type schemaCapabilities struct {
 	hasMFAConfirmedAt    bool
 	hasCreatedAt         bool
 	hasUpdatedAt         bool
+	hasLevel             bool
+	hasRole              bool
+	hasGroups            bool
+	hasPermissions       bool
 }
 
 func (c schemaCapabilities) supportsMFA() bool {
@@ -100,6 +107,8 @@ func (s *postgresStore) CreateUser(ctx context.Context, user *User) error {
 		return ErrInvalidName
 	}
 
+	ensureAccessConsistency(user)
+
 	exists, err := s.userExistsByName(ctx, normalizedName)
 	if err != nil {
 		return err
@@ -118,20 +127,55 @@ func (s *postgresStore) CreateUser(ctx context.Context, user *User) error {
 		}
 	}
 
+	caps, err := s.capabilities(ctx)
+	if err != nil {
+		return err
+	}
+
 	var verifiedAt any
 	if user.EmailVerified {
 		verifiedAt = time.Now().UTC()
 	}
 
-	query := `INSERT INTO users (username, password, email, email_verified_at)
-      VALUES ($1, $2, $3, $4)
-      RETURNING uuid, coalesce(created_at, now()), coalesce(updated_at, now()), email_verified`
+	columns := []string{"username", "password", "email", "email_verified_at"}
+	placeholders := []string{"$1", "$2", "$3", "$4"}
+	args := []any{normalizedName, user.PasswordHash, normalizedEmail, verifiedAt}
+	idx := 5
+
+	if caps.hasLevel {
+		columns = append(columns, "level")
+		placeholders = append(placeholders, fmt.Sprintf("$%d", idx))
+		args = append(args, user.Level)
+		idx++
+	}
+	if caps.hasRole {
+		columns = append(columns, "role")
+		placeholders = append(placeholders, fmt.Sprintf("$%d", idx))
+		args = append(args, user.Role)
+		idx++
+	}
+	if caps.hasGroups {
+		columns = append(columns, "groups")
+		placeholders = append(placeholders, fmt.Sprintf("$%d", idx))
+		args = append(args, arrayForQuery(user.Groups))
+		idx++
+	}
+	if caps.hasPermissions {
+		columns = append(columns, "permissions")
+		placeholders = append(placeholders, fmt.Sprintf("$%d", idx))
+		args = append(args, arrayForQuery(user.Permissions))
+		idx++
+	}
+
+	query := fmt.Sprintf(`INSERT INTO users (%s)
+      VALUES (%s)
+      RETURNING uuid, coalesce(created_at, now()), coalesce(updated_at, now()), email_verified`, strings.Join(columns, ", "), strings.Join(placeholders, ", "))
 
 	var idValue any
 	var createdAt time.Time
 	var updatedAt time.Time
 	var emailVerified sql.NullBool
-	err = s.db.QueryRowContext(ctx, query, normalizedName, user.PasswordHash, normalizedEmail, verifiedAt).Scan(&idValue, &createdAt, &updatedAt, &emailVerified)
+	err = s.db.QueryRowContext(ctx, query, args...).Scan(&idValue, &createdAt, &updatedAt, &emailVerified)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrUserNotFound
@@ -257,11 +301,15 @@ func scanUser(row rowScanner) (*User, error) {
 		mfaEnabled      sql.NullBool
 		mfaSecretIssued sql.NullTime
 		mfaConfirmed    sql.NullTime
+		level           sql.NullInt64
+		role            sql.NullString
+		groups          pq.StringArray
+		permissions     pq.StringArray
 		createdAt       time.Time
 		updatedAt       time.Time
 	)
 
-	if err := row.Scan(&idValue, &username, &email, &emailVerified, &password, &mfaSecret, &mfaEnabled, &mfaSecretIssued, &mfaConfirmed, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&idValue, &username, &email, &emailVerified, &password, &mfaSecret, &mfaEnabled, &mfaSecretIssued, &mfaConfirmed, &level, &role, &groups, &permissions, &createdAt, &updatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
 		}
@@ -273,11 +321,25 @@ func scanUser(row rowScanner) (*User, error) {
 		return nil, err
 	}
 
+	levelValue := 0
+	if level.Valid {
+		levelValue = int(level.Int64)
+	}
+	normalizedRole := role.String
+	levelValue, normalizedRole = roles.Normalize(levelValue, normalizedRole)
+
+	groupsList := normalizeAccessList([]string(groups))
+	permissionsList := normalizeAccessList([]string(permissions))
+
 	user := &User{
 		ID:                identifier,
 		Name:              strings.TrimSpace(username.String),
 		Email:             strings.ToLower(strings.TrimSpace(email.String)),
 		EmailVerified:     emailVerified.Bool,
+		Level:             levelValue,
+		Role:              normalizedRole,
+		Groups:            groupsList,
+		Permissions:       permissionsList,
 		PasswordHash:      password.String,
 		MFATOTPSecret:     strings.TrimSpace(mfaSecret.String),
 		MFAEnabled:        mfaEnabled.Bool,
@@ -302,6 +364,8 @@ func (s *postgresStore) UpdateUser(ctx context.Context, user *User) error {
 		return err
 	}
 
+	ensureAccessConsistency(user)
+
 	var issuedAt any
 	if !user.MFASecretIssuedAt.IsZero() {
 		issuedAt = user.MFASecretIssuedAt.UTC()
@@ -322,6 +386,30 @@ func (s *postgresStore) UpdateUser(ctx context.Context, user *User) error {
 
 	args := []any{normalizedName, normalizedEmail, user.PasswordHash}
 	idx := 4
+
+	if caps.hasLevel {
+		builder.WriteString(fmt.Sprintf(", level = $%d", idx))
+		args = append(args, user.Level)
+		idx++
+	}
+
+	if caps.hasRole {
+		builder.WriteString(fmt.Sprintf(", role = $%d", idx))
+		args = append(args, user.Role)
+		idx++
+	}
+
+	if caps.hasGroups {
+		builder.WriteString(fmt.Sprintf(", groups = $%d", idx))
+		args = append(args, arrayForQuery(user.Groups))
+		idx++
+	}
+
+	if caps.hasPermissions {
+		builder.WriteString(fmt.Sprintf(", permissions = $%d", idx))
+		args = append(args, arrayForQuery(user.Permissions))
+		idx++
+	}
 
 	if caps.hasMFATOTPSecret {
 		builder.WriteString(fmt.Sprintf(", mfa_totp_secret = $%d", idx))
@@ -514,7 +602,31 @@ func (s *postgresStore) capabilities(ctx context.Context) (schemaCapabilities, e
     WHERE table_name = 'users'
       AND table_schema = ANY (current_schemas(false))
       AND column_name = 'updated_at'
-  ) AS has_updated_at`
+  ) AS has_updated_at,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users'
+      AND table_schema = ANY (current_schemas(false))
+      AND column_name = 'level'
+  ) AS has_level,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users'
+      AND table_schema = ANY (current_schemas(false))
+      AND column_name = 'role'
+  ) AS has_role,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users'
+      AND table_schema = ANY (current_schemas(false))
+      AND column_name = 'groups'
+  ) AS has_groups,
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users'
+      AND table_schema = ANY (current_schemas(false))
+      AND column_name = 'permissions'
+  ) AS has_permissions`
 
 	row := s.db.QueryRowContext(ctx, query)
 	var caps schemaCapabilities
@@ -525,6 +637,10 @@ func (s *postgresStore) capabilities(ctx context.Context) (schemaCapabilities, e
 		&caps.hasMFAConfirmedAt,
 		&caps.hasCreatedAt,
 		&caps.hasUpdatedAt,
+		&caps.hasLevel,
+		&caps.hasRole,
+		&caps.hasGroups,
+		&caps.hasPermissions,
 	); err != nil {
 		return schemaCapabilities{}, err
 	}
@@ -555,6 +671,26 @@ func (s *postgresStore) selectUserQuery(caps schemaCapabilities, whereClause str
 		confirmedExpr = "mfa_confirmed_at"
 	}
 
+	levelExpr := "0"
+	if caps.hasLevel {
+		levelExpr = "coalesce(level, 0)"
+	}
+
+	roleExpr := "'User'"
+	if caps.hasRole {
+		roleExpr = "coalesce(role, 'User')"
+	}
+
+	groupsExpr := "ARRAY[]::text[]"
+	if caps.hasGroups {
+		groupsExpr = "coalesce(groups, ARRAY[]::text[])"
+	}
+
+	permissionsExpr := "ARRAY[]::text[]"
+	if caps.hasPermissions {
+		permissionsExpr = "coalesce(permissions, ARRAY[]::text[])"
+	}
+
 	createdExpr := "now()"
 	if caps.hasCreatedAt {
 		createdExpr = "coalesce(created_at, now())"
@@ -565,6 +701,13 @@ func (s *postgresStore) selectUserQuery(caps schemaCapabilities, whereClause str
 		updatedExpr = "coalesce(updated_at, now())"
 	}
 
-	return fmt.Sprintf(`SELECT uuid, username, email, email_verified, password, %s, %s, %s, %s, %s, %s FROM users %s`,
-		secretExpr, enabledExpr, issuedExpr, confirmedExpr, createdExpr, updatedExpr, whereClause)
+	return fmt.Sprintf(`SELECT uuid, username, email, email_verified, password, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s FROM users %s`,
+		secretExpr, enabledExpr, issuedExpr, confirmedExpr, levelExpr, roleExpr, groupsExpr, permissionsExpr, createdExpr, updatedExpr, whereClause)
+}
+
+func arrayForQuery(values []string) any {
+	if len(values) == 0 {
+		return nil
+	}
+	return values
 }

@@ -56,15 +56,15 @@ func TestSelectUserQuery(t *testing.T) {
 	tests := []struct {
 		name string
 		caps schemaCapabilities
-		want string
+		want []string
 	}{
 		{
-			name: "no mfa columns",
+			name: "no optional columns",
 			caps: schemaCapabilities{},
-			want: "NULL::text",
+			want: []string{"NULL::text", "ARRAY[]::text[]", "'User'"},
 		},
 		{
-			name: "with mfa columns",
+			name: "with optional columns",
 			caps: schemaCapabilities{
 				hasMFATOTPSecret:     true,
 				hasMFAEnabled:        true,
@@ -72,16 +72,22 @@ func TestSelectUserQuery(t *testing.T) {
 				hasMFAConfirmedAt:    true,
 				hasCreatedAt:         true,
 				hasUpdatedAt:         true,
+				hasLevel:             true,
+				hasRole:              true,
+				hasGroups:            true,
+				hasPermissions:       true,
 			},
-			want: "mfa_totp_secret",
+			want: []string{"mfa_totp_secret", "coalesce(groups, ARRAY[]::text[])", "coalesce(role, 'User')"},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			query := store.selectUserQuery(tc.caps, "WHERE uuid = $1")
-			if !strings.Contains(query, tc.want) {
-				t.Fatalf("expected query to contain %q, got %q", tc.want, query)
+			for _, fragment := range tc.want {
+				if !strings.Contains(query, fragment) {
+					t.Fatalf("expected query to contain %q, got %q", fragment, query)
+				}
 			}
 		})
 	}

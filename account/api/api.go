@@ -21,6 +21,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"xcontrol/account/internal/store"
+	"xcontrol/internal/roles"
 )
 
 const defaultSessionTTL = 24 * time.Hour
@@ -260,6 +261,9 @@ func (h *handler) register(c *gin.Context) {
 		Name:         name,
 		Email:        email,
 		PasswordHash: string(hashed),
+		Level:        roles.DefaultLevel(),
+		Role:         roles.DefaultRole(),
+		Groups:       []string{roles.RoleUser},
 	}
 
 	if !h.emailVerificationEnabled {
@@ -1327,6 +1331,14 @@ func (h *handler) mfaStatus(c *gin.Context) {
 
 func sanitizeUser(user *store.User, challenge *mfaChallenge) gin.H {
 	identifier := strings.TrimSpace(user.ID)
+	groups := append([]string(nil), user.Groups...)
+	if groups == nil {
+		groups = []string{}
+	}
+	permissions := append([]string(nil), user.Permissions...)
+	if permissions == nil {
+		permissions = []string{}
+	}
 	return gin.H{
 		"id":            identifier,
 		"uuid":          identifier,
@@ -1334,6 +1346,10 @@ func sanitizeUser(user *store.User, challenge *mfaChallenge) gin.H {
 		"username":      user.Name,
 		"email":         user.Email,
 		"emailVerified": user.EmailVerified,
+		"level":         user.Level,
+		"role":          user.Role,
+		"groups":        groups,
+		"permissions":   permissions,
 		"mfaEnabled":    user.MFAEnabled,
 		"mfa":           buildMFAState(user, challenge),
 	}

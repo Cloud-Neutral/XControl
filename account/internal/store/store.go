@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"xcontrol/internal/roles"
 )
 
 // User represents an account within the account service domain.
@@ -16,6 +18,10 @@ type User struct {
 	Name              string
 	Email             string
 	EmailVerified     bool
+	Level             int
+	Role              string
+	Groups            []string
+	Permissions       []string
 	PasswordHash      string
 	MFATOTPSecret     string
 	MFAEnabled        bool
@@ -70,6 +76,8 @@ func (s *memoryStore) CreateUser(ctx context.Context, user *User) error {
 	loweredEmail := strings.ToLower(strings.TrimSpace(user.Email))
 	normalizedName := strings.TrimSpace(user.Name)
 
+	ensureAccessConsistency(user)
+
 	if normalizedName == "" {
 		return ErrInvalidName
 	}
@@ -80,7 +88,7 @@ func (s *memoryStore) CreateUser(ctx context.Context, user *User) error {
 	if _, exists := s.byName[strings.ToLower(normalizedName)]; exists {
 		return ErrNameExists
 	}
-	userCopy := *user
+	userCopy := cloneUser(user)
 	if userCopy.ID == "" {
 		userCopy.ID = uuid.NewString()
 	}
@@ -97,12 +105,12 @@ func (s *memoryStore) CreateUser(ctx context.Context, user *User) error {
 	userCopy.Email = loweredEmail
 	userCopy.Name = normalizedName
 	stored := userCopy
-	s.byID[userCopy.ID] = &stored
+	s.byID[userCopy.ID] = stored
 	if loweredEmail != "" {
-		s.byEmail[loweredEmail] = &stored
+		s.byEmail[loweredEmail] = stored
 	}
-	s.byName[strings.ToLower(normalizedName)] = &stored
-	*user = stored
+	s.byName[strings.ToLower(normalizedName)] = stored
+	*user = *cloneUser(stored)
 	return nil
 }
 
@@ -116,8 +124,7 @@ func (s *memoryStore) GetUserByEmail(ctx context.Context, email string) (*User, 
 	if !ok {
 		return nil, ErrUserNotFound
 	}
-	clone := *user
-	return &clone, nil
+	return cloneUser(user), nil
 }
 
 // GetUserByID fetches a user by unique identifier, returning ErrUserNotFound
@@ -130,8 +137,7 @@ func (s *memoryStore) GetUserByID(ctx context.Context, id string) (*User, error)
 	if !ok {
 		return nil, ErrUserNotFound
 	}
-	clone := *user
-	return &clone, nil
+	return cloneUser(user), nil
 }
 
 // GetUserByName fetches a user by case-insensitive username, returning
@@ -151,8 +157,7 @@ func (s *memoryStore) GetUserByName(ctx context.Context, name string) (*User, er
 		return nil, ErrUserNotFound
 	}
 
-	clone := *user
-	return &clone, nil
+	return cloneUser(user), nil
 }
 
 // UpdateUser replaces the persisted user representation in memory.
@@ -168,6 +173,8 @@ func (s *memoryStore) UpdateUser(ctx context.Context, user *User) error {
 
 	normalizedName := strings.TrimSpace(user.Name)
 	loweredEmail := strings.ToLower(strings.TrimSpace(user.Email))
+
+	ensureAccessConsistency(user)
 
 	if normalizedName == "" {
 		return ErrInvalidName
@@ -200,6 +207,10 @@ func (s *memoryStore) UpdateUser(ctx context.Context, user *User) error {
 	updated.Name = normalizedName
 	updated.Email = loweredEmail
 	updated.EmailVerified = user.EmailVerified
+	updated.Level = user.Level
+	updated.Role = user.Role
+	updated.Groups = append([]string(nil), user.Groups...)
+	updated.Permissions = append([]string(nil), user.Permissions...)
 	updated.PasswordHash = user.PasswordHash
 	updated.MFATOTPSecret = user.MFATOTPSecret
 	updated.MFAEnabled = user.MFAEnabled
@@ -216,12 +227,66 @@ func (s *memoryStore) UpdateUser(ctx context.Context, user *User) error {
 		updated.UpdatedAt = user.UpdatedAt
 	}
 
-	s.byID[user.ID] = &updated
-	s.byName[newNameKey] = &updated
+	stored := cloneUser(&updated)
+	s.byID[user.ID] = stored
+	s.byName[newNameKey] = stored
 	if loweredEmail != "" {
-		s.byEmail[loweredEmail] = &updated
+		s.byEmail[loweredEmail] = stored
 	}
 
-	*user = updated
+	*user = *cloneUser(stored)
 	return nil
+}
+
+func ensureAccessConsistency(user *User) {
+	if user == nil {
+		return
+	}
+	level, role := roles.Normalize(user.Level, user.Role)
+	user.Level = level
+	user.Role = role
+	user.Groups = normalizeAccessList(user.Groups)
+	user.Permissions = normalizeAccessList(user.Permissions)
+}
+
+func normalizeAccessList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(values))
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+	return normalized
+}
+
+func cloneUser(user *User) *User {
+	if user == nil {
+		return nil
+	}
+	clone := *user
+	if len(user.Groups) > 0 {
+		clone.Groups = append([]string(nil), user.Groups...)
+	} else {
+		clone.Groups = nil
+	}
+	if len(user.Permissions) > 0 {
+		clone.Permissions = append([]string(nil), user.Permissions...)
+	} else {
+		clone.Permissions = nil
+	}
+	return &clone
 }

@@ -13,6 +13,10 @@ type AccountUser = {
   name?: string
   username?: string
   email: string
+  level?: number
+  role?: string
+  groups?: string[]
+  permissions?: string[]
   mfaEnabled?: boolean
   mfaPending?: boolean
   mfa?: {
@@ -43,6 +47,30 @@ async function fetchSession(token: string) {
     console.error('Session lookup proxy failed', error)
     return { response: null, data: null }
   }
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const entry of value) {
+    if (typeof entry !== 'string') {
+      continue
+    }
+    const trimmed = entry.trim()
+    if (!trimmed) {
+      continue
+    }
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    result.push(trimmed)
+  }
+  return result
 }
 
 export async function GET(request: NextRequest) {
@@ -88,11 +116,20 @@ export async function GET(request: NextRequest) {
         totpPending: derivedMfaPending,
       }
 
+  const resolvedGroups = normalizeStringArray(rawUser.groups)
+  const resolvedPermissions = normalizeStringArray(rawUser.permissions)
+  const resolvedRole = typeof rawUser.role === 'string' && rawUser.role.trim().length > 0 ? rawUser.role.trim() : 'User'
+  const resolvedLevel = typeof rawUser.level === 'number' && Number.isFinite(rawUser.level) ? rawUser.level : undefined
+
   const normalizedUser = identifier ? { ...rawUser, id: identifier, uuid: identifier } : rawUser
 
   return NextResponse.json({
     user: {
       ...normalizedUser,
+      level: resolvedLevel ?? 0,
+      role: resolvedRole,
+      groups: resolvedGroups,
+      permissions: resolvedPermissions,
       mfaEnabled: derivedMfaEnabled,
       mfaPending: derivedMfaPending,
       mfa: normalizedMfa,

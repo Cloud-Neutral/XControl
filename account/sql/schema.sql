@@ -44,11 +44,56 @@ CREATE TABLE IF NOT EXISTS users (
     mfa_confirmed_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ DEFAULT now(),
     email_verified_at TIMESTAMPTZ,
+    level INTEGER NOT NULL DEFAULT 0,
+    role TEXT DEFAULT 'User',
+    groups TEXT[] DEFAULT '{}'::text[],
+    permissions TEXT[] DEFAULT '{}'::text[],
     email_verified BOOLEAN GENERATED ALWAYS AS ((email_verified_at IS NOT NULL)) STORED,
     CONSTRAINT users_pkey PRIMARY KEY (uuid),
     CONSTRAINT users_username_uk UNIQUE (username),
     CONSTRAINT users_email_uk UNIQUE (email)
 );
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS level INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'User';
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS groups TEXT[] DEFAULT '{}'::text[];
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS permissions TEXT[] DEFAULT '{}'::text[];
+
+ALTER TABLE users
+    ALTER COLUMN role SET DEFAULT 'User',
+    ALTER COLUMN groups SET DEFAULT '{}'::text[],
+    ALTER COLUMN permissions SET DEFAULT '{}'::text[];
+
+UPDATE users
+SET role = CASE
+        WHEN level >= 20 THEN 'Admin'
+        WHEN level >= 10 THEN 'Operator'
+        ELSE 'User'
+    END
+WHERE role IS NULL OR btrim(role) = '';
+
+UPDATE users
+SET level = CASE lower(role)
+        WHEN 'admin' THEN 20
+        WHEN 'operator' THEN 10
+        WHEN 'user' THEN 0
+        ELSE level
+    END;
+
+UPDATE users
+SET groups = '{}'::text[]
+WHERE groups IS NULL;
+
+UPDATE users
+SET permissions = '{}'::text[]
+WHERE permissions IS NULL;
 
 CREATE TABLE IF NOT EXISTS identities (
     provider TEXT NOT NULL,

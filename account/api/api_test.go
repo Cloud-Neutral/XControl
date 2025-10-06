@@ -142,6 +142,26 @@ func TestRegisterEndpoint(t *testing.T) {
 		t.Fatalf("expected email %q, got %#v", payload["email"], resp.User["email"])
 	}
 
+	if role, ok := resp.User["role"].(string); !ok || role != "User" {
+		t.Fatalf("expected role User, got %#v", resp.User["role"])
+	}
+
+	groupsValue, ok := resp.User["groups"].([]interface{})
+	if !ok {
+		t.Fatalf("expected groups array, got %#v", resp.User["groups"])
+	}
+	if len(groupsValue) != 1 || groupsValue[0] != "User" {
+		t.Fatalf("expected groups to contain only User, got %#v", groupsValue)
+	}
+
+	permissionsValue, ok := resp.User["permissions"].([]interface{})
+	if !ok {
+		t.Fatalf("expected permissions array, got %#v", resp.User["permissions"])
+	}
+	if len(permissionsValue) != 0 {
+		t.Fatalf("expected permissions to be empty, got %#v", permissionsValue)
+	}
+
 	if id, ok := resp.User["id"].(string); !ok || id == "" {
 		t.Fatalf("expected user id in response")
 	} else if uuid, ok := resp.User["uuid"].(string); !ok || uuid != id {
@@ -193,6 +213,9 @@ func TestRegisterEndpoint(t *testing.T) {
 	}
 	if verified, ok := resp.User["emailVerified"].(bool); !ok || !verified {
 		t.Fatalf("expected emailVerified true after verification, got %#v", resp.User["emailVerified"])
+	}
+	if role, ok := resp.User["role"].(string); !ok || role != "User" {
+		t.Fatalf("expected role User after verification, got %#v", resp.User["role"])
 	}
 }
 

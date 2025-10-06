@@ -16,6 +16,10 @@ type User = {
   email: string
   name?: string
   username: string
+  level: number
+  role: string
+  groups: string[]
+  permissions: string[]
   mfaEnabled: boolean
   mfaPending: boolean
   mfa?: {
@@ -69,6 +73,10 @@ async function fetchSessionUser(): Promise<User | null> {
         email: string
         name?: string
         username?: string
+        level?: number
+        role?: string
+        groups?: unknown
+        permissions?: unknown
         mfaEnabled?: boolean
         mfaPending?: boolean
         mfa?: {
@@ -111,12 +119,47 @@ async function fetchSessionUser(): Promise<User | null> {
           totpPending: Boolean(mfaPending) && !Boolean(mfaEnabled),
         }
 
+    const normalizeStringArray = (value: unknown): string[] => {
+      if (!Array.isArray(value)) {
+        return []
+      }
+      const seen = new Set<string>()
+      const result: string[] = []
+      for (const entry of value) {
+        if (typeof entry !== 'string') {
+          continue
+        }
+        const trimmed = entry.trim()
+        if (!trimmed) {
+          continue
+        }
+        const key = trimmed.toLowerCase()
+        if (seen.has(key)) {
+          continue
+        }
+        seen.add(key)
+        result.push(trimmed)
+      }
+      return result
+    }
+
+    const normalizedGroups = normalizeStringArray(sessionUser.groups)
+    const normalizedPermissions = normalizeStringArray(sessionUser.permissions)
+    const normalizedRole =
+      typeof sessionUser.role === 'string' && sessionUser.role.trim().length > 0 ? sessionUser.role.trim() : 'User'
+    const normalizedLevel =
+      typeof sessionUser.level === 'number' && Number.isFinite(sessionUser.level) ? sessionUser.level : 0
+
     return {
       id: identifier,
       uuid: identifier,
       email,
       name: normalizedName,
       username: normalizedUsername ?? email,
+      level: normalizedLevel,
+      role: normalizedRole,
+      groups: normalizedGroups,
+      permissions: normalizedPermissions,
       mfaEnabled: Boolean(mfaEnabled ?? mfa?.totpEnabled),
       mfaPending: Boolean(mfaPending ?? mfa?.totpPending) && !Boolean(mfaEnabled ?? mfa?.totpEnabled),
       mfa: normalizedMfa,
