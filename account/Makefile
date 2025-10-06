@@ -102,6 +102,11 @@ stop:
 
 restart: stop start
 
+update: build
+	systemctl stop xcontrol-account.service
+	cp xcontrol-account /usr/bin/
+	systemctl restart xcontrol-account.service
+
 clean:
 	@echo ">>> 清理构建产物"
 	rm -f $(APP_NAME) $(APP_NAME).log $(APP_NAME).pid
