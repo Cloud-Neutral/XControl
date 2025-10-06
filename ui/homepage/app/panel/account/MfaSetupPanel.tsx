@@ -73,6 +73,28 @@ export default function MfaSetupPanel() {
     }
   }, [])
 
+  const formatQrImage = useCallback(
+    (raw?: string | null, fallbackUri?: string) => {
+      if (raw) {
+        const trimmed = raw.trim()
+        if (!trimmed) {
+          return ''
+        }
+        if (/^data:image\//i.test(trimmed) || /^https?:\/\//i.test(trimmed)) {
+          return trimmed
+        }
+        return `data:image/png;base64,${trimmed}`
+      }
+
+      if (fallbackUri) {
+        return generateQrImage(fallbackUri)
+      }
+
+      return ''
+    },
+    [generateQrImage],
+  )
+
   const fetchStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/mfa/status', { cache: 'no-store', credentials: 'include' })
@@ -123,7 +145,7 @@ export default function MfaSetupPanel() {
       setSecret(data?.secret ?? '')
       const nextUri = data?.otpauth_url ?? ''
       setUri(nextUri)
-      const nextQr = data?.qr ?? (nextUri ? generateQrImage(nextUri) : '')
+      const nextQr = formatQrImage(data?.qr, nextUri)
       setQrImage(nextQr)
       setStatus((previous) => data?.mfa ?? data?.user?.mfa ?? previous ?? null)
     } catch (err) {
@@ -132,7 +154,7 @@ export default function MfaSetupPanel() {
     } finally {
       setIsProvisioning(false)
     }
-  }, [copy.error, generateQrImage])
+  }, [copy.error, formatQrImage])
 
   const handleVerify = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -379,97 +401,72 @@ export default function MfaSetupPanel() {
                     </p>
 
                     <ol className="space-y-4">
-                      <li className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <h4 className="text-sm font-semibold text-gray-900">{copy.guide.step1Title}</h4>
-                        <p className="mt-2 text-sm text-gray-600">{copy.guide.step1Description}</p>
-                        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-gray-600">
-                          <li>{copy.guide.step1Ios}</li>
-                          <li>{copy.guide.step1Android}</li>
-                        </ul>
-                      </li>
-
-                      <li className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <h4 className="text-sm font-semibold text-gray-900">{copy.guide.step2Title}</h4>
-                        <p className="mt-2 text-sm text-gray-600">{copy.guide.step2Description}</p>
-                        <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start">
+                      <li className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+                          <div className="flex-1 space-y-6">
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-900">{copy.guide.step1Title}</h4>
+                              <p className="mt-2 text-sm text-gray-600">{copy.guide.step1Description}</p>
+                              <p className="mt-3 text-sm text-gray-600">{copy.guide.step1Ios}</p>
+                            </div>
+                            <div className="border-t border-dashed border-gray-200" />
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-900">{copy.guide.step2Title}</h4>
+                              <p className="mt-2 text-sm text-gray-600">{copy.guide.step2Description}</p>
+                            </div>
+                          </div>
                           {qrImage ? (
-                            <div className="flex justify-center lg:w-60 lg:justify-start">
-                              <div className="rounded-xl border border-purple-100 bg-purple-50 p-3">
+                            <div className="flex justify-center lg:w-64 lg:justify-end">
+                              <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4 shadow-inner">
                                 <Image
                                   src={qrImage}
                                   alt={copy.qrLabel}
                                   width={240}
                                   height={240}
-                                  className="h-44 w-44 rounded-lg border border-purple-200 bg-white p-2 shadow-sm"
+                                  className="h-48 w-48 rounded-xl border border-purple-200 bg-white p-2 shadow-sm"
                                   unoptimized
                                 />
                               </div>
                             </div>
                           ) : null}
-                          <div className="flex-1 space-y-3">
-                            <div>
-                              <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">{copy.secretLabel}</p>
-                              <code className="mt-1 block break-all rounded bg-purple-50 px-3 py-2 text-sm text-purple-700">{secret}</code>
-                            </div>
-                            {uri ? (
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">{copy.uriLabel}</p>
-                                <a
-                                  href={uri}
-                                  className="mt-1 block break-all text-sm text-purple-600 underline"
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  {uri}
-                                </a>
-                              </div>
-                            ) : null}
-                            <p className="text-xs text-gray-500">{copy.manualHint}</p>
-                            <button
-                              type="button"
-                              onClick={handleProvision}
-                              disabled={isProvisioning}
-                              className="inline-flex items-center justify-center rounded-md border border-purple-200 px-3 py-2 text-xs font-medium text-purple-600 transition hover:border-purple-300 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-70"
-                            >
-                              {isProvisioning ? `${copy.regenerate}…` : copy.regenerate}
-                            </button>
-                          </div>
                         </div>
-                      </li>
 
-                      <li className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <h4 className="text-sm font-semibold text-gray-900">{copy.guide.step3Title}</h4>
-                        <p className="mt-2 text-sm text-gray-600">{copy.guide.step3Description}</p>
-                        <form
-                          onSubmit={handleVerify}
-                          className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4"
-                        >
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700" htmlFor="mfa-code">
-                              {copy.codeLabel}
-                            </label>
-                            <input
-                              id="mfa-code"
-                              name="code"
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              maxLength={6}
-                              autoComplete="one-time-code"
-                              value={code}
-                              onChange={(event) => setCode(event.target.value)}
-                              placeholder={copy.codePlaceholder}
-                              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-2xl font-mono tracking-[0.6em] text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
-                            />
-                          </div>
-                          <button
-                            type="submit"
-                            disabled={isVerifying}
-                            className="inline-flex items-center justify-center rounded-md bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70"
+                        <div className="mt-6 border-t border-dashed border-gray-200" />
+
+                        <div className="mt-6">
+                          <h4 className="text-sm font-semibold text-gray-900">{copy.guide.step3Title}</h4>
+                          <p className="mt-2 text-sm text-gray-600">{copy.guide.step3Description}</p>
+                          <form
+                            onSubmit={handleVerify}
+                            className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4"
                           >
-                            {isVerifying ? copy.verifying : copy.verify}
-                          </button>
-                        </form>
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-gray-700" htmlFor="mfa-code">
+                                {copy.codeLabel}
+                              </label>
+                              <input
+                                id="mfa-code"
+                                name="code"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={6}
+                                autoComplete="one-time-code"
+                                value={code}
+                                onChange={(event) => setCode(event.target.value)}
+                                placeholder={copy.codePlaceholder}
+                                className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-center text-2xl font-mono tracking-[0.6em] text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={isVerifying}
+                              className="inline-flex items-center justify-center rounded-md bg-purple-600 px-5 py-2.5 text-sm font-medium text-white shadow transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                              {isVerifying ? copy.verifying : copy.verify}
+                            </button>
+                          </form>
+                        </div>
                       </li>
                     </ol>
 
