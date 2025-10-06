@@ -125,14 +125,14 @@ export default function MfaSetupPanel() {
       setUri(nextUri)
       const nextQr = data?.qr ?? (nextUri ? generateQrImage(nextUri) : '')
       setQrImage(nextQr)
-      setStatus(data?.mfa ?? data?.user?.mfa ?? status)
+      setStatus((previous) => data?.mfa ?? data?.user?.mfa ?? previous ?? null)
     } catch (err) {
       console.warn('Provision TOTP failed', err)
       setError(copy.error)
     } finally {
       setIsProvisioning(false)
     }
-  }, [copy.error, generateQrImage, status])
+  }, [copy.error, generateQrImage])
 
   const handleVerify = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
