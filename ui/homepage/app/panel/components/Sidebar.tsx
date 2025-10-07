@@ -108,9 +108,9 @@ export default function Sidebar({ className = '', onNavigate }: SidebarProps) {
         title: '管理页面',
         items: [
           {
-            href: '/panel/xray',
-            label: 'XRay Console',
-            description: '零信任策略与运维控制',
+            href: '/panel/management',
+            label: 'Management',
+            description: '集中化的权限矩阵与用户编排',
             icon: Settings,
           },
         ],
