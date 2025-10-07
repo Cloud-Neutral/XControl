@@ -45,8 +45,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const { language } = useLanguage()
   const copy = translations[language].userCenter.mfa
   const { user, isLoading, logout } = useUser()
-
   const requiresSetup = Boolean(user && (!user.mfaEnabled || user.mfaPending))
+  
   useEffect(() => {
     if (isLoading) {
       return

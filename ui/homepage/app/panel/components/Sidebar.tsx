@@ -101,7 +101,10 @@ export default function Sidebar({ className = '', onNavigate }: SidebarProps) {
   const requiresSetup = Boolean(user && (!user.mfaEnabled || user.mfaPending))
 
   const navSections = useMemo(() => {
-    const sections = [...baseNavSections]
+    const sections = baseNavSections.map((section) => ({
+      ...section,
+      items: [...section.items],
+    }))
 
     if (user?.isAdmin || user?.isOperator) {
       sections.push({
