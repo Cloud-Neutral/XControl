@@ -13,7 +13,7 @@ DB_URL     := postgres://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?
 
 export PATH := /usr/local/go/bin:$(PATH)
 
-.PHONY: all init init-go init-db dump-schema build start stop restart clean help dev test
+.PHONY: all init init-go init-db migrate-db dump-schema build start stop restart clean help dev test
 
 all: build
 
@@ -53,6 +53,42 @@ init-db:
 	        fi
 	@echo "使用数据库连接: $(DB_URL)"
 	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
+
+migrate-db:
+	@echo ">>> 执行数据库 schema 迁移 (level/role metadata)"
+	@if ! command -v psql >/dev/null 2>&1; then \
+	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	fi
+	@echo "使用数据库连接: $(DB_URL)"
+	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 <<'SQL'
+BEGIN;
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 20 NOT NULL,
+  ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user' NOT NULL,
+  ADD COLUMN IF NOT EXISTS groups JSONB DEFAULT '[]'::jsonb NOT NULL,
+  ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb NOT NULL;
+
+UPDATE public.users
+SET role = CASE level
+    WHEN 0 THEN 'admin'
+    WHEN 10 THEN 'operator'
+    ELSE 'user'
+  END,
+  groups = CASE level
+    WHEN 0 THEN '["Admin"]'::jsonb
+    WHEN 10 THEN '["Operator"]'::jsonb
+    ELSE '["User"]'::jsonb
+  END,
+  permissions = CASE level
+    WHEN 0 THEN '["session:read","session:write","user:manage"]'::jsonb
+    WHEN 10 THEN '["session:read","session:write"]'::jsonb
+    ELSE '["session:read"]'::jsonb
+  END
+WHERE role IS NULL OR role = '' OR groups = '[]'::jsonb;
+
+COMMIT;
+SQL
 
 # 删除数据库（安全防呆）
 drop-db:
@@ -116,6 +152,7 @@ help:
 	@echo ""
 	@echo "make init       初始化开发环境（包含 Go 依赖与数据库 schema）"
 	@echo "make dump-schema 仅导出数据库 schema 快照"
+	@echo "make migrate-db  在保留数据的情况下应用 schema 迁移"
 	@echo "make build      编译 account service 可执行文件"
 	@echo "make start      后台运行 account service (默认端口: $(PORT))"
 	@echo "make stop       停止运行 account service"
