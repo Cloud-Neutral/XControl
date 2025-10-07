@@ -3,6 +3,7 @@ MAIN_FILE := ./cmd/accountsvc/main.go
 PORT ?= 8080
 OS := $(shell uname -s)
 SCHEMA_FILE := ./sql/schema.sql
+MIGRATION_FILE := ./sql/20251007-migrate_to_rbac.sql
 
 DB_NAME    := account
 DB_USER    := shenlan
@@ -55,40 +56,17 @@ init-db:
 	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
 
 migrate-db:
-	@echo ">>> 执行数据库 schema 迁移 (level/role metadata)"
-	@if ! command -v psql >/dev/null 2>&1; then \
-	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
-	        exit 1; \
-	fi
-	@echo "使用数据库连接: $(DB_URL)"
-	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 <<'SQL'
-BEGIN;
-ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 20 NOT NULL,
-  ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user' NOT NULL,
-  ADD COLUMN IF NOT EXISTS groups JSONB DEFAULT '[]'::jsonb NOT NULL,
-  ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb NOT NULL;
-
-UPDATE public.users
-SET role = CASE level
-    WHEN 0 THEN 'admin'
-    WHEN 10 THEN 'operator'
-    ELSE 'user'
-  END,
-  groups = CASE level
-    WHEN 0 THEN '["Admin"]'::jsonb
-    WHEN 10 THEN '["Operator"]'::jsonb
-    ELSE '["User"]'::jsonb
-  END,
-  permissions = CASE level
-    WHEN 0 THEN '["session:read","session:write","user:manage"]'::jsonb
-    WHEN 10 THEN '["session:read","session:write"]'::jsonb
-    ELSE '["session:read"]'::jsonb
-  END
-WHERE role IS NULL OR role = '' OR groups = '[]'::jsonb;
-
-COMMIT;
-SQL
+        @echo ">>> 执行数据库 schema 迁移 (level/role metadata & MFA/email verification)"
+        @if [ ! -f $(MIGRATION_FILE) ]; then \
+                echo "未找到迁移 SQL 文件: $(MIGRATION_FILE)"; \
+                exit 1; \
+        fi
+        @if ! command -v psql >/dev/null 2>&1; then \
+                echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+                exit 1; \
+        fi
+        @echo "使用数据库连接: $(DB_URL)"
+        @psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(MIGRATION_FILE)
 
 # 删除数据库（安全防呆）
 drop-db:
