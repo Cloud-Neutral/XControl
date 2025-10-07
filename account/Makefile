@@ -12,9 +12,13 @@ DB_HOST    := 127.0.0.1
 DB_PORT    := 5432
 DB_URL     := postgres://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
+SUPERADMIN_USERNAME ?=
+SUPERADMIN_PASSWORD ?=
+SUPERADMIN_EMAIL    ?=
+
 export PATH := /usr/local/go/bin:$(PATH)
 
-.PHONY: all init init-go init-db migrate-db dump-schema build start stop restart clean help dev test
+.PHONY: all init init-go init-db migrate-db dump-schema build start stop restart clean help dev test create-super-admin
 
 all: build
 
@@ -138,16 +142,34 @@ help:
 	@echo "make test       运行账号服务相关单元测试"
 	@echo "make dev        开发模式运行 (自动检测 air，如无则用 go run)"
 	@echo "make clean      清理构建产物"
+	@echo "make create-super-admin SUPERADMIN_USERNAME=... SUPERADMIN_PASSWORD=... [SUPERADMIN_EMAIL=...]  创建超级管理员"
 
 test:
 	@echo ">>> 运行单元测试"
 	go test ./...
 
 dev:
-	@echo ">>> 开发模式运行 $(APP_NAME) (热重载) on port $(PORT)"
-	@if command -v air >/dev/null; then \
-		PORT=$(PORT) air -c .air.toml; \
-	else \
-		echo "未检测到 air，直接运行 go run"; \
-		PORT=$(PORT) go run $(MAIN_FILE); \
-	fi
+        @echo ">>> 开发模式运行 $(APP_NAME) (热重载) on port $(PORT)"
+        @if command -v air >/dev/null; then \
+                PORT=$(PORT) air -c .air.toml; \
+        else \
+                echo "未检测到 air，直接运行 go run"; \
+                PORT=$(PORT) go run $(MAIN_FILE); \
+        fi
+
+create-super-admin:
+        @if [ -z "$(SUPERADMIN_USERNAME)" ]; then \
+                echo "请通过 SUPERADMIN_USERNAME 指定超级管理员用户名"; \
+                exit 1; \
+        fi
+        @if [ -z "$(SUPERADMIN_PASSWORD)" ]; then \
+                echo "请通过 SUPERADMIN_PASSWORD 指定超级管理员密码"; \
+                exit 1; \
+        fi
+        @echo ">>> 创建超级管理员 $(SUPERADMIN_USERNAME)"
+        @go run ./cmd/createadmin/main.go \
+                --driver postgres \
+                --dsn "$(DB_URL)" \
+                --username "$(SUPERADMIN_USERNAME)" \
+                --password "$(SUPERADMIN_PASSWORD)" \
+                --email "$(SUPERADMIN_EMAIL)"
