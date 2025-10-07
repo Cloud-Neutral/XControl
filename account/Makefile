@@ -56,17 +56,17 @@ init-db:
 	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(SCHEMA_FILE)
 
 migrate-db:
-        @echo ">>> 执行数据库 schema 迁移 (level/role metadata & MFA/email verification)"
-        @if [ ! -f $(MIGRATION_FILE) ]; then \
-                echo "未找到迁移 SQL 文件: $(MIGRATION_FILE)"; \
-                exit 1; \
-        fi
-        @if ! command -v psql >/dev/null 2>&1; then \
-                echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
-                exit 1; \
-        fi
-        @echo "使用数据库连接: $(DB_URL)"
-        @psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(MIGRATION_FILE)
+	@echo ">>> 执行数据库 schema 迁移 (level/role metadata & MFA/email verification)"
+	@if [ ! -f $(MIGRATION_FILE) ]; then \
+	        echo "未找到迁移 SQL 文件: $(MIGRATION_FILE)"; \
+	        exit 1; \
+	fi
+	@if ! command -v psql >/dev/null 2>&1; then \
+	        echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+	        exit 1; \
+	fi
+	@echo "使用数据库连接: $(DB_URL)"
+	@psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(MIGRATION_FILE)
 
 # 删除数据库（安全防呆）
 drop-db:
