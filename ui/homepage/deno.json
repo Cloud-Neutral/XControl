@@ -1,5 +1,6 @@
 {
   "importMap": "./import_map.json",
+  "nodeModulesDir": "auto",
   "tasks": {
     "export-slugs": "deno run -A ../../scripts/export-slugs.ts",
     "scan-md": "deno run -A ../../scripts/scan-md.ts",
@@ -8,9 +9,9 @@
     "tailwind:watch": "deno run -A npm:tailwindcss -c tailwind.config.mjs -i routes/globals.css -o static/styles.css --watch",
     "prebuild": "deno task export-slugs && deno task scan-md && deno task fetch-dl-index && deno task tailwind:build",
     "check-build": "deno run -A ../../scripts/check-build.ts",
-    "dev": "deno run -A https://deno.land/x/aleph@1.0.0-beta.27/cli.ts dev",
-    "build": "deno run -A https://deno.land/x/aleph@1.0.0-beta.27/cli.ts build",
-    "start": "deno run -A https://deno.land/x/aleph@1.0.0-beta.27/cli.ts start",
+    "dev": "deno run -A https://deno.land/x/aleph@1.0.0-beta.38/cli.ts dev",
+    "build": "deno run -A https://deno.land/x/aleph@1.0.0-beta.38/cli.ts build",
+    "start": "deno run -A https://deno.land/x/aleph@1.0.0-beta.38/cli.ts start",
     "check": "deno check ./",
     "lint": "deno lint",
     "fmt": "deno fmt"
