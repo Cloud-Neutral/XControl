@@ -8,6 +8,8 @@
     "@routes/": "./routes/",
     "@static/": "./static/",
     "@types/": "./types/",
+    "@std/fs@^1.0.4/": "jsr:@std/fs@^1.0.4/",
+    "@std/path@^1.0.6/": "jsr:@std/path@^1.0.6/",
     "react": "https://esm.sh/react@19",
     "react-dom": "https://esm.sh/react-dom@19",
     "react-dom/client": "https://esm.sh/react-dom@19/client",
