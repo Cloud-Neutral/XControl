@@ -75,6 +75,10 @@
 | 02 | restructure_project | ui/homepage/* | 重构 routes/components/static 目录 |
 | 03 | generate_deno_entry | main.ts | 新建 Deno 启动入口文件 |
 
+#### ✅ 测试验证（Phase 1）
+- **03_generate_deno_entry**：`cd ui/homepage && deno run --allow-read --allow-net --allow-env main.ts`
+  - 服务器启动后应输出 Aleph 的启动日志，确认路由扫描与静态目录挂载成功，`Ctrl+C` 结束进程。
+
 ---
 
 ### Phase 2 — 构建与运行时适配
