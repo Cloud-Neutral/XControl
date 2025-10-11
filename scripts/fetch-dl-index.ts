@@ -1,6 +1,6 @@
-import { ensureDir } from "jsr:@std/fs@^1.0.4/ensure-dir";
-import { dirname, join, resolve } from "jsr:@std/path@^1.0.6";
-import { fromFileUrl } from "jsr:@std/path@^1.0.6/from-file-url";
+import { ensureDir } from "@std/fs@^1.0.4/ensure-dir.ts";
+import { dirname, join, resolve } from "@std/path@^1.0.6/mod.ts";
+import { fromFileUrl } from "@std/path@^1.0.6/from-file-url.ts";
 
 import type { DirEntry, DirListing } from "../types/download";
 
