@@ -24,9 +24,9 @@ icon:
 		fi; \
 		exit 1; \
 	fi
-	@mkdir -p public/icons
-	@$(MAGICK) ../logo.png -resize 32x32 public/icons/cloudnative_32.png
-	@$(MAGICK) ../logo.png -resize 64x64 -background none -define icon:auto-resize=64,48,32,16 public/favicon.ico
+@mkdir -p static/icons
+@$(MAGICK) ../logo.png -resize 32x32 static/icons/cloudnative_32.png
+@$(MAGICK) ../logo.png -resize 64x64 -background none -define icon:auto-resize=64,48,32,16 static/favicon.ico
 	@echo "✅ Icons generated successfully."
 
 prebuild: check-deno

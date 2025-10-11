@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-import ClientTime from '../../../components/ClientTime'
+import ClientTime from '@islands/ClientTime'
 import DocViewSection, { type DocViewOption, type ViewMode } from './DocViewSection'
 import { buildAbsoluteDocUrl } from '../../utils'
 import type { DocCollection, DocResource } from '../../types'
