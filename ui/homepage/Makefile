@@ -3,7 +3,7 @@ PORT ?= 3001
 DENO := $(shell command -v deno 2>/dev/null)
 MAGICK := $(shell command -v magick 2>/dev/null || command -v convert 2>/dev/null)
 
-.PHONY: icon prebuild dev build export start test lint clean info fetch-manifests check-deno
+.PHONY: icon prebuild dev build start lint clean info fetch-manifests check-build check-deno
 
 check-deno:
 	@if [ -z "$(DENO)" ]; then \
@@ -24,38 +24,35 @@ icon:
 		fi; \
 		exit 1; \
 	fi
-@mkdir -p static/icons
-@$(MAGICK) ../logo.png -resize 32x32 static/icons/cloudnative_32.png
-@$(MAGICK) ../logo.png -resize 64x64 -background none -define icon:auto-resize=64,48,32,16 static/favicon.ico
+	@mkdir -p static/icons
+	@$(MAGICK) ../logo.png -resize 32x32 static/icons/cloudnative_32.png
+	@$(MAGICK) ../logo.png -resize 64x64 -background none -define icon:auto-resize=64,48,32,16 static/favicon.ico
 	@echo "✅ Icons generated successfully."
 
 prebuild: check-deno
-	deno task homepage:prebuild
+	deno task prebuild
 
 fetch-manifests: check-deno
-	deno task homepage:fetch-dl-index
+	deno task fetch-dl-index
 
 dev: check-deno
-	deno task homepage:dev -- -p $(PORT)
+	PORT=$(PORT) deno task dev
 
 start: check-deno
-	deno task homepage:start -- -p $(PORT)
+	PORT=$(PORT) deno task start
 
 build: check-deno
-	deno task homepage:build
+	deno task build
 
-export: check-deno
-	deno task homepage:export
-
-test: check-deno
-	deno task homepage:test
+check-build: check-deno
+	deno task check-build
 
 lint: check-deno
-	deno task homepage:lint
+	deno task lint
 
 clean:
 	@echo "🧹 Cleaning build artifacts..."
-	rm -rf .next out
+	rm -rf .aleph dist
 
 info:
 	@if [ -n "$(DENO)" ]; then \

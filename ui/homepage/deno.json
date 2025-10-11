@@ -1,19 +1,11 @@
 {
   "importMap": "./import_map.json",
-  "nodeModulesDir": "auto",
-  "lock": "../../deno.lock",
   "tasks": {
-    "homepage:export-slugs": "deno run -A ../../scripts/export-slugs.ts",
-    "homepage:scan-md": "deno run -A ../../scripts/scan-md.ts",
-    "homepage:fetch-dl-index": "deno run -A ../../scripts/fetch-dl-index.ts",
-    "homepage:prebuild": "deno task homepage:export-slugs && deno task homepage:scan-md && deno task homepage:fetch-dl-index",
-    "homepage:check-build": "deno run -A ../../scripts/check-build.ts",
-    "homepage:dev": "deno run -A --node-modules-dir=auto --cwd=. npm:next dev",
-    "homepage:build": "deno task homepage:prebuild && deno run -A --node-modules-dir=auto --cwd=. npm:next build",
-    "homepage:start": "deno run -A --node-modules-dir=auto --cwd=. npm:next start",
-    "homepage:export": "deno task homepage:prebuild && NEXT_SHOULD_EXPORT=true deno run -A --node-modules-dir=auto --cwd=. npm:next export",
-    "homepage:lint": "deno run -A --node-modules-dir=auto --cwd=. npm:next lint",
-    "homepage:test": "deno run -A --node-modules-dir=auto --cwd=. npm:vitest run",
+    "export-slugs": "deno run -A ../../scripts/export-slugs.ts",
+    "scan-md": "deno run -A ../../scripts/scan-md.ts",
+    "fetch-dl-index": "deno run -A ../../scripts/fetch-dl-index.ts",
+    "prebuild": "deno task export-slugs && deno task scan-md && deno task fetch-dl-index",
+    "check-build": "deno run -A ../../scripts/check-build.ts",
     "dev": "deno run -A https://deno.land/x/aleph@1.0.0-beta.27/cli.ts dev",
     "build": "deno run -A https://deno.land/x/aleph@1.0.0-beta.27/cli.ts build",
     "start": "deno run -A https://deno.land/x/aleph@1.0.0-beta.27/cli.ts start",
@@ -36,9 +28,5 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "react"
-  },
-  "imports": {
-    "@std/fs@^1.0.4/": "jsr:@std/fs@^1.0.4/",
-    "@std/path@^1.0.6/": "jsr:@std/path@^1.0.6/"
   }
 }
