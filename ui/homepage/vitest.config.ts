@@ -1,5 +1,8 @@
-import path from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
+
+const workspaceRoot = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   test: {
@@ -15,10 +18,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@components': path.resolve(__dirname, 'components'),
-      '@i18n': path.resolve(__dirname, 'i18n'),
-      '@lib': path.resolve(__dirname, 'lib'),
-      '@types': path.resolve(__dirname, 'types'),
+      '@components': resolve(workspaceRoot, 'components'),
+      '@i18n': resolve(workspaceRoot, 'i18n'),
+      '@lib': resolve(workspaceRoot, 'lib'),
+      '@types': resolve(workspaceRoot, 'types'),
     },
   },
   esbuild: {
