@@ -1,0 +1,134 @@
+name: Build XRuntime Offline Dev Base (Deno + Go)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g., xruntime-offline-dev-base-v0.1.0)"
+        required: false
+        type: string
+      targets:
+        description: "Targets to include (comma-separated: deno,go)"
+        required: false
+        default: "deno,go"
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: xruntime-offline-dev-base
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG_NAME: ${{ github.event.inputs.tag != '' && github.event.inputs.tag || format('xruntime-offline-dev-base-{0}', github.run_number) }}
+      TARGETS: ${{ github.event.inputs.targets }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: |
+          set -euo pipefail
+          mkdir -p xruntime/{deno,go}/bin
+          mkdir -p xruntime/{deno,go}/cache
+
+      # 🦕 Deno
+      - name: Cache Deno runtime & deps
+        if: contains(env.TARGETS, 'deno')
+        run: |
+          set -euo pipefail
+          echo ">>> Installing Deno"
+          curl -fsSL https://deno.land/install.sh | sh
+          export PATH="$HOME/.deno/bin:$PATH"
+          deno --version
+          mkdir -p xruntime/deno/bin
+          cp "$HOME/.deno/bin/deno" xruntime/deno/bin/
+
+          echo ">>> Prefetching Deno deps (CN mirror)"
+          echo '{ "imports": { "https://deno.land/": "https://deno.js.cn/", "https://esm.sh/": "https://esm.sh.cn/" } }' > import_map.json
+          if [ -f main.ts ]; then
+            deno cache --import-map=import_map.json main.ts
+            deno vendor main.ts
+            mv vendor xruntime/deno/cache/
+          fi
+          tar -czvf xruntime-offline-dev-base-deno-${{ matrix.os }}.tar.gz -C xruntime/deno .
+
+      # 🐹 Go
+      - name: Cache Go toolchain & modules
+        if: contains(env.TARGETS, 'go')
+        run: |
+          set -euo pipefail
+          echo ">>> Installing Go"
+          case "${{ matrix.os }}" in
+            ubuntu-latest)
+              curl -fsSL https://go.dev/dl/go1.23.1.linux-amd64.tar.gz -o go.tar.gz
+              ;;
+            macos-latest)
+              curl -fsSL https://go.dev/dl/go1.23.1.darwin-amd64.tar.gz -o go.tar.gz
+              ;;
+          esac
+          tar -C xruntime/go -xzf go.tar.gz
+          mkdir -p xruntime/go/cache/pkg/mod
+          export PATH="$PWD/xruntime/go/go/bin:$PATH"
+          go version
+          if [ -f go.mod ]; then
+            go mod download
+            cp -r $(go env GOMODCACHE)/* xruntime/go/cache/pkg/mod/ || true
+          fi
+          tar -czvf xruntime-offline-dev-base-go-${{ matrix.os }}.tar.gz -C xruntime/go .
+
+      # 📦 上传构建产物
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xruntime-offline-dev-base-${{ matrix.os }}
+          path: |
+            xruntime-offline-dev-base-deno-${{ matrix.os }}.tar.gz
+            xruntime-offline-dev-base-go-${{ matrix.os }}.tar.gz
+          if-no-files-found: ignore
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ github.event.inputs.tag != '' && github.event.inputs.tag || format('xruntime-offline-dev-base-{0}', github.run_number) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Generate README and Checksums
+        run: |
+          set -euo pipefail
+          echo "# XRuntime Offline Dev Base (Deno + Go)" > README_XRUNTIME_OFFLINE.md
+          echo "" >> README_XRUNTIME_OFFLINE.md
+          echo "## Build Information" >> README_XRUNTIME_OFFLINE.md
+          echo "- Deno version:" $(deno --version 2>/dev/null || echo "N/A") >> README_XRUNTIME_OFFLINE.md
+          echo "- Go version:" $(go version 2>/dev/null || echo "N/A") >> README_XRUNTIME_OFFLINE.md
+          echo "" >> README_XRUNTIME_OFFLINE.md
+          echo "## Files" >> README_XRUNTIME_OFFLINE.md
+          find release-artifacts -type f -name '*.tar.gz' -printf '- %p\n' >> README_XRUNTIME_OFFLINE.md
+          echo "" >> README_XRUNTIME_OFFLINE.md
+          echo "## SHA256 Checksums" >> README_XRUNTIME_OFFLINE.md
+          find release-artifacts -type f -name '*.tar.gz' -exec sha256sum {} \; > sha256sum.txt
+          cat sha256sum.txt >> README_XRUNTIME_OFFLINE.md
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            release-artifacts/**/*
+            README_XRUNTIME_OFFLINE.md
+            sha256sum.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
