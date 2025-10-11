@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { Menu } from 'lucide-react'
 
 import { useUser } from '@lib/userStore'

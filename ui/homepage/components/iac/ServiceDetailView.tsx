@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { ArrowLeft, GitBranch, Settings2, Table2, Wallet, Workflow } from 'lucide-react'
 
 import RunModal, { type RunModalTarget } from './RunModal'
