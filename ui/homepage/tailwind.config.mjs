@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 const config = {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  content: ["./routes/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./islands/**/*.{ts,tsx}"],
   theme: {
     extend: {
       fontFamily: {

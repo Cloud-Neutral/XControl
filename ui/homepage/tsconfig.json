@@ -19,14 +19,17 @@
     "paths": {
       "@components/*": ["components/*"],
       "@i18n/*": ["i18n/*"],
+      "@islands/*": ["islands/*"],
       "@lib/*": ["lib/*"],
+      "@routes/*": ["routes/*"],
+      "@static/*": ["static/*"],
       "@types/*": ["types/*"]
     },
     "types": ["node"],
     "plugins": [{ "name": "next" }]
   },
   "include": [
-    "app",
+    "routes",
     "components",
     "i18n",
     "lib",

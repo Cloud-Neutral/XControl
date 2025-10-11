@@ -2,8 +2,8 @@ export const dynamic = 'error'
 
 import { notFound } from 'next/navigation'
 
-import DownloadBrowser from '../../components/download/DownloadBrowser'
-import DownloadSummary from '../../components/download/DownloadSummary'
+import DownloadBrowser from '@components/download/DownloadBrowser'
+import DownloadSummary from '@components/download/DownloadSummary'
 import { buildDownloadSections, countFiles, findListing } from '../../lib/download-data'
 import { getDownloadListings } from '../../lib/download-manifest'
 import { isFeatureEnabled } from '@lib/featureToggles'

@@ -1,7 +1,7 @@
 export const dynamic = 'error'
 
-import DownloadListingContent from '../../../components/download/DownloadListingContent'
-import DownloadNotFound from '../../../components/download/DownloadNotFound'
+import DownloadListingContent from '@components/download/DownloadListingContent'
+import DownloadNotFound from '@components/download/DownloadNotFound'
 import {
   buildSectionsForListing,
   countFiles,

@@ -3,7 +3,7 @@ export const dynamic = 'error'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-import Breadcrumbs, { type Crumb } from '../../../../components/download/Breadcrumbs'
+import Breadcrumbs, { type Crumb } from '@components/download/Breadcrumbs'
 import { DOC_COLLECTIONS, getDocResource } from '../../resources.server'
 import { isFeatureEnabled } from '@lib/featureToggles'
 import DocCollectionView from './DocCollectionView'

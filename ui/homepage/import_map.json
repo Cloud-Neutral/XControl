@@ -1,6 +1,13 @@
 {
   "imports": {
     "@/": "./",
+    "@components/": "./components/",
+    "@i18n/": "./i18n/",
+    "@islands/": "./islands/",
+    "@lib/": "./lib/",
+    "@routes/": "./routes/",
+    "@static/": "./static/",
+    "@types/": "./types/",
     "react": "https://esm.sh/react@19",
     "react-dom": "https://esm.sh/react-dom@19",
     "react-dom/client": "https://esm.sh/react-dom@19/client",

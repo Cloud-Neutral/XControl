@@ -12,7 +12,7 @@ import { useLanguage } from '@i18n/LanguageProvider'
 import { translations } from '@i18n/translations'
 import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
 
-import { WeChatIcon } from '../components/icons/WeChatIcon'
+import { WeChatIcon } from '@islands/icons/WeChatIcon'
 
 type AlertState = { type: 'error' | 'success'; message: string }
 

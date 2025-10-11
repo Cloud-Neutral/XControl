@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 import { ArrowUpRight } from 'lucide-react'
 
-import ClientTime from '../components/ClientTime'
+import ClientTime from '@islands/ClientTime'
 import type { DocCollection, DocVersionOption } from './types'
 
 interface DocCollectionCardProps {

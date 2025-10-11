@@ -1,7 +1,7 @@
 export const dynamic = 'error'
 
+import { AppProviders } from '@components/AppProviders'
 import './globals.css'
-import { AppProviders } from './AppProviders'
 
 export const metadata = {
   title: 'CloudNative Suite',
