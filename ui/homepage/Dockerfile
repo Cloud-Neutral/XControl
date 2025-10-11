@@ -1,5 +1,5 @@
 # Build homepage using Deno runtime
-FROM denoland/deno:alpine AS build
+FROM denoland/deno:alpine
 WORKDIR /app
 
 COPY deno.jsonc ./deno.jsonc
@@ -7,10 +7,8 @@ COPY scripts ./scripts
 COPY types ./types
 COPY ui/homepage ./ui/homepage
 
-RUN deno task homepage:export
-RUN deno task homepage:check-build
+WORKDIR /app/ui/homepage
+RUN deno task prebuild
 
-FROM nginx:alpine
-COPY --from=build /app/ui/homepage/out /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
+CMD ["deno", "run", "--allow-read", "--allow-net", "--allow-env", "main.ts"]

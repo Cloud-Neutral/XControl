@@ -3,8 +3,11 @@ set -euo pipefail
 
 cd /var/www/XControl/ui/homepage
 
-echo "🦕 Ensuring build artifacts are up to date"
-deno task homepage:build
+PORT="${PORT:-3000}"
+export PORT
 
-echo "🚀 Starting Next.js server with Deno runtime"
-deno task homepage:start
+echo "🦕 Ensuring build artifacts are up to date"
+deno task build
+
+echo "🚀 Starting Aleph.js server with Deno runtime"
+deno task start
