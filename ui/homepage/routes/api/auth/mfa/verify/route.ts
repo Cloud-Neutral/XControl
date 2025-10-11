@@ -1,6 +1,3 @@
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
-
 import {
   applyMfaCookie,
   applySessionCookie,
@@ -9,6 +6,7 @@ import {
   deriveMaxAgeFromExpires,
   MFA_COOKIE_NAME,
 } from '@lib/authGateway'
+import { getRequestCookies, jsonResponse } from '@lib/http'
 import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
 
 const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
@@ -28,26 +26,26 @@ function normalizeCode(value: unknown) {
   return typeof value === 'string' ? value.replace(/\D/g, '').slice(0, 6) : ''
 }
 
-export async function POST(request: NextRequest) {
-  const cookieStore = cookies()
+export async function POST(request: Request) {
+  const cookieStore = getRequestCookies(request)
   let payload: VerifyPayload
   try {
     payload = (await request.json()) as VerifyPayload
   } catch (error) {
     console.error('Failed to decode MFA verification payload', error)
-    return NextResponse.json({ success: false, error: 'invalid_request', needMfa: true }, { status: 400 })
+    return jsonResponse({ success: false, error: 'invalid_request', needMfa: true }, { status: 400 })
   }
 
-  const cookieToken = cookieStore.get(MFA_COOKIE_NAME)?.value ?? ''
+  const cookieToken = cookieStore[MFA_COOKIE_NAME] ?? ''
   const token = normalizeString(payload?.token || cookieToken)
   const code = normalizeCode(payload?.code ?? payload?.totp)
 
   if (!token) {
-    return NextResponse.json({ success: false, error: 'mfa_token_required', needMfa: true }, { status: 400 })
+    return jsonResponse({ success: false, error: 'mfa_token_required', needMfa: true }, { status: 400 })
   }
 
   if (!code) {
-    return NextResponse.json({ success: false, error: 'mfa_code_required', needMfa: true }, { status: 400 })
+    return jsonResponse({ success: false, error: 'mfa_code_required', needMfa: true }, { status: 400 })
   }
 
   try {
@@ -63,14 +61,14 @@ export async function POST(request: NextRequest) {
     const data = (await response.json().catch(() => ({}))) as { token?: string; expiresAt?: string; mfaToken?: string; error?: string }
 
     if (response.ok && typeof data?.token === 'string' && data.token.length > 0) {
-      const result = NextResponse.json({ success: true, error: null, needMfa: false })
+      const result = jsonResponse({ success: true, error: null, needMfa: false })
       applySessionCookie(result, data.token, deriveMaxAgeFromExpires(data?.expiresAt))
       clearMfaCookie(result)
       return result
     }
 
     const errorCode = typeof data?.error === 'string' ? data.error : 'mfa_verification_failed'
-    const result = NextResponse.json({ success: false, error: errorCode, needMfa: true }, { status: response.status || 400 })
+    const result = jsonResponse({ success: false, error: errorCode, needMfa: true }, { status: response.status || 400 })
 
     if (typeof data?.mfaToken === 'string' && data.mfaToken.trim()) {
       applyMfaCookie(result, data.mfaToken)
@@ -82,7 +80,7 @@ export async function POST(request: NextRequest) {
     return result
   } catch (error) {
     console.error('Account service MFA verification proxy failed', error)
-    const result = NextResponse.json({ success: false, error: 'account_service_unreachable', needMfa: true }, { status: 502 })
+    const result = jsonResponse({ success: false, error: 'account_service_unreachable', needMfa: true }, { status: 502 })
     applyMfaCookie(result, token)
     clearSessionCookie(result)
     return result
@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
 }
 
 export function GET() {
-  return NextResponse.json(
+  return jsonResponse(
     { success: false, error: 'method_not_allowed', needMfa: true },
     {
       status: 405,

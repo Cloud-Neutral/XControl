@@ -1,7 +1,5 @@
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
-
 import { applyMfaCookie, MFA_COOKIE_NAME, SESSION_COOKIE_NAME } from '@lib/authGateway'
+import { getRequestCookies, jsonResponse } from '@lib/http'
 import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
 
 const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
@@ -22,22 +20,22 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-export async function POST(request: NextRequest) {
-  const cookieStore = cookies()
+export async function POST(request: Request) {
+  const cookieStore = getRequestCookies(request)
   let payload: SetupPayload
   try {
     payload = (await request.json()) as SetupPayload
   } catch (error) {
     console.error('Failed to decode MFA setup payload', error)
-    return NextResponse.json({ success: false, error: 'invalid_request', needMfa: true }, { status: 400 })
+    return jsonResponse({ success: false, error: 'invalid_request', needMfa: true }, { status: 400 })
   }
 
-  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? ''
-  const cookieToken = cookieStore.get(MFA_COOKIE_NAME)?.value ?? ''
+  const sessionToken = cookieStore[SESSION_COOKIE_NAME] ?? ''
+  const cookieToken = cookieStore[MFA_COOKIE_NAME] ?? ''
   const token = normalizeString(payload?.token || cookieToken)
 
   if (!token && !sessionToken) {
-    return NextResponse.json({ success: false, error: 'mfa_token_required', needMfa: true }, { status: 400 })
+    return jsonResponse({ success: false, error: 'mfa_token_required', needMfa: true }, { status: 400 })
   }
 
   const issuer = normalizeString(payload?.issuer)
@@ -72,10 +70,10 @@ export async function POST(request: NextRequest) {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
       const errorCode = typeof (data as { error?: string })?.error === 'string' ? data.error : 'mfa_setup_failed'
-      return NextResponse.json({ success: false, error: errorCode, needMfa: true }, { status: response.status || 400 })
+      return jsonResponse({ success: false, error: errorCode, needMfa: true }, { status: response.status || 400 })
     }
 
-    const result = NextResponse.json({ success: true, error: null, needMfa: true, data })
+    const result = jsonResponse({ success: true, error: null, needMfa: true, data })
     const nextToken = normalizeString((data as { mfaToken?: string })?.mfaToken || token || cookieToken)
     if (nextToken) {
       applyMfaCookie(result, nextToken)
@@ -83,12 +81,12 @@ export async function POST(request: NextRequest) {
     return result
   } catch (error) {
     console.error('Account service MFA setup proxy failed', error)
-    return NextResponse.json({ success: false, error: 'account_service_unreachable', needMfa: true }, { status: 502 })
+    return jsonResponse({ success: false, error: 'account_service_unreachable', needMfa: true }, { status: 502 })
   }
 }
 
 export function GET() {
-  return NextResponse.json(
+  return jsonResponse(
     { success: false, error: 'method_not_allowed', needMfa: true },
     {
       status: 405,

@@ -1,18 +1,15 @@
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
-
 import { SESSION_COOKIE_NAME, clearSessionCookie } from '@lib/authGateway'
+import { getRequestCookies, jsonResponse } from '@lib/http'
 import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
 
 const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
 const ACCOUNT_API_BASE = `${ACCOUNT_SERVICE_URL}/api/auth`
 
-export async function POST(request: NextRequest) {
-  void request
-  const token = cookies().get(SESSION_COOKIE_NAME)?.value?.trim()
+export async function POST(request: Request) {
+  const token = getRequestCookies(request)[SESSION_COOKIE_NAME]?.trim()
 
   if (!token) {
-    return NextResponse.json({ success: false, error: 'session_required' }, { status: 401 })
+    return jsonResponse({ success: false, error: 'session_required' }, { status: 401 })
   }
 
   try {
@@ -28,22 +25,22 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorCode = typeof (data as { error?: string })?.error === 'string' ? data.error : 'mfa_disable_failed'
       if (response.status === 401) {
-        const result = NextResponse.json({ success: false, error: errorCode })
+        const result = jsonResponse({ success: false, error: errorCode })
         clearSessionCookie(result)
         return result
       }
-      return NextResponse.json({ success: false, error: errorCode }, { status: response.status || 400 })
+      return jsonResponse({ success: false, error: errorCode }, { status: response.status || 400 })
     }
 
-    return NextResponse.json({ success: true, error: null, data })
+    return jsonResponse({ success: true, error: null, data })
   } catch (error) {
     console.error('Account service MFA disable proxy failed', error)
-    return NextResponse.json({ success: false, error: 'account_service_unreachable' }, { status: 502 })
+    return jsonResponse({ success: false, error: 'account_service_unreachable' }, { status: 502 })
   }
 }
 
 export function GET() {
-  return NextResponse.json(
+  return jsonResponse(
     { success: false, error: 'method_not_allowed' },
     {
       status: 405,
