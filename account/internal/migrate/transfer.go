@@ -128,6 +128,11 @@ func (i *Importer) Import(ctx context.Context, dsn string, dump *AccountDump) er
 	}
 	defer db.Close()
 
+	userCaps, err := tableColumnCaps(ctx, db, "users")
+	if err != nil {
+		return err
+	}
+
 	identityCaps, err := tableColumnCaps(ctx, db, "identities")
 	if err != nil {
 		return err
@@ -150,7 +155,7 @@ func (i *Importer) Import(ctx context.Context, dsn string, dump *AccountDump) er
 	cleared := make(map[string]struct{})
 
 	for _, user := range dump.Users {
-		if err = upsertUser(ctx, tx, &user); err != nil {
+		if err = upsertUser(ctx, tx, &user, userCaps); err != nil {
 			return err
 		}
 		cleared[user.UUID] = struct{}{}
@@ -478,7 +483,7 @@ func buildInQuery(format string, uuids []string) (string, []any) {
 	return fmt.Sprintf(format, strings.Join(placeholders, ", ")), args
 }
 
-func upsertUser(ctx context.Context, tx *sql.Tx, user *UserRecord) error {
+func upsertUser(ctx context.Context, tx *sql.Tx, user *UserRecord, caps tableColumnCapabilities) error {
 	groupsJSON, err := json.Marshal(user.Groups)
 	if err != nil {
 		return fmt.Errorf("encode groups for user %s: %w", user.UUID, err)
@@ -496,48 +501,76 @@ func upsertUser(ctx context.Context, tx *sql.Tx, user *UserRecord) error {
 		user.EmailVerifiedAt = &ts
 	}
 
-	_, err = tx.ExecContext(ctx, `
-INSERT INTO users (
-        uuid, username, password, email, email_verified_at,
-        level, role, groups, permissions, created_at, updated_at,
-        mfa_totp_secret, mfa_enabled, mfa_secret_issued_at, mfa_confirmed_at
-) VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8::jsonb, $9::jsonb, $10, $11,
-        $12, $13, $14, $15
-)
-ON CONFLICT (uuid) DO UPDATE SET
-        username = EXCLUDED.username,
-        password = EXCLUDED.password,
-        email = EXCLUDED.email,
-        email_verified_at = EXCLUDED.email_verified_at,
-        level = EXCLUDED.level,
-        role = EXCLUDED.role,
-        groups = EXCLUDED.groups,
-        permissions = EXCLUDED.permissions,
-        created_at = EXCLUDED.created_at,
-        updated_at = EXCLUDED.updated_at,
-        mfa_totp_secret = EXCLUDED.mfa_totp_secret,
-        mfa_enabled = EXCLUDED.mfa_enabled,
-        mfa_secret_issued_at = EXCLUDED.mfa_secret_issued_at,
-        mfa_confirmed_at = EXCLUDED.mfa_confirmed_at
-`,
+	columns := []string{"uuid", "username", "password", "email"}
+	placeholders := []string{"$1", "$2", "$3", "$4"}
+	args := []any{
 		user.UUID,
 		user.Username,
 		user.PasswordHash,
 		nullableString(user.Email),
-		nullableTime(user.EmailVerifiedAt),
-		user.Level,
-		user.Role,
-		string(groupsJSON),
-		string(permissionsJSON),
-		user.CreatedAt,
-		user.UpdatedAt,
-		nullableString(user.MFATOTPSecret),
-		user.MFAEnabled,
-		nullableTime(user.MFASecretIssuedAt),
-		nullableTime(user.MFAConfirmedAt),
+	}
+
+	nextIdx := 5
+	if caps.emailVerifiedWritable {
+		columns = append(columns, "email_verified")
+		placeholders = append(placeholders, fmt.Sprintf("$%d", nextIdx))
+		args = append(args, user.EmailVerified)
+		nextIdx++
+	}
+
+	add := func(column, placeholderFmt string, value any) {
+		columns = append(columns, column)
+		placeholders = append(placeholders, fmt.Sprintf(placeholderFmt, nextIdx))
+		args = append(args, value)
+		nextIdx++
+	}
+
+	add("email_verified_at", "$%d", nullableTime(user.EmailVerifiedAt))
+	add("level", "$%d", user.Level)
+	add("role", "$%d", user.Role)
+	add("groups", "$%d::jsonb", string(groupsJSON))
+	add("permissions", "$%d::jsonb", string(permissionsJSON))
+	add("created_at", "$%d", user.CreatedAt)
+	add("updated_at", "$%d", user.UpdatedAt)
+	add("mfa_totp_secret", "$%d", nullableString(user.MFATOTPSecret))
+	add("mfa_enabled", "$%d", user.MFAEnabled)
+	add("mfa_secret_issued_at", "$%d", nullableTime(user.MFASecretIssuedAt))
+	add("mfa_confirmed_at", "$%d", nullableTime(user.MFAConfirmedAt))
+
+	updateClauses := []string{
+		"username = EXCLUDED.username",
+		"password = EXCLUDED.password",
+		"email = EXCLUDED.email",
+	}
+	if caps.emailVerifiedWritable {
+		updateClauses = append(updateClauses, "email_verified = EXCLUDED.email_verified")
+	}
+	updateClauses = append(updateClauses,
+		"email_verified_at = EXCLUDED.email_verified_at",
+		"level = EXCLUDED.level",
+		"role = EXCLUDED.role",
+		"groups = EXCLUDED.groups",
+		"permissions = EXCLUDED.permissions",
+		"created_at = EXCLUDED.created_at",
+		"updated_at = EXCLUDED.updated_at",
+		"mfa_totp_secret = EXCLUDED.mfa_totp_secret",
+		"mfa_enabled = EXCLUDED.mfa_enabled",
+		"mfa_secret_issued_at = EXCLUDED.mfa_secret_issued_at",
+		"mfa_confirmed_at = EXCLUDED.mfa_confirmed_at",
 	)
+
+	query := fmt.Sprintf(`
+INSERT INTO users (%s)
+VALUES (%s)
+ON CONFLICT (uuid) DO UPDATE SET
+%s
+`,
+		strings.Join(columns, ", "),
+		strings.Join(placeholders, ", "),
+		strings.Join(updateClauses, ",\n\t"),
+	)
+
+	_, err = tx.ExecContext(ctx, query, args...)
 	return err
 }
 
@@ -630,8 +663,9 @@ func nullableTime(t *time.Time) any {
 }
 
 type tableColumnCapabilities struct {
-	hasCreatedAt bool
-	hasUpdatedAt bool
+	hasCreatedAt          bool
+	hasUpdatedAt          bool
+	emailVerifiedWritable bool
 }
 
 func tableColumnCaps(ctx context.Context, db *sql.DB, table string) (tableColumnCapabilities, error) {
@@ -664,6 +698,27 @@ WHERE table_schema = ANY (current_schemas(false))
 	}
 	if err := rows.Err(); err != nil {
 		return tableColumnCapabilities{}, err
+	}
+
+	if table == "users" {
+		const emailColumnQuery = `
+SELECT (is_generated = 'NEVER' AND is_updatable = 'YES') AS writable
+FROM information_schema.columns
+WHERE table_schema = ANY (current_schemas(false))
+  AND table_name = $1
+  AND column_name = 'email_verified'
+LIMIT 1
+`
+
+		var writable sql.NullBool
+		switch err := db.QueryRowContext(ctx, emailColumnQuery, table).Scan(&writable); {
+		case err == nil:
+			caps.emailVerifiedWritable = writable.Valid && writable.Bool
+		case errors.Is(err, sql.ErrNoRows):
+			// Column is absent; leave capability false.
+		default:
+			return tableColumnCapabilities{}, err
+		}
 	}
 
 	return caps, nil
