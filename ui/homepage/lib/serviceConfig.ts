@@ -98,11 +98,11 @@ function normalizeEnvKey(value?: string | null): string | undefined {
 
 function resolveRuntimeEnvironment(): RuntimeEnvironmentName | undefined {
   const envCandidates = [
-    process.env.NEXT_PUBLIC_RUNTIME_ENV,
-    process.env.NEXT_RUNTIME_ENV,
-    process.env.RUNTIME_ENV,
-    process.env.APP_ENV,
-    process.env.NODE_ENV,
+    readEnv('NEXT_PUBLIC_RUNTIME_ENV'),
+    readEnv('NEXT_RUNTIME_ENV'),
+    readEnv('RUNTIME_ENV'),
+    readEnv('APP_ENV'),
+    readEnv('NODE_ENV'),
     runtimeServiceConfig.defaultEnvironment,
   ]
 
@@ -132,14 +132,28 @@ function getRuntimeAccountServiceBaseUrl(): string | undefined {
   return runtimeDefaults ?? environmentValue
 }
 
+type EnvReader = { env?: { get?(name: string): string | undefined } }
+
+function readEnv(name: string): string | undefined {
+  const deno = (globalThis as { Deno?: EnvReader }).Deno
+  const denoValue = deno?.env?.get?.(name)
+  if (typeof denoValue === 'string' && denoValue.trim().length > 0) {
+    return denoValue.trim()
+  }
+  if (typeof process !== 'undefined' && typeof process.env === 'object') {
+    const nodeValue = process.env[name]
+    if (typeof nodeValue === 'string' && nodeValue.trim().length > 0) {
+      return nodeValue.trim()
+    }
+  }
+  return undefined
+}
+
 function readEnvValue(...keys: string[]): string | undefined {
   for (const key of keys) {
-    const raw = process.env[key]
-    if (typeof raw === 'string') {
-      const trimmed = raw.trim()
-      if (trimmed.length > 0) {
-        return trimmed
-      }
+    const value = readEnv(key)
+    if (value) {
+      return value
     }
   }
   return undefined

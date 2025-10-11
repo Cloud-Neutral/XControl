@@ -1,14 +1,29 @@
 import 'server-only'
 
-import fs from 'node:fs'
-import path from 'node:path'
-
 import type { DirListing } from '../types/download'
 
-const readListings = (relativePath: string): DirListing[] => {
+type DenoFs = { readTextFileSync(path: string | URL): string }
+
+type DenoLike = { readTextFileSync?: (path: string | URL) => string }
+
+function readTextFile(url: URL): string | undefined {
+  const deno = (globalThis as { Deno?: DenoFs }).Deno
+  const reader: DenoLike | undefined = deno
+  if (!reader?.readTextFileSync) {
+    return undefined
+  }
   try {
-    const filePath = path.join(process.cwd(), relativePath)
-    const content = fs.readFileSync(filePath, 'utf-8')
+    return reader.readTextFileSync(url)
+  } catch {
+    return undefined
+  }
+}
+
+function readListings(relativePath: string): DirListing[] {
+  try {
+    const fileUrl = new URL(`../${relativePath}`, import.meta.url)
+    const content = readTextFile(fileUrl)
+    if (!content) return []
     const parsed = JSON.parse(content)
     return Array.isArray(parsed) ? (parsed as DirListing[]) : []
   } catch {
