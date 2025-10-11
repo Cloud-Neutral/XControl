@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { useMemo, useState } from 'react'
 import { useLanguage } from '@i18n/LanguageProvider'
 import { translations } from '@i18n/translations'

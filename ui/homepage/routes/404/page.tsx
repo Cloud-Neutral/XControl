@@ -1,6 +1,6 @@
 export const dynamic = 'error'
 
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 
 export default function NotFoundPage() {
   return (

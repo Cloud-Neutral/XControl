@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { usePathname } from 'next/navigation'
 import { Home, Server, Code, CreditCard, User, Shield, Settings, type LucideIcon } from 'lucide-react'
 import { useMemo } from 'react'

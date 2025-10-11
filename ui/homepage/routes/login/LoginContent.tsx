@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Github } from 'lucide-react'
 
