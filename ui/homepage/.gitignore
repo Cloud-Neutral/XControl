@@ -5,6 +5,7 @@ out/
 
 # Dependencies
 node_modules/
+static/styles.css
 
 # Logs
 *.log
