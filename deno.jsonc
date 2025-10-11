@@ -1,5 +1,5 @@
 {
-  "nodeModulesDir": "auto",
+  "nodeModulesDir": true,
   "lock": "deno.lock",
   "tasks": {
     "homepage:export-slugs": "deno run -A scripts/export-slugs.ts",
@@ -7,12 +7,12 @@
     "homepage:fetch-dl-index": "deno run -A scripts/fetch-dl-index.ts",
     "homepage:prebuild": "deno task homepage:export-slugs && deno task homepage:scan-md && deno task homepage:fetch-dl-index",
     "homepage:check-build": "deno run -A scripts/check-build.ts",
-    "homepage:dev": "deno run -A --node-modules-dir=auto --cwd=ui/homepage npm:next dev",
-    "homepage:build": "deno task homepage:prebuild && deno run -A --node-modules-dir=auto --cwd=ui/homepage npm:next build",
-    "homepage:start": "deno run -A --node-modules-dir=auto --cwd=ui/homepage npm:next start",
-    "homepage:export": "deno task homepage:prebuild && NEXT_SHOULD_EXPORT=true deno run -A --node-modules-dir=auto --cwd=ui/homepage npm:next export",
-    "homepage:lint": "deno run -A --node-modules-dir=auto --cwd=ui/homepage npm:next lint",
-    "homepage:test": "deno run -A --node-modules-dir=auto --cwd=ui/homepage npm:vitest run"
+    "homepage:dev": "deno run -A --node-modules-dir=true --cwd=ui/homepage npm:next dev",
+    "homepage:build": "deno task homepage:prebuild && deno run -A --node-modules-dir=true --cwd=ui/homepage npm:next build",
+    "homepage:start": "deno run -A --node-modules-dir=true --cwd=ui/homepage npm:next start",
+    "homepage:export": "deno task homepage:prebuild && NEXT_SHOULD_EXPORT=true deno run -A --node-modules-dir=true --cwd=ui/homepage npm:next export",
+    "homepage:lint": "deno run -A --node-modules-dir=true --cwd=ui/homepage npm:next lint",
+    "homepage:test": "deno run -A --node-modules-dir=true --cwd=ui/homepage npm:vitest run"
   },
   "imports": {
     "@std/fs@^1.0.4/": "jsr:@std/fs@^1.0.4/",
