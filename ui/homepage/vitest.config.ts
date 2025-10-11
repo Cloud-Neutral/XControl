@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
-    include: ['app/**/*.test.{ts,tsx}', 'app/**/*.__tests__/*.{ts,tsx}', 'app/**/__tests__/**/*.{ts,tsx}'],
+    include: ['routes/**/*.test.{ts,tsx}', 'routes/**/*.__tests__/*.{ts,tsx}', 'routes/**/__tests__/**/*.{ts,tsx}'],
     environmentOptions: {
       jsdom: {
         url: 'http://localhost',
@@ -20,7 +20,10 @@ export default defineConfig({
     alias: {
       '@components': resolve(workspaceRoot, 'components'),
       '@i18n': resolve(workspaceRoot, 'i18n'),
+      '@islands': resolve(workspaceRoot, 'islands'),
       '@lib': resolve(workspaceRoot, 'lib'),
+      '@routes': resolve(workspaceRoot, 'routes'),
+      '@static': resolve(workspaceRoot, 'static'),
       '@types': resolve(workspaceRoot, 'types'),
     },
   },

@@ -31,8 +31,8 @@ function readListings(relativePath: string): DirListing[] {
   }
 }
 
-const manifestListings = readListings('public/dl-index/artifacts-manifest.json')
-const fallbackListings = readListings('public/dl-index/all.json')
+const manifestListings = readListings('static/dl-index/artifacts-manifest.json')
+const fallbackListings = readListings('static/dl-index/all.json')
 
 export const DOWNLOAD_LISTINGS: DirListing[] =
   manifestListings.length > 0 ? manifestListings : fallbackListings
