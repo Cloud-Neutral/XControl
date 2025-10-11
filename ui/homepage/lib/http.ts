@@ -1,4 +1,4 @@
-import { getCookies } from '@std/http@^1.0.7/cookie'
+import { getCookies } from 'jsr:@std/http@1.0.7/cookie'
 
 export type JsonResponseInit = ResponseInit & { headers?: HeadersInit }
 

@@ -1,4 +1,4 @@
-import { setCookie } from '@std/http@^1.0.7/cookie'
+import { setCookie } from 'jsr:@std/http@1.0.7/cookie'
 
 export const SESSION_COOKIE_NAME = 'xc_session'
 export const MFA_COOKIE_NAME = 'xc_mfa_challenge'
