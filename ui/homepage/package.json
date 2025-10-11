@@ -2,18 +2,14 @@
   "name": "cloudnative-homepage",
   "version": "1.0.0",
   "private": true,
-  "engines": {
-    "node": ">=18.17 <23"
-  },
   "scripts": {
-    "dev": "node ./node_modules/next/dist/bin/next dev",
-    "prebuild": "tsx ../../scripts/export-slugs.ts && tsx ../../scripts/scan-md.ts && tsx ../../scripts/fetch-dl-index.ts",
-    "build": "node ./node_modules/next/dist/bin/next build",
-    "build:static": "yarn prebuild && node ../../scripts/check-build.js && node ./node_modules/next/dist/bin/next build",
-    "export": "node ./node_modules/next/dist/bin/next build",
-    "start": "node ./node_modules/next/dist/bin/next start",
-    "lint": "next lint",
-    "test": "vitest run"
+    "dev": "deno task homepage:dev",
+    "build": "deno task homepage:build",
+    "export": "deno task homepage:export",
+    "start": "deno task homepage:start",
+    "lint": "deno task homepage:lint",
+    "test": "deno task homepage:test",
+    "prebuild": "deno task homepage:prebuild"
   },
   "dependencies": {
     "dompurify": "^3.2.6",
@@ -46,7 +42,6 @@
     "jsdom": "^24.0.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.3",
-    "tsx": "^4.7.1",
     "typescript": "^5.4.2",
     "vitest": "^1.6.0"
   }

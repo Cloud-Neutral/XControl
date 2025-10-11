@@ -1,82 +1,86 @@
-import fs from 'fs/promises'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import { ensureDir } from "jsr:@std/fs@^1.0.4/ensure-dir";
+import { dirname, join, resolve } from "jsr:@std/path@^1.0.6";
+import { fromFileUrl } from "jsr:@std/path@^1.0.6/from-file-url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PROJECT_ROOT = path.resolve(__dirname, '..')
-const HOMEPAGE_ROOT = path.join(PROJECT_ROOT, 'ui', 'homepage')
+const __dirname = dirname(fromFileUrl(import.meta.url));
+const PROJECT_ROOT = resolve(__dirname, "..");
+const HOMEPAGE_ROOT = join(PROJECT_ROOT, "ui", "homepage");
 
-const CONTENT_DIR = path.join(HOMEPAGE_ROOT, 'content')
-const OUTPUT_PATH = path.join(HOMEPAGE_ROOT, 'public', '_build', 'docs_index.json')
+const CONTENT_DIR = join(HOMEPAGE_ROOT, "content");
+const OUTPUT_PATH = join(HOMEPAGE_ROOT, "public", "_build", "docs_index.json");
 
 type DocEntry = {
-  slug: string
-  title: string
-  description: string
-  updatedAt: string
-  pathSegments: string[]
-}
+  slug: string;
+  title: string;
+  description: string;
+  updatedAt: string;
+  pathSegments: string[];
+};
 
 function extractTitle(lines: string[], fallback: string): string {
-  const heading = lines.find((line) => /^#\s+/.test(line))
-  if (!heading) return fallback
-  return heading.replace(/^#\s+/, '').trim() || fallback
+  const heading = lines.find((line) => /^#\s+/.test(line));
+  if (!heading) return fallback;
+  return heading.replace(/^#\s+/, "").trim() || fallback;
 }
 
 function extractDescription(lines: string[], title: string): string {
   for (const line of lines) {
-    const trimmed = line.trim()
+    const trimmed = line.trim();
     if (!trimmed || /^#\s+/.test(trimmed)) {
-      continue
+      continue;
     }
-    return trimmed
+    return trimmed;
   }
-  return `${title}.`
+  return `${title}.`;
 }
 
-async function readMarkdownFile(file: string): Promise<DocEntry | null> {
-  if (!file.endsWith('.md')) return null
-  const slug = file.replace(/\.md$/, '')
-  const filePath = path.join(CONTENT_DIR, file)
+async function readMarkdownFile(entry: Deno.DirEntry): Promise<DocEntry | null> {
+  if (!entry.isFile || !entry.name.endsWith(".md")) return null;
+  const slug = entry.name.replace(/\.md$/, "");
+  const filePath = join(CONTENT_DIR, entry.name);
 
-  const [source, stats] = await Promise.all([fs.readFile(filePath, 'utf8'), fs.stat(filePath)])
-  const lines = source.split(/\r?\n/)
-  const title = extractTitle(lines, slug)
-  const description = extractDescription(lines, title)
+  const [source, stats] = await Promise.all([
+    Deno.readTextFile(filePath),
+    Deno.stat(filePath),
+  ]);
+  const lines = source.split(/\r?\n/);
+  const title = extractTitle(lines, slug);
+  const description = extractDescription(lines, title);
 
   return {
     slug,
     title,
     description,
-    updatedAt: stats.mtime.toISOString(),
-    pathSegments: slug.split('/').filter(Boolean),
-  }
+    updatedAt: stats.mtime?.toISOString() ?? new Date().toISOString(),
+    pathSegments: slug.split("/").filter(Boolean),
+  };
 }
 
 async function collectDocs(): Promise<DocEntry[]> {
   try {
-    const files = await fs.readdir(CONTENT_DIR)
-    const entries: DocEntry[] = []
-    for (const file of files) {
-      const entry = await readMarkdownFile(file)
-      if (entry) {
-        entries.push(entry)
+    const entries: DocEntry[] = [];
+    for await (const entry of Deno.readDir(CONTENT_DIR)) {
+      const doc = await readMarkdownFile(entry);
+      if (doc) {
+        entries.push(doc);
       }
     }
-    return entries.sort((a, b) => a.slug.localeCompare(b.slug))
+    return entries.sort((a, b) => a.slug.localeCompare(b.slug));
   } catch (error) {
-    console.warn('[scan-md] Unable to scan markdown directory:', error)
-    return []
+    console.warn("[scan-md] Unable to scan markdown directory:", error);
+    return [];
   }
 }
 
 async function main() {
-  await fs.mkdir(path.dirname(OUTPUT_PATH), { recursive: true })
-  const docs = await collectDocs()
-  await fs.writeFile(OUTPUT_PATH, JSON.stringify(docs, null, 2), 'utf8')
+  await ensureDir(dirname(OUTPUT_PATH));
+  const docs = await collectDocs();
+  await Deno.writeTextFile(OUTPUT_PATH, JSON.stringify(docs, null, 2));
 }
 
-main().catch((error) => {
-  console.error('[scan-md] failed:', error)
-  process.exit(1)
-})
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error("[scan-md] failed:", error);
+    Deno.exit(1);
+  });
+}

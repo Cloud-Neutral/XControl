@@ -1,43 +1,59 @@
-import fs from 'fs/promises'
-import path from 'path'
-import { DirEntry, DirListing } from '../types/download'
+import { ensureDir } from "jsr:@std/fs@^1.0.4/ensure-dir";
+import { dirname, join, resolve } from "jsr:@std/path@^1.0.6";
+import { fromFileUrl } from "jsr:@std/path@^1.0.6/from-file-url";
 
-const BASE = (process.env.DL_BASE || 'https://dl.svc.plus/').replace(/\/+$/, '/')
+import type { DirEntry, DirListing } from "../types/download";
 
-async function crawl(rel: string): Promise<DirListing[]> {
-  const url = BASE + rel
-  const res = await fetch(url + 'index.json')
-  if (!res.ok) throw new Error(`failed to fetch ${url}: ${res.status}`)
-  const entries = (await res.json()) as DirEntry[]
-  const listing: DirListing = { path: rel, entries }
-  const all: DirListing[] = [listing]
-  for (const e of entries) {
-    if (e.type === 'dir') {
-      const childRel = rel + e.name + '/'
-      const child = await crawl(childRel)
-      all.push(...child)
+const __dirname = dirname(fromFileUrl(import.meta.url));
+const PROJECT_ROOT = resolve(__dirname, "..");
+const HOMEPAGE_ROOT = join(PROJECT_ROOT, "ui", "homepage");
+
+function resolveBaseUrl(): string {
+  const raw = Deno.env.get("DL_BASE") ?? "https://dl.svc.plus/";
+  return raw.replace(/\/+$/g, "/");
+}
+
+async function crawl(rel: string, base: string): Promise<DirListing[]> {
+  const url = base + rel;
+  const res = await fetch(url + "index.json");
+  if (!res.ok) throw new Error(`failed to fetch ${url}: ${res.status}`);
+  const entries = (await res.json()) as DirEntry[];
+  const listing: DirListing = { path: rel, entries };
+  const all: DirListing[] = [listing];
+  for (const entry of entries) {
+    if (entry.type === "dir") {
+      const childRel = rel + entry.name + "/";
+      const child = await crawl(childRel, base);
+      all.push(...child);
     }
   }
-  return all
+  return all;
 }
 
 async function main() {
-  const listings = await crawl('')
-  const top = listings.find(l => l.path === '')
-  const sections = top ? top.entries.filter(e => e.type === 'dir').map(e => ({
-    key: e.name,
-    title: e.name,
-    href: '/' + e.name + '/',
-    lastModified: e.lastModified,
-    count: undefined
-  })) : []
+  const base = resolveBaseUrl();
+  const listings = await crawl("", base);
+  const top = listings.find((item) => item.path === "");
+  const sections = top
+    ? top.entries
+        .filter((item) => item.type === "dir")
+        .map((item) => ({
+          key: item.name,
+          title: item.name,
+          href: "/" + item.name + "/",
+          lastModified: item.lastModified,
+          count: undefined,
+        }))
+    : [];
 
-  const outDir = path.join(process.cwd(), 'public', 'dl-index')
-  await fs.mkdir(outDir, { recursive: true })
-  await fs.writeFile(path.join(outDir, 'all.json'), JSON.stringify(listings, null, 2))
-  await fs.writeFile(path.join(outDir, 'top.json'), JSON.stringify(sections, null, 2))
+  const outDir = join(HOMEPAGE_ROOT, "public", "dl-index");
+  await ensureDir(outDir);
+  await Deno.writeTextFile(join(outDir, "all.json"), JSON.stringify(listings, null, 2));
+  await Deno.writeTextFile(join(outDir, "top.json"), JSON.stringify(sections, null, 2));
 }
 
-main().catch(err => {
-  console.warn('[fetch-dl-index] skipped due to error:', err)
-})
+if (import.meta.main) {
+  main().catch((error) => {
+    console.warn("[fetch-dl-index] skipped due to error:", error);
+  });
+}
