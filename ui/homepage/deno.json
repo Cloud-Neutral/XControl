@@ -1,7 +1,14 @@
 {
   "importMap": "./import_map.json",
+  "imports": {
+    "@/": "./",
+    "react": "npm:react@19.0.0",
+    "react-dom": "npm:react-dom@19.0.0",
+    "tailwindcss": "npm:tailwindcss@3.4.13"
+  },
   "nodeModulesDir": true,
   "tasks": {
+    "cache": "bash ../../codex/cache_deps.sh",
     "export-slugs": "deno run -A ../../scripts/export-slugs.ts",
     "scan-md": "deno run -A ../../scripts/scan-md.ts",
     "fetch-dl-index": "deno run -A ../../scripts/fetch-dl-index.ts",
