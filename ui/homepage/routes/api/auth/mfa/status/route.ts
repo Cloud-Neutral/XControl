@@ -1,16 +1,14 @@
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
-
 import { MFA_COOKIE_NAME, SESSION_COOKIE_NAME } from '@lib/authGateway'
+import { getRequestCookies, jsonResponse } from '@lib/http'
 import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
 
 const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
 const ACCOUNT_API_BASE = `${ACCOUNT_SERVICE_URL}/api/auth`
 
-export async function GET(request: NextRequest) {
-  const cookieStore = cookies()
-  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? ''
-  const storedMfaToken = cookieStore.get(MFA_COOKIE_NAME)?.value ?? ''
+export async function GET(request: Request) {
+  const cookieStore = getRequestCookies(request)
+  const sessionToken = cookieStore[SESSION_COOKIE_NAME] ?? ''
+  const storedMfaToken = cookieStore[MFA_COOKIE_NAME] ?? ''
 
   const url = new URL(request.url)
   const queryToken = String(url.searchParams.get('token') ?? '').trim()
@@ -46,5 +44,5 @@ export async function GET(request: NextRequest) {
   })
 
   const payload = await response.json().catch(() => ({}))
-  return NextResponse.json(payload, { status: response.status })
+  return jsonResponse(payload, { status: response.status })
 }

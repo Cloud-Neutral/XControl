@@ -96,10 +96,12 @@
 - **04_convert_next_features**：
   - `rg "next/(head|link|image|script)" ui/homepage --glob "*.tsx"` 应无匹配结果，确认已移除 Next.js UI 组件依赖。
   - 随机抽查组件文件，确保导航链接改用 `aleph/react` 提供的 `<Link>`，图像使用原生 `<img>` 标签。
+- **05_migrate_api_routes**：
+  - `rg "from 'next/(server|headers)'" ui/homepage/routes/api --glob "route.ts"` 应无匹配结果，确保 API 已切换至 Deno Request/Response 接口。
+  - `cd ui/homepage && deno task check`，确认新的 handler 通过 Deno 类型检查（需网络访问远程依赖）。
 - **06_integrate_tailwind**：
   - `cd ui/homepage && deno task tailwind:build` 会在 `static/styles.css` 生成最新样式产物，无需 Node.js。
   - `cd ui/homepage && deno task tailwind:watch` 可在本地监听变更并实时重编译，确认 Deno 原生 Tailwind CLI 正常工作。
-
 ---
 
 ### Phase 3 — 测试与部署迁移
