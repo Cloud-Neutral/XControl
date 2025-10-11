@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { setCookie } from '@std/http@^1.0.7/cookie'
 
 export const SESSION_COOKIE_NAME = 'xc_session'
 export const MFA_COOKIE_NAME = 'xc_mfa_challenge'
@@ -6,13 +6,28 @@ export const MFA_COOKIE_NAME = 'xc_mfa_challenge'
 const SESSION_DEFAULT_MAX_AGE = 60 * 60 * 24 // 24 hours
 const MFA_DEFAULT_MAX_AGE = 60 * 10 // 10 minutes
 
+type EnvReader = { env?: { get?(name: string): string | undefined } }
+
 function readEnvValue(key: string): string | undefined {
-  const value = process.env[key]
-  if (typeof value !== 'string') {
-    return undefined
+  const denoEnv = (globalThis as { Deno?: EnvReader }).Deno?.env
+  const denoValue = denoEnv?.get?.(key)
+  if (typeof denoValue === 'string') {
+    const trimmed = denoValue.trim()
+    if (trimmed.length > 0) {
+      return trimmed
+    }
   }
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : undefined
+
+  const nodeProcess = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+  const nodeValue = nodeProcess?.env?.[key]
+  if (typeof nodeValue === 'string') {
+    const trimmed = nodeValue.trim()
+    if (trimmed.length > 0) {
+      return trimmed
+    }
+  }
+
+  return undefined
 }
 
 function parseBoolean(value: string | undefined): boolean | undefined {
@@ -38,7 +53,7 @@ function shouldUseSecureCookies(): boolean {
     return explicit
   }
 
-  if (process.env.NODE_ENV === 'production') {
+  if (readEnvValue('NODE_ENV') === 'production') {
     return true
   }
 
@@ -57,13 +72,13 @@ function shouldUseSecureCookies(): boolean {
 const secureCookieBase = {
   httpOnly: true,
   secure: shouldUseSecureCookies(),
-  sameSite: 'strict' as const,
+  sameSite: 'Strict' as const,
   path: '/',
 }
 
-export function applySessionCookie(response: NextResponse, token: string, maxAge?: number) {
+export function applySessionCookie(response: Response, token: string, maxAge?: number) {
   const resolvedMaxAge = Number.isFinite(maxAge) && maxAge && maxAge > 0 ? Math.floor(maxAge) : SESSION_DEFAULT_MAX_AGE
-  response.cookies.set({
+  setCookie(response.headers, {
     name: SESSION_COOKIE_NAME,
     value: token,
     ...secureCookieBase,
@@ -71,8 +86,8 @@ export function applySessionCookie(response: NextResponse, token: string, maxAge
   })
 }
 
-export function clearSessionCookie(response: NextResponse) {
-  response.cookies.set({
+export function clearSessionCookie(response: Response) {
+  setCookie(response.headers, {
     name: SESSION_COOKIE_NAME,
     value: '',
     ...secureCookieBase,
@@ -80,9 +95,9 @@ export function clearSessionCookie(response: NextResponse) {
   })
 }
 
-export function applyMfaCookie(response: NextResponse, token: string, maxAge?: number) {
+export function applyMfaCookie(response: Response, token: string, maxAge?: number) {
   const resolvedMaxAge = Number.isFinite(maxAge) && maxAge && maxAge > 0 ? Math.floor(maxAge) : MFA_DEFAULT_MAX_AGE
-  response.cookies.set({
+  setCookie(response.headers, {
     name: MFA_COOKIE_NAME,
     value: token,
     ...secureCookieBase,
@@ -90,8 +105,8 @@ export function applyMfaCookie(response: NextResponse, token: string, maxAge?: n
   })
 }
 
-export function clearMfaCookie(response: NextResponse) {
-  response.cookies.set({
+export function clearMfaCookie(response: Response) {
+  setCookie(response.headers, {
     name: MFA_COOKIE_NAME,
     value: '',
     ...secureCookieBase,

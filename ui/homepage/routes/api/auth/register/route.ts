@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-
 import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
+import { jsonResponse } from '@lib/http'
 
 const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
 const ACCOUNT_API_BASE = `${ACCOUNT_SERVICE_URL}/api/auth`
@@ -20,13 +19,13 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   let payload: RegistrationPayload
   try {
     payload = (await request.json()) as RegistrationPayload
   } catch (error) {
     console.error('Failed to decode registration payload', error)
-    return NextResponse.json({ success: false, error: 'invalid_request', needMfa: false }, { status: 400 })
+    return jsonResponse({ success: false, error: 'invalid_request', needMfa: false }, { status: 400 })
   }
 
   const email = normalizeEmail(payload?.email)
@@ -36,11 +35,11 @@ export async function POST(request: NextRequest) {
   const name = normalizeString(payload?.name)
 
   if (!email || !password) {
-    return NextResponse.json({ success: false, error: 'missing_credentials', needMfa: false }, { status: 400 })
+    return jsonResponse({ success: false, error: 'missing_credentials', needMfa: false }, { status: 400 })
   }
 
   if (password !== confirmPassword) {
-    return NextResponse.json({ success: false, error: 'password_mismatch', needMfa: false }, { status: 400 })
+    return jsonResponse({ success: false, error: 'password_mismatch', needMfa: false }, { status: 400 })
   }
 
   const body = {
@@ -62,21 +61,21 @@ export async function POST(request: NextRequest) {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
       const errorCode = typeof (data as { error?: string })?.error === 'string' ? data.error : 'registration_failed'
-      return NextResponse.json(
+      return jsonResponse(
         { success: false, error: errorCode, needMfa: false },
         { status: response.status || 400 },
       )
     }
 
-    return NextResponse.json({ success: true, error: null, needMfa: false })
+    return jsonResponse({ success: true, error: null, needMfa: false })
   } catch (error) {
     console.error('Account service registration proxy failed', error)
-    return NextResponse.json({ success: false, error: 'account_service_unreachable', needMfa: false }, { status: 502 })
+    return jsonResponse({ success: false, error: 'account_service_unreachable', needMfa: false }, { status: 502 })
   }
 }
 
 export function GET() {
-  return NextResponse.json(
+  return jsonResponse(
     { success: false, error: 'method_not_allowed', needMfa: false },
     {
       status: 405,
