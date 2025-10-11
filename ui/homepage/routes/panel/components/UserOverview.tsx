@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { useRouter } from 'next/navigation'
 import { Copy } from 'lucide-react'
 

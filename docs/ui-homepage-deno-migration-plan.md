@@ -92,6 +92,11 @@
 | 08 | rebuild_docs_engine | app/docs/** | 使用 Deno Markdown 渲染器 |
 | 09 | migrate_i18n_and_config | lib/serviceConfig.ts / i18n | 替换 process.env 为 Deno.env.get |
 
+#### ✅ 测试验证（Phase 2）
+- **04_convert_next_features**：
+  - `rg "next/(head|link|image|script)" ui/homepage --glob "*.tsx"` 应无匹配结果，确认已移除 Next.js UI 组件依赖。
+  - 随机抽查组件文件，确保导航链接改用 `aleph/react` 提供的 `<Link>`，图像使用原生 `<img>` 标签。
+
 ---
 
 ### Phase 3 — 测试与部署迁移

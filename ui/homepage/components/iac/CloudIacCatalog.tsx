@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { ArrowRight, Search } from 'lucide-react'
 
 import type { CatalogItem, ProviderDefinition, ProviderKey } from '@lib/iac/types'
