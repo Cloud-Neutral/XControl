@@ -1,5 +1,4 @@
 'use client'
-import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '../i18n/LanguageProvider'
 import { translations } from '../i18n/translations'
@@ -272,14 +271,7 @@ export default function Navbar() {
     <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
         <a href="#" className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Image
-            src="/icons/cloudnative_32.png"
-            alt="logo"
-            width={24}
-            height={24}
-            className="h-6 w-6"
-            unoptimized
-          />
+          <img src="/icons/cloudnative_32.png" alt="logo" width={24} height={24} className="h-6 w-6" />
           CloudNative Suite
         </a>
 

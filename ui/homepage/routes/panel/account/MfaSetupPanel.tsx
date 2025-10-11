@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toDataURL as generateQrCode } from 'qrcode'
@@ -554,13 +553,12 @@ export default function MfaSetupPanel() {
                             <div className="flex justify-center lg:w-60 lg:justify-start">
                               <div className="rounded-xl border border-purple-100 bg-purple-50 p-3">
                                 <div className="flex items-center justify-center rounded-lg border border-purple-200 bg-white p-2 shadow-sm">
-                                  <Image
+                                  <img
                                     src={qrCodeDataUrl}
                                     alt={copy.qrLabel}
                                     width={176}
                                     height={176}
                                     className="h-44 w-44"
-                                    unoptimized
                                   />
                                 </div>
                               </div>

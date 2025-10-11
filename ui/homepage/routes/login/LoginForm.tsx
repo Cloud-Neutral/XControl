@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
-import Link from 'next/link'
+import { Link } from 'aleph/react'
 import { useRouter } from 'next/navigation'
 
 import { useLanguage } from '@i18n/LanguageProvider'
