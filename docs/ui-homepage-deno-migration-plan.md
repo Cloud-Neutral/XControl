@@ -169,7 +169,7 @@ bash
 cd ui/homepage
 
 echo "⚙️ Initializing TailwindCSS for Deno..."
-deno run -A npm:tailwindcss init -p
+deno run -A npm:tailwindcss@3.4.13 init -p
 
 sed -i 's/module.exports/export default/' tailwind.config.js
 mv tailwind.config.js tailwind.config.mjs
