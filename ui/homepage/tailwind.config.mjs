@@ -1,8 +1,8 @@
-import defaultTheme from "npm:tailwindcss/defaultTheme.js";
+import defaultTheme from "npm:tailwindcss@3.4.13/defaultTheme.js";
 import forms from "npm:@tailwindcss/forms";
 import typography from "npm:@tailwindcss/typography";
 
-/** @type {import("npm:tailwindcss").Config} */
+/** @type {import("npm:tailwindcss@3.4.13").Config} */
 const config = {
   content: [
     "./routes/**/*.{ts,tsx}",
