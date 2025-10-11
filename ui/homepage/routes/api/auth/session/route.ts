@@ -1,7 +1,5 @@
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
-
 import { SESSION_COOKIE_NAME, clearSessionCookie } from '@lib/authGateway'
+import { getRequestCookies, jsonResponse } from '@lib/http'
 import { getAccountServiceBaseUrl } from '@lib/serviceConfig'
 
 const ACCOUNT_SERVICE_URL = getAccountServiceBaseUrl()
@@ -55,16 +53,15 @@ async function fetchSession(token: string) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  void request
-  const token = cookies().get(SESSION_COOKIE_NAME)?.value
+export async function GET(request: Request) {
+  const token = getRequestCookies(request)[SESSION_COOKIE_NAME]
   if (!token) {
-    return NextResponse.json({ user: null })
+    return jsonResponse({ user: null })
   }
 
   const { response, data } = await fetchSession(token)
   if (!response || !response.ok || !data?.user) {
-    const res = NextResponse.json({ user: null })
+    const res = jsonResponse({ user: null })
     clearSessionCookie(res)
     return res
   }
@@ -150,7 +147,7 @@ export async function GET(request: NextRequest) {
 
   const normalizedUser = identifier ? { ...rawUser, id: identifier, uuid: identifier } : rawUser
 
-  return NextResponse.json({
+  return jsonResponse({
     user: {
       ...normalizedUser,
       mfaEnabled: derivedMfaEnabled,
@@ -165,10 +162,8 @@ export async function GET(request: NextRequest) {
   })
 }
 
-export async function DELETE(request: NextRequest) {
-  void request
-  const cookieStore = cookies()
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value
+export async function DELETE(request: Request) {
+  const token = getRequestCookies(request)[SESSION_COOKIE_NAME]
   if (token) {
     await fetch(`${ACCOUNT_API_BASE}/session`, {
       method: 'DELETE',
@@ -179,7 +174,7 @@ export async function DELETE(request: NextRequest) {
     }).catch(() => null)
   }
 
-  const response = NextResponse.json({ success: true })
+  const response = jsonResponse({ success: true })
   clearSessionCookie(response)
   return response
 }
