@@ -1,5 +1,5 @@
 {
-  "nodeModulesDir": "auto",
+  "nodeModulesDir": true,
   "lock": "deno.lock",
   "tasks": {
     "homepage:export-slugs": "deno run -A scripts/export-slugs.ts",
