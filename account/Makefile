@@ -4,6 +4,7 @@ PORT ?= 8080
 OS := $(shell uname -s)
 SCHEMA_FILE := ./sql/schema.sql
 PGLOGICAL_SCHEMA_FILE := ./sql/schema_pglogical_init.sql
+PGLOGICAL_REGION_SCHEMA_FILE := ./sql/schema_pglogical_region.sql
 MIGRATION_FILES := $(shell ls -1 sql/migrations/*.up.sql 2>/dev/null | sort)
 
 
@@ -24,7 +25,7 @@ SUPERADMIN_EMAIL    ?= admin@svc.plus
 
 export PATH := /usr/local/go/bin:$(PATH)
 
-.PHONY: all init init-go init-db migrate-db dump-schema build start stop restart clean help dev test create-super-admin account-export account-import
+.PHONY: all init init-go init-db init-pglogical-region migrate-db dump-schema build start stop restart clean help dev test create-super-admin account-export account-import
 
 all: build
 
@@ -72,6 +73,20 @@ init-db:
 			echo "跳过 pglogical 初始化: 当前数据库用户缺少超级用户权限"; \
 		fi; \
 	fi
+
+init-pglogical-region:
+        @echo ">>> 初始化 pglogical 区域配置"
+        @if [ ! -f $(PGLOGICAL_REGION_SCHEMA_FILE) ]; then \
+                echo "未找到 pglogical schema 文件: $(PGLOGICAL_REGION_SCHEMA_FILE)"; \
+                exit 1; \
+        fi
+        @if ! command -v psql >/dev/null 2>&1; then \
+                echo "未检测到 psql，请先安装 PostgreSQL 客户端"; \
+                exit 1; \
+        fi
+        @echo "使用数据库连接: $(DB_URL)"
+        @echo "可通过 psql -v 覆盖节点、订阅及 DSN 变量"
+        @psql "$(DB_URL)" -v ON_ERROR_STOP=1 -f $(PGLOGICAL_REGION_SCHEMA_FILE)
 
 # =========================================
 # migrate-db target
@@ -180,7 +195,8 @@ clean:
 help:
 	@echo " XControl Account Service Makefile"
 	@echo ""
-	@echo "make init       初始化开发环境（包含 Go 依赖与数据库 schema）"
+        @echo "make init       初始化开发环境（包含 Go 依赖与数据库 schema）"
+        @echo "make init-pglogical-region  初始化 pglogical 区域配置 (支持通过 psql -v 覆盖节点/DSN)"
 	@echo "make dump-schema 仅导出数据库 schema 快照"
 	@echo "make migrate-db  在保留数据的情况下应用 schema 迁移"
 	@echo "make account-export [ACCOUNT_EXPORT_FILE=...] [ACCOUNT_EMAIL_KEYWORD=...]  导出账号数据为 YAML"

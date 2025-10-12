@@ -41,8 +41,8 @@ GRANT USAGE ON SCHEMA pglogical TO shenlan;
 步骤	节点	脚本	说明
 1️⃣	Global	schema_base_bidirectional_enhanced.sql	创建业务结构（含 version/origin_node）
 2️⃣	CN	schema_base_bidirectional_enhanced.sql	创建相同业务结构
-3️⃣	Global	schema_pglogical_region_global.sql	定义 Global provider + 订阅 CN
-4️⃣	CN	schema_pglogical_region_cn.sql	定义 CN provider + 订阅 Global
+3️⃣	Global	schema_pglogical_region.sql (PGLOGICAL_NODE_NAME=node_global, PGLOGICAL_SUBSCRIPTION_NAME=sub_from_cn, PGLOGICAL_PROVIDER_DSN=CN DSN)	定义 Global provider + 订阅 CN
+4️⃣	CN	schema_pglogical_region.sql (默认 PGLOGICAL_NODE_NAME=node_cn，可按需覆盖 PGLOGICAL_PROVIDER_DSN=Global DSN)	定义 CN provider + 订阅 Global
 
 🧩 验证同步状态
 sql
