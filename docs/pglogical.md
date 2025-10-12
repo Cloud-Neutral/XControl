@@ -54,24 +54,39 @@
 
 在两台节点上安装 pglogical 软件包：
 
-- **Ubuntu / Debian**
-
-  ```bash
-  sudo apt install postgresql-16-pglogical
-  ```
-
-- **Red Hat / CentOS**
-
-  ```bash
-  sudo yum install pglogical_16
-  ```
+- **Ubuntu / Debian**: ```bash sudo apt install postgresql-16-pglogical ```
+- **Red Hat / CentOS**: ```bash sudo yum install pglogical_16 ```
 
 安装完成后，在 `account` 数据库中创建扩展验证：
 
-```sql
-psql -d account -c "CREATE EXTENSION IF NOT EXISTS pglogical;"
-```
+```bash sudo -u postgres psql -d account -c "CREATE EXTENSION IF NOT EXISTS pglogical;" ```
 
+## 🔐 权限与 Schema 设置
+
+- 1️⃣ 授权 pglogical schema 使用权限
+
+pglogical schema 与业务 schema 分离，以防逻辑复制函数污染业务层。
+
+在初始化完成后执行：
+
+``` bash sudo -u postgres psql -d account -c "GRANT USAGE ON SCHEMA pglogical TO PUBLIC;" ```
+
+- 2️⃣ 授权业务用户（shenlan）
+
+```bash
+-- 登录 postgres
+sudo -u postgres psql -d account
+
+-- 授权 shenlan 对 public schema 全权限
+ALTER SCHEMA public OWNER TO shenlan;
+GRANT ALL ON SCHEMA public TO shenlan;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO shenlan;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO shenlan;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO shenlan;
+
+-- 授权 pglogical schema 使用权限（仅使用，不可修改）
+GRANT USAGE ON SCHEMA pglogical TO shenlan;
+```
 
 ## 创建 repl_user（基础复制用户）
 
