@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import Card from '../../components/Card'
+import Card from '@extensions/components/Card'
 
 export type ManagedUser = {
   id: string

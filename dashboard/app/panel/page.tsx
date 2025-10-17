@@ -1,7 +1,3 @@
 export const dynamic = 'error'
 
-import UserOverview from './components/UserOverview'
-
-export default function PanelHome() {
-  return <UserOverview />
-}
+export { DashboardPage as default } from '@extensions/builtin/dashboard'

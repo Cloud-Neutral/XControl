@@ -1,6 +1,6 @@
 'use client'
 
-import Card from '../../components/Card'
+import Card from '@extensions/components/Card'
 
 export type MetricsOverview = {
   totalUsers: number

@@ -5,7 +5,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toDataURL as generateQrCode } from 'qrcode'
 
-import Card from '../components/Card'
+import Card from '@extensions/components/Card'
 import { useLanguage } from '@i18n/LanguageProvider'
 import { translations } from '@i18n/translations'
 import { useUser } from '@lib/userStore'

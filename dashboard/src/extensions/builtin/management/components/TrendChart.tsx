@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Card from '../../components/Card'
+import Card from '@extensions/components/Card'
 
 export type MetricsPoint = {
   period: string

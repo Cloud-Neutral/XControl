@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
 import Header from './components/Header'
@@ -10,33 +10,7 @@ import { useLanguage } from '@i18n/LanguageProvider'
 import { translations } from '@i18n/translations'
 import { resolveAccess, type AccessRule } from '@lib/accessControl'
 import { useUser } from '@lib/userStore'
-
-type RouteGuard = {
-  test: (pathname: string) => boolean
-  redirect: {
-    unauthenticated: string
-    forbidden?: string
-  }
-  rule: AccessRule
-}
-
-const routeGuards: RouteGuard[] = [
-  {
-    test: (pathname) => pathname.startsWith('/panel/management'),
-    redirect: {
-      unauthenticated: '/login',
-      forbidden: '/panel',
-    },
-    rule: { requireLogin: true, roles: ['admin', 'operator'] },
-  },
-  {
-    test: (pathname) => pathname.startsWith('/panel'),
-    redirect: {
-      unauthenticated: '/login',
-    },
-    rule: { requireLogin: true },
-  },
-]
+import { useExtensionRegistry } from '@extensions/loader'
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -45,29 +19,43 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const { language } = useLanguage()
   const copy = translations[language].userCenter.mfa
   const { user, isLoading, logout } = useUser()
+  const registry = useExtensionRegistry()
   const requiresSetup = Boolean(user && (!user.mfaEnabled || user.mfaPending))
-  
+  const registryVersion = registry.getVersion()
+
+  const activeRoute = useMemo(() => {
+    if (!pathname) {
+      return undefined
+    }
+    return registry.findRouteByPath(pathname)
+  }, [pathname, registry, registryVersion])
+
+  const guardRule: AccessRule | undefined = activeRoute?.guard ??
+    (pathname.startsWith('/panel') ? { requireLogin: true } : undefined)
+  const guardRedirect = activeRoute?.redirect ??
+    (pathname.startsWith('/panel') ? { unauthenticated: '/login' } : undefined)
+
   useEffect(() => {
     if (isLoading) {
       return
     }
 
-    const guard = routeGuards.find((entry) => entry.test(pathname))
-    if (!guard) {
+    if (!guardRule) {
       return
     }
 
-    const decision = resolveAccess(user, guard.rule)
+    const decision = resolveAccess(user, guardRule)
     if (!decision.allowed) {
-      const destination =
-        decision.reason === 'unauthenticated'
-          ? guard.redirect.unauthenticated
-          : guard.redirect.forbidden ?? guard.redirect.unauthenticated
+      const destination = guardRedirect
+        ? decision.reason === 'unauthenticated'
+          ? guardRedirect.unauthenticated
+          : guardRedirect.forbidden ?? guardRedirect.unauthenticated
+        : undefined
       if (destination && destination !== pathname) {
         router.replace(destination)
       }
     }
-  }, [isLoading, pathname, router, user])
+  }, [guardRedirect, guardRule, isLoading, pathname, router, user])
 
   useEffect(() => {
     if (!requiresSetup || pathname.startsWith('/panel/account')) {

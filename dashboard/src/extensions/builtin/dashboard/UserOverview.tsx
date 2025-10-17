@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Copy } from 'lucide-react'
 
-import Card from './Card'
+import Card from '@extensions/components/Card'
 import { useLanguage } from '@i18n/LanguageProvider'
 import { translations } from '@i18n/translations'
 import { useUser } from '@lib/userStore'

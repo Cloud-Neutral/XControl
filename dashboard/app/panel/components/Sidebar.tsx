@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Server, Code, CreditCard, User, Shield, Settings, type LucideIcon } from 'lucide-react'
+import { Home, type LucideIcon } from 'lucide-react'
 import { useMemo } from 'react'
 
 import { useLanguage } from '@i18n/LanguageProvider'
 import { translations } from '@i18n/translations'
+import { resolveAccess } from '@lib/accessControl'
 import { useUser } from '@lib/userStore'
+import { useExtensionRegistry } from '@extensions/loader'
 
 export interface SidebarProps {
   className?: string
@@ -27,65 +29,6 @@ interface NavSection {
   items: NavItem[]
 }
 
-const baseNavSections: NavSection[] = [
-  {
-    title: '用户中心',
-    items: [
-      {
-        href: '/panel',
-        label: 'Dashboard',
-        description: '专属于你的信息总览',
-        icon: Home,
-      },
-    ],
-  },
-  {
-    title: '功能特性',
-    items: [
-      {
-        href: '/panel/agent',
-        label: 'Agents',
-        description: '管理运行时节点',
-        icon: Server,
-        disabled: true,
-      },
-      {
-        href: '/panel/api',
-        label: 'APIs',
-        description: '洞察后端服务',
-        icon: Code,
-        disabled: true,
-      },
-      {
-        href: '/panel/subscription',
-        label: 'Subscription',
-        description: '订阅方案与计费规则',
-        icon: CreditCard,
-        disabled: true,
-      },
-    ],
-  },
-  {
-    title: '权限设置',
-    items: [
-      {
-        href: '/panel/account',
-        label: 'Accounts',
-        description: '目录与多因素设置',
-        icon: User,
-        disabled: true,
-      },
-      {
-        href: '/panel/ldp',
-        label: 'LDP',
-        description: '低时延身份平面',
-        icon: Shield,
-        disabled: true,
-      },
-    ],
-  },
-]
-
 function isActive(pathname: string, href: string) {
   if (href === '/panel') {
     return pathname === '/panel'
@@ -98,30 +41,51 @@ export default function Sidebar({ className = '', onNavigate }: SidebarProps) {
   const { language } = useLanguage()
   const copy = translations[language].userCenter.mfa
   const { user } = useUser()
+  const registry = useExtensionRegistry()
   const requiresSetup = Boolean(user && (!user.mfaEnabled || user.mfaPending))
+  const registryVersion = registry.getVersion()
 
   const navSections = useMemo(() => {
-    const sections = baseNavSections.map((section) => ({
-      ...section,
-      items: [...section.items],
-    }))
+    const sections: NavSection[] = []
+    const sectionLookup = new Map<string, NavSection>()
+    const menuItems = registry.listMenuItems()
 
-    if (user?.isAdmin || user?.isOperator) {
-      sections.push({
-        title: '管理页面',
-        items: [
-          {
-            href: '/panel/management',
-            label: 'Management',
-            description: '集中化的权限矩阵与用户编排',
-            icon: Settings,
-          },
-        ],
-      })
+    for (const menuItem of menuItems) {
+      const route = menuItem.route
+      if (!route || route.layout !== 'panel') {
+        continue
+      }
+
+      const decision = resolveAccess(user, route.guard)
+      if (!decision.allowed && decision.reason === 'forbidden') {
+        continue
+      }
+
+      const disabledByAccess = !decision.allowed && decision.reason !== 'unauthenticated'
+      const disabledBySetup = requiresSetup && !menuItem.allowWhenMfaPending
+      const disabled = Boolean(menuItem.disabled || disabledByAccess || disabledBySetup)
+
+      const section = sectionLookup.get(menuItem.section)
+      const icon = menuItem.icon ?? Home
+      const entry: NavItem = {
+        href: route.path,
+        label: menuItem.label,
+        description: menuItem.description ?? '',
+        icon,
+        disabled,
+      }
+
+      if (section) {
+        section.items.push(entry)
+      } else {
+        const nextSection: NavSection = { title: menuItem.section, items: [entry] }
+        sectionLookup.set(menuItem.section, nextSection)
+        sections.push(nextSection)
+      }
     }
 
     return sections
-  }, [user?.isAdmin, user?.isOperator])
+  }, [registry, registryVersion, requiresSetup, user])
 
   return (
     <aside
@@ -159,9 +123,7 @@ export default function Sidebar({ className = '', onNavigate }: SidebarProps) {
 
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
         {navSections.map((section) => {
-          const sectionDisabled = section.items.every(
-            (item) => item.disabled || (requiresSetup && item.href !== '/panel/account'),
-          )
+          const sectionDisabled = section.items.every((item) => item.disabled)
 
           return (
             <div key={section.title} className="space-y-3">
@@ -176,7 +138,7 @@ export default function Sidebar({ className = '', onNavigate }: SidebarProps) {
                 {section.items.map((item) => {
                   const active = isActive(pathname, item.href)
                   const Icon = item.icon
-                  const disabled = item.disabled || (requiresSetup && item.href !== '/panel/account')
+                  const disabled = item.disabled
 
                   const content = (
                     <div
