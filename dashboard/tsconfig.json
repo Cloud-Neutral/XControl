@@ -24,6 +24,8 @@
       "@types/*": ["types/*"],
       "@server/*": ["server/*"],
       "@theme/*": ["src/theme/*"]
+      "@templates/*": ["src/templates/*"],
+      "@src/*": ["src/*"]
     },
     "types": ["node"],
     "plugins": [{ "name": "next" }]
@@ -36,6 +38,7 @@
     "lib",
     "src",
     "server",
+    "src",
     "types",
     ".next/types/**/*.ts"
   ],
