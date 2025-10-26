@@ -317,6 +317,9 @@ type UserCenterOverviewTranslation = {
       error: string
       missingUuid: string
       downloadTooltip: string
+      warning: string
+      macPath: string
+      linuxPath: string
       qrAlt: string
     }
   }
