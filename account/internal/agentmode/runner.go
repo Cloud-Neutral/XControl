@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -61,10 +60,6 @@ func Run(ctx context.Context, opts Options) error {
 		httpTimeout = 15 * time.Second
 	}
 
-	templatePath := strings.TrimSpace(opts.Xray.Sync.TemplatePath)
-	if templatePath == "" {
-		templatePath = filepath.Join("account", "config", "xray.config.template.json")
-	}
 	outputPath := strings.TrimSpace(opts.Xray.Sync.OutputPath)
 	if outputPath == "" {
 		outputPath = "/usr/local/etc/xray/config.json"
@@ -87,7 +82,7 @@ func Run(ctx context.Context, opts Options) error {
 		Logger:          syncLogger,
 		Interval:        syncInterval,
 		Source:          source,
-		Generator:       xrayconfig.Generator{TemplatePath: templatePath, OutputPath: outputPath},
+		Generator:       xrayconfig.Generator{Definition: xrayconfig.DefaultDefinition(), OutputPath: outputPath},
 		ValidateCommand: opts.Xray.Sync.ValidateCommand,
 		RestartCommand:  opts.Xray.Sync.RestartCommand,
 		OnSync: func(result xrayconfig.SyncResult) {

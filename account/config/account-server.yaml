@@ -58,7 +58,6 @@ xray:
   sync:
     enabled: false
     interval: 5m
-    templatePath: "account/config/xray.config.template.json"
     outputPath: "/usr/local/etc/xray/config.json"
     validateCommand: []
     restartCommand:
