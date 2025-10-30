@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -77,12 +78,21 @@ func Run(ctx context.Context, opts Options) error {
 	tracker := newSyncTracker()
 	source := NewHTTPClientSource(client, tracker)
 
+	generator := xrayconfig.Generator{Definition: xrayconfig.DefaultDefinition(), OutputPath: outputPath}
+	if templatePath := strings.TrimSpace(opts.Xray.Sync.TemplatePath); templatePath != "" {
+		payload, err := os.ReadFile(templatePath)
+		if err != nil {
+			return fmt.Errorf("load xray template %s: %w", templatePath, err)
+		}
+		generator.Definition = xrayconfig.JSONDefinition{Raw: append([]byte(nil), payload...)}
+	}
+
 	syncLogger := logger.With("component", "agent-xray-sync")
 	syncer, err := xrayconfig.NewPeriodicSyncer(xrayconfig.PeriodicOptions{
 		Logger:          syncLogger,
 		Interval:        syncInterval,
 		Source:          source,
-		Generator:       xrayconfig.Generator{Definition: xrayconfig.DefaultDefinition(), OutputPath: outputPath},
+		Generator:       generator,
 		ValidateCommand: opts.Xray.Sync.ValidateCommand,
 		RestartCommand:  opts.Xray.Sync.RestartCommand,
 		OnSync: func(result xrayconfig.SyncResult) {
