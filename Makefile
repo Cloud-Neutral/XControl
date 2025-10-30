@@ -30,6 +30,7 @@ NGINX_MAIN_CONF ?= $(NGINX_CONF_ROOT)/nginx.conf
 NGINX_SIT_CONFIGS := example/sit/nginx/accounts-dev.svc.plus.conf
 NGINX_SIT_CONFIGS += example/sit/nginx/dev.svc.plus.conf
 NGINX_SIT_CONFIGS += example/sit/nginx/dev-api.svc.plus.conf
+
 NGINX_PROD_CONFIGS := example/prod/nginx/accounts.svc.plus.conf example/prod/nginx/api.svc.plus.conf
 NGINX_ALL_CONFIGS := $(NGINX_SIT_CONFIGS) $(NGINX_PROD_CONFIGS)
 
