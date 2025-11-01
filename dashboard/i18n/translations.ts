@@ -180,6 +180,10 @@ type AuthRegisterAlerts = {
   verificationFailed?: string
   invalidCode?: string
   codeRequired?: string
+  preSubmitHint?: string
+  verificationReady?: string
+  verificationResent?: string
+  registrationComplete?: string
 }
 
 type AuthLoginAlerts = {
@@ -220,6 +224,8 @@ type AuthRegisterTranslation = {
     submitting?: string
     verifySubmit?: string
     verifying?: string
+    completeSubmit?: string
+    completing?: string
     verificationCodeLabel: string
     verificationCodeDescription?: string
     verificationCodeResend: string
@@ -678,6 +684,8 @@ export const translations: Record<'en' | 'zh', Translation> = {
           submitting: 'Creating account…',
           verifySubmit: 'Verify & complete',
           verifying: 'Verifying…',
+          completeSubmit: 'Complete registration',
+          completing: 'Finishing up…',
           verificationCodeLabel: 'Email verification code',
           verificationCodeDescription: 'Enter the 6-digit code sent to your email. It expires in 10 minutes.',
           verificationCodeResend: 'Resend',
@@ -703,10 +711,16 @@ export const translations: Record<'en' | 'zh', Translation> = {
           invalidEmail: 'Enter a valid email address.',
           weakPassword: 'Your password must be at least 8 characters long.',
           genericError: 'We could not complete your registration. Please try again.',
-          verificationSent: 'Verification code sent. Check your email.',
+          verificationSent:
+            'A verification code has been sent to your email. Enter the 6-digit code within 10 minutes. If you do not receive it, click the resend button.',
           verificationFailed: 'Verification failed. Request a new code and try again.',
           invalidCode: 'Enter the 6-digit verification code sent to your email.',
           codeRequired: 'Enter the 6-digit verification code to continue.',
+          preSubmitHint:
+            'A verification code has been sent to your email. Enter the 6-digit code within 10 minutes. If you do not receive it, click the resend button.',
+          verificationReady: 'Code verified. Click “Complete registration” to sign in automatically.',
+          verificationResent: 'A new verification code has been sent to your email.',
+          registrationComplete: 'Registration complete! Redirecting to your dashboard.',
         },
       },
       login: {
@@ -1287,6 +1301,8 @@ export const translations: Record<'en' | 'zh', Translation> = {
           submitting: '注册中…',
           verifySubmit: '验证并完成',
           verifying: '验证中…',
+          completeSubmit: '完成注册',
+          completing: '完成中…',
           verificationCodeLabel: '动态验证码',
           verificationCodeDescription: '请输入发送到注册邮箱的 6 位数字验证码，10 分钟内有效。',
           verificationCodeResend: '重发',
@@ -1312,10 +1328,16 @@ export const translations: Record<'en' | 'zh', Translation> = {
           invalidEmail: '请输入有效的邮箱地址。',
           weakPassword: '密码长度至少需要 8 个字符。',
           genericError: '注册失败，请稍后重试。',
-          verificationSent: '验证码已发送，请查收邮箱。',
+          verificationSent:
+            '动态验证码已经发送到您的邮箱，请输入发送到注册邮箱的 6 位数字验证码，10 分钟内有效，如果没有收到，可以点击重发按钮！',
           verificationFailed: '验证码验证失败，请重新获取验证码再试。',
           invalidCode: '请输入邮箱收到的 6 位数字验证码。',
           codeRequired: '请输入验证码后再继续。',
+          preSubmitHint:
+            '动态验证码已经发送到您的邮箱，请输入发送到注册邮箱的 6 位数字验证码，10 分钟内有效，如果没有收到，可以点击重发按钮！',
+          verificationReady: '验证码校验通过，点击“完成注册”即可自动登录。',
+          verificationResent: '新的动态验证码已发送，请及时查收邮箱。',
+          registrationComplete: '注册完成，正在跳转到用户主页。',
         },
       },
       login: {
