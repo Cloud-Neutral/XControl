@@ -482,6 +482,48 @@ export default function RegisterContent() {
             return
           }
 
+          try {
+            const resendResponse = await fetch('/api/auth/register/resend', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ email }),
+            })
+
+            if (!resendResponse.ok) {
+              let resendError = 'generic_error'
+              try {
+                const data = await resendResponse.json()
+                if (typeof data?.error === 'string') {
+                  resendError = data.error
+                }
+              } catch (error) {
+                console.error('Failed to parse resend response after register', error)
+              }
+
+              const resendErrorMap: Record<string, string> = {
+                invalid_request: alerts.genericError,
+                invalid_email: alerts.invalidEmail,
+                verification_failed: alerts.verificationFailed ?? alerts.genericError,
+                already_verified: alerts.verificationFailed ?? alerts.genericError,
+                account_service_unreachable: alerts.genericError,
+              }
+
+              setAlert({
+                type: 'error',
+                message: resendErrorMap[normalize(resendError)] ?? alerts.genericError,
+              })
+              setIsSubmitting(false)
+              return
+            }
+          } catch (error) {
+            console.error('Failed to trigger verification resend after register', error)
+            setAlert({ type: 'error', message: alerts.genericError })
+            setIsSubmitting(false)
+            return
+          }
+
           setPendingEmail(email)
           setPendingPassword(password)
           setHasRequestedCode(true)
