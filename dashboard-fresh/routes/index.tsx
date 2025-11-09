@@ -319,56 +319,51 @@ export default function HomePage({ data }: PageProps<HomePageData>) {
 
       {/* Main Content with offset for fixed navbar */}
       <main
-        class="relative flex flex-col bg-gradient-to-br from-sky-50 via-indigo-50/30 to-white text-slate-900"
+        class="relative flex flex-col bg-slate-50 text-slate-900"
         style="padding-top: var(--app-shell-nav-offset, 4rem)"
       >
-        {/* Hero Section - Improved Design */}
-        <header class="relative isolate overflow-hidden py-20 sm:py-24">
-          <div class="pointer-events-none absolute inset-0 overflow-hidden">
-            <div class="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-sky-200/35 blur-3xl" />
-            <div class="absolute top-1/2 right-10 h-80 w-80 -translate-y-1/2 rounded-full bg-indigo-200/25 blur-3xl" />
-            <div class="absolute bottom-0 left-1/4 h-72 w-72 rounded-full bg-sky-100/40 blur-3xl" />
-          </div>
+        {/* Hero Section - Minimal Cloud-Neutral presentation */}
+        <header class="relative isolate overflow-hidden border-b border-slate-200 bg-white/90 py-20 shadow-sm sm:py-28">
+          <div class="pointer-events-none absolute inset-x-0 top-0 mx-auto h-64 max-w-5xl rounded-full bg-gradient-to-r from-sky-50 via-indigo-50 to-sky-50 blur-3xl" aria-hidden />
 
           <div class="relative px-4 sm:px-6 lg:px-8">
             <div class="mx-auto w-full max-w-6xl">
               {shouldFallbackHero ? (
                 <div
-                  class="rounded-3xl border border-sky-200/50 bg-white/80 p-8 shadow-[0_30px_80px_rgba(0,0,0,0.08)] backdrop-blur-lg sm:p-10 lg:p-12 prose prose-slate max-w-none"
+                  class="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-[0_25px_70px_rgba(15,23,42,0.08)] sm:p-10 lg:p-12 prose prose-slate max-w-none"
                   dangerouslySetInnerHTML={{ __html: sections.operations.html }}
                 />
               ) : (
-                <div class="flex flex-col items-center gap-10 rounded-3xl border border-sky-200/40 bg-white/80 p-10 text-center shadow-[0_30px_80px_rgba(0,0,0,0.08)] backdrop-blur-lg sm:p-12">
-                  <span class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/90 px-5 py-2 text-xs font-semibold uppercase tracking-[0.32em] text-sky-700 shadow-sm">
-                    {hero.eyebrow}
-                  </span>
-                  <div class="space-y-6">
-                    <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-                      <span class="bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">
-                        {hero.title}
-                      </span>
-                    </h1>
-                    <p class="text-lg leading-relaxed text-slate-600 sm:text-xl">{hero.description}</p>
+                <div class="grid gap-12 rounded-3xl border border-slate-200 bg-white/95 p-10 shadow-[0_25px_70px_rgba(15,23,42,0.08)] sm:p-12 lg:grid-cols-[1.05fr_1fr]">
+                  <div class="space-y-8">
+                    <span class="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50/80 px-4 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+                      {hero.eyebrow}
+                    </span>
+                    <div class="space-y-6">
+                      <h1 class="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">{hero.title}</h1>
+                      <p class="max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">{hero.description}</p>
+                    </div>
+                    <ul class="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+                      {hero.focusAreas.map((item) => (
+                        <li
+                          key={item}
+                          class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+                        >
+                          <span class="h-2 w-2 rounded-full bg-sky-500" aria-hidden />
+                          <span class="font-medium text-slate-700">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div class="flex flex-wrap justify-center gap-3 text-sm font-medium text-sky-700">
-                    {hero.focusAreas.map((item) => (
-                      <span
-                        key={item}
-                        class="inline-flex items-center rounded-full border border-sky-200/80 bg-sky-50/70 px-4 py-2 shadow-sm"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                  <div class="grid w-full gap-4 sm:grid-cols-2 lg:gap-6">
+                  <div class="grid gap-4">
                     {hero.products.map((product) => (
                       <article
                         key={product.label}
-                        class="rounded-2xl border border-sky-200/70 bg-white/85 p-6 text-left shadow-sm backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg"
+                        class="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:border-sky-200 hover:shadow-md"
                       >
-                        <span class="text-xs font-semibold uppercase tracking-[0.32em] text-sky-600">{product.label}</span>
-                        <h2 class="mt-3 text-lg font-semibold text-slate-900">{product.headline}</h2>
-                        <p class="mt-3 text-sm leading-relaxed text-slate-600">{product.description}</p>
+                        <span class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-400">{product.label}</span>
+                        <h2 class="text-lg font-semibold text-slate-900">{product.headline}</h2>
+                        <p class="text-sm leading-relaxed text-slate-600">{product.description}</p>
                       </article>
                     ))}
                   </div>
