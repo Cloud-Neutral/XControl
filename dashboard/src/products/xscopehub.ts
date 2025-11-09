@@ -50,6 +50,52 @@ const xscopehub: ProductConfig = {
       },
     ],
   },
+  features: {
+    zh: [
+      {
+        title: '全栈可观测数据',
+        description: '统一聚合日志、指标与追踪，秒级关联上下游依赖。',
+        icon: 'database',
+      },
+      {
+        title: 'AI 根因洞察',
+        description: '基于时间序列与拓扑的智能关联分析，快速定位故障。',
+        icon: 'brain',
+      },
+      {
+        title: '自动化告警编排',
+        description: '多渠道告警与自愈策略编排，减少人工值守负担。',
+        icon: 'bellRing',
+      },
+      {
+        title: '生态级集成',
+        description: '通过 Webhook 与插件体系，与 CI/CD、ITSM 平台无缝联动。',
+        icon: 'puzzle',
+      },
+    ],
+    en: [
+      {
+        title: 'Full-stack telemetry',
+        description: 'Unify logs, metrics, and traces with second-level dependency mapping.',
+        icon: 'database',
+      },
+      {
+        title: 'AI-driven insights',
+        description: 'Correlate time-series signals with topology to pinpoint root causes fast.',
+        icon: 'brain',
+      },
+      {
+        title: 'Automated alerting',
+        description: 'Orchestrate multichannel alerts and auto-remediation runbooks to cut toil.',
+        icon: 'bellRing',
+      },
+      {
+        title: 'Ecosystem integrations',
+        description: 'Connect to CI/CD and ITSM systems through webhooks and an extensible plugin hub.',
+        icon: 'puzzle',
+      },
+    ],
+  },
 }
 
 export default xscopehub

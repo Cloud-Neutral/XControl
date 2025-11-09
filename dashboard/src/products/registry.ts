@@ -15,6 +15,30 @@ export type Editions = {
   saas: EditionLink[]
 }
 
+export type FeatureIconName =
+  | 'activity'
+  | 'bellRing'
+  | 'brain'
+  | 'cloud'
+  | 'coins'
+  | 'database'
+  | 'gitBranch'
+  | 'puzzle'
+  | 'rocket'
+  | 'shield'
+  | 'shieldCheck'
+
+export type FeatureCopy = {
+  title: string
+  description: string
+  icon?: FeatureIconName
+}
+
+export type FeatureCopySet = {
+  zh: FeatureCopy[]
+  en: FeatureCopy[]
+}
+
 export type ProductConfig = {
   slug: string
   name: string
@@ -31,6 +55,7 @@ export type ProductConfig = {
   videosUrl: string
   downloadUrl: string
   editions: Editions
+  features?: FeatureCopySet
 }
 
 export const PRODUCT_LIST: ProductConfig[] = [xstream, xscopehub, xcloudflow]
