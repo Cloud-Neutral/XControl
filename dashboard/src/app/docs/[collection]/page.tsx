@@ -5,8 +5,6 @@ import { notFound, redirect } from 'next/navigation'
 import { getDocCollections, getDocResource } from '../resources.server'
 import { isFeatureEnabled } from '@lib/featureToggles'
 
-export const dynamicParams = false
-
 export const generateStaticParams = async () => {
   if (!isFeatureEnabled('appModules', '/docs')) {
     return []

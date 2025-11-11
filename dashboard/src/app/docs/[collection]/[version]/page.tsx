@@ -39,8 +39,6 @@ export const generateStaticParams = async () => {
   return params
 }
 
-export const dynamicParams = false
-
 export const metadata: Metadata = {
   title: 'Documentation',
 }
