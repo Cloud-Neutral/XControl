@@ -1,4 +1,109 @@
-import type { DirListing } from '../types/download'
+import 'server-only'
+
+import { cache } from 'react'
+
+import fallbackAllListings from '../../public/dl-index/all.json'
+import fallbackArtifactsManifest from '../../public/dl-index/artifacts-manifest.json'
+import { runtimeConfig } from '../config'
+import type { DirListing } from '@types/download'
+
+const DEFAULT_DOWNLOAD_MANIFEST_URL = 'https://dl.svc.plus/manifest.json'
+
+type DirListingInput = {
+  path?: unknown
+  entries?: unknown
+}
+
+function isDirListing(value: DirListingInput): value is DirListing {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  if (typeof value.path !== 'string') {
+    return false
+  }
+  if (!Array.isArray(value.entries)) {
+    return false
+  }
+  return true
+}
+
+function parseDirListings(value: unknown): DirListing[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value.filter((item): item is DirListing => isDirListing(item as DirListingInput))
+}
+
+const FALLBACK_LISTINGS: DirListing[][] = [
+  parseDirListings(fallbackArtifactsManifest),
+  parseDirListings(fallbackAllListings),
+]
+
+function resolveDownloadManifestUrl(): string {
+  const candidates: Array<string | undefined> = []
+
+  const configUrl = runtimeConfig.downloadManifestUrl
+  if (typeof configUrl === 'string') {
+    candidates.push(configUrl)
+  }
+
+  candidates.push(process.env.DOWNLOAD_MANIFEST_URL)
+  candidates.push(process.env.NEXT_PUBLIC_DOWNLOAD_MANIFEST_URL)
+
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim()
+    if (trimmed) {
+      return trimmed
+    }
+  }
+
+  return DEFAULT_DOWNLOAD_MANIFEST_URL
+}
+
+async function fetchDirListings(url: string): Promise<DirListing[]> {
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    next: { revalidate: 300 },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch download manifest (${response.status} ${response.statusText})`)
+  }
+
+  const payload = (await response.json()) as unknown
+  const listings = parseDirListings(payload)
+  if (listings.length === 0) {
+    throw new Error('Download manifest response did not contain any listings')
+  }
+
+  return listings
+}
+
+function getFallbackListings(): DirListing[] {
+  for (const snapshot of FALLBACK_LISTINGS) {
+    if (snapshot.length > 0) {
+      return snapshot
+    }
+  }
+  return []
+}
+
+export const getDownloadListings = cache(async (): Promise<DirListing[]> => {
+  const url = resolveDownloadManifestUrl()
+
+  try {
+    return await fetchDirListings(url)
+  } catch (error) {
+    console.warn(`[download-data] Failed to fetch download manifest from "${url}"`, error)
+  }
+
+  const fallback = getFallbackListings()
+  if (fallback.length > 0) {
+    return fallback
+  }
+
+  return []
+})
 
 export interface DownloadSection {
   key: string

@@ -4,17 +4,16 @@ import { notFound } from 'next/navigation'
 
 import DownloadBrowser from '../../components/download/DownloadBrowser'
 import DownloadSummary from '../../components/download/DownloadSummary'
-import { buildDownloadSections, countFiles, findListing } from '../../lib/download-data'
-import { getDownloadListings } from '../../lib/download-manifest'
-import type { DirEntry } from '../../../../types/download'
+import { buildDownloadSections, countFiles, findListing, getDownloadListings } from '../../lib/download-data'
+import type { DirEntry } from '@types/download'
 import { isFeatureEnabled } from '@lib/featureToggles'
 
-export default function DownloadHome() {
+export default async function DownloadHome() {
   if (!isFeatureEnabled('appModules', '/download')) {
     notFound()
   }
 
-  const allListings = getDownloadListings()
+  const allListings = await getDownloadListings()
   const sectionsMap = buildDownloadSections(allListings)
   const rootListing = findListing(allListings, [])
   const topLevelDirectories = rootListing?.entries.filter((entry: DirEntry) => entry.type === 'dir') ?? []

@@ -1,13 +1,14 @@
 import 'server-only'
 
+import { cache } from 'react'
+
+import { getDocsManifest, type DocsManifestRecord } from '@lib/download-manifest'
 import { isFeatureEnabled } from '@lib/featureToggles'
-// import docsManifest from '../../../public/dl-index/docs-manifest.json'
-import fallbackDocsIndex from '../../../public/_build/docs_index.json'
 
 import { buildAbsoluteDocUrl } from './utils'
 import type { DocCollection, DocResource, DocVersionOption } from './types'
 
-interface RawDocResource {
+type RawDocResource = DocsManifestRecord & {
   slug?: unknown
   title?: unknown
   description?: unknown
@@ -28,15 +29,15 @@ interface RawDocResource {
   collectionLabel?: unknown
 }
 
-// const manifestDocs = Array.isArray(docsManifest) ? (docsManifest as RawDocResource[]) : []
-const fallbackDocs = Array.isArray(fallbackDocsIndex) ? (fallbackDocsIndex as RawDocResource[]) : []
-
-const RAW_DOCS = fallbackDocs
-
-export const DOCS_DATASET = RAW_DOCS.map((item) => normalizeResource(item as RawDocResource)).filter(
-  (item): item is DocResource => item !== null,
-)
-
+const loadDocData = cache(async () => {
+  const rawManifest = await getDocsManifest()
+  const rawDocs = Array.isArray(rawManifest) ? (rawManifest as RawDocResource[]) : []
+  const dataset = rawDocs.map((item) => normalizeResource(item as RawDocResource)).filter(
+    (item): item is DocResource => item !== null,
+  )
+  const collections = buildCollections(dataset)
+  return { dataset, collections }
+})
 
 function slugifySegment(value: string): string {
   const base = value
@@ -198,8 +199,6 @@ function buildCollections(docs: DocResource[]): DocCollection[] {
   return collections.sort((a, b) => parseUpdatedAt(b.updatedAt) - parseUpdatedAt(a.updatedAt))
 }
 
-export const DOC_COLLECTIONS = buildCollections(DOCS_DATASET)
-
 function normalizeResource(item: RawDocResource): DocResource | null {
   if (!item || typeof item !== 'object') {
     return null
@@ -294,12 +293,17 @@ function normalizeResource(item: RawDocResource): DocResource | null {
 
 const isDocsModuleEnabled = () => isFeatureEnabled('appModules', '/docs')
 
-export async function getDocResources(): Promise<DocCollection[]> {
+export async function getDocCollections(): Promise<DocCollection[]> {
   if (!isDocsModuleEnabled()) {
     return []
   }
 
-  return DOC_COLLECTIONS
+  const { collections } = await loadDocData()
+  return collections
+}
+
+export async function getDocResources(): Promise<DocCollection[]> {
+  return getDocCollections()
 }
 
 export async function getDocResource(slug: string): Promise<DocCollection | undefined> {
@@ -307,5 +311,6 @@ export async function getDocResource(slug: string): Promise<DocCollection | unde
     return undefined
   }
 
-  return DOC_COLLECTIONS.find((doc) => doc.slug === slug)
+  const { collections } = await loadDocData()
+  return collections.find((doc) => doc.slug === slug)
 }
