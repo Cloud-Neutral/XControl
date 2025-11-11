@@ -4,3 +4,5 @@ authUrl: https://accounts.svc.plus
 dashboardUrl: https://console.svc.plus
 internalApiBaseUrl: http://127.0.0.1:8090
 logLevel: info
+downloadManifestUrl: https://dl.svc.plus/manifest.json
+docsManifestUrl: https://dl.svc.plus/docs/all.json

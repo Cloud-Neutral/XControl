@@ -7,11 +7,9 @@ import {
   countFiles,
   findListing,
   formatSegmentLabel,
+  getDownloadListings,
 } from '../../../lib/download-data'
-import { DOWNLOAD_LISTINGS, getDownloadListings } from '../../../lib/download-manifest'
-import type { DirListing } from '../../../../types/download'
-
-const allListings = getDownloadListings()
+import type { DirListing } from '@types/download'
 
 function collectDownloadParams(listings: DirListing[]): { segments: string[] }[] {
   const params: { segments: string[] }[] = []
@@ -52,8 +50,9 @@ function collectDownloadParams(listings: DirListing[]): { segments: string[] }[]
   return params
 }
 
-export function generateStaticParams() {
-  return collectDownloadParams(DOWNLOAD_LISTINGS)
+export async function generateStaticParams() {
+  const listings = await getDownloadListings()
+  return collectDownloadParams(listings)
 }
 
 export const dynamicParams = false
@@ -68,11 +67,12 @@ function getLatestModified(listing: DirListing): string | undefined {
   return latest
 }
 
-export default function DownloadListing({
+export default async function DownloadListing({
   params,
 }: {
   params: { segments: string[] }
 }) {
+  const allListings = await getDownloadListings()
   const rawSegments = params.segments ?? []
   const segments = rawSegments
     .map((segment) => segment.trim().replace(/\/+$/g, ''))

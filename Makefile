@@ -236,7 +236,7 @@ build-dashboard:
 	$(MAKE) -C dashboard build SKIP_SYNC=1
 
 update-dashboard-manifests:
-	$(MAKE) -C dashboard sync-dl-index
+        @echo "ℹ️  Dashboard manifests are loaded dynamically at runtime."
 
 # -----------------------------------------------------------------------------
 # Run targets

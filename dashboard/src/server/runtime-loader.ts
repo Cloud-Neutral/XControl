@@ -29,6 +29,8 @@ export type RuntimeConfig = {
   dashboardUrl?: string
   internalApiBaseUrl?: string
   logLevel?: string
+  downloadManifestUrl?: string
+  docsManifestUrl?: string
   [key: string]: unknown
 } & {
   environment: RuntimeEnvironment
