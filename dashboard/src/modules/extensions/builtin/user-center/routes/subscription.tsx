@@ -1,5 +1,4 @@
 import Card from '../components/Card'
-import BillingOptionsPanel from '../account/BillingOptionsPanel'
 import SubscriptionPanel from '../account/SubscriptionPanel'
 
 export default function UserCenterSubscriptionRoute() {
@@ -11,7 +10,6 @@ export default function UserCenterSubscriptionRoute() {
           支持 PayPal、以太坊与 USDT 的订阅与按量计费，扫码或直连支付后都可同步到账户中心。
         </p>
       </Card>
-      <BillingOptionsPanel />
       <SubscriptionPanel />
     </div>
   )
