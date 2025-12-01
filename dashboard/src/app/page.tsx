@@ -2,295 +2,513 @@
 
 export const dynamic = 'error'
 
-import Navbar from '@components/Navbar'
 import { useLanguage } from '@i18n/LanguageProvider'
-import { BookOpen, ExternalLink, FileText, Globe, Layers, RefreshCw, ServerCog, Shield, Terminal } from 'lucide-react'
-import type { ReactNode } from 'react'
+import {
+  Api,
+  BookOpen,
+  Boxes,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardList,
+  Command,
+  Compass,
+  Discord,
+  FileText,
+  Github,
+  Globe,
+  Languages,
+  LayoutPanelLeft,
+  LayoutTemplate,
+  Link2,
+  LucideIcon,
+  Network,
+  Search,
+  Server,
+  Shield,
+  SquareArrowOutUpRight,
+  Terminal,
+  Twitter,
+  UserRound,
+  Wand2,
+  Youtube,
+} from 'lucide-react'
+import { useMemo } from 'react'
 
-const sectionCardClass = 'rounded-2xl border border-slate-200 bg-white p-6 shadow-sm'
-const itemCardClass =
-  'flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm'
+const cardBaseClass =
+  'rounded-[4px] border border-black/[0.07] bg-white p-4 text-[13px] transition hover:bg-slate-50'
 
 export default function HomePage() {
-  const { language } = useLanguage()
+  const { language, setLanguage } = useLanguage()
 
-  const quickActions: LinkCard[] = [
-    {
-      title: language === 'zh' ? '创建空间' : 'Create workspace',
-      description: language === 'zh' ? '初始化团队并配置访问入口。' : 'Initialize a team and set entry controls.',
-      action: language === 'zh' ? '进入控制台' : 'Open console',
-      href: '/account/organizations',
-      icon: <Layers className="h-4 w-4" />,
-    },
-    {
-      title: language === 'zh' ? '同步身份目录' : 'Sync identity directory',
-      description: language === 'zh' ? '接入 SSO 或目录同步任务。' : 'Connect SSO or directory sync tasks.',
-      action: language === 'zh' ? '开始' : 'Start now',
-      href: '/account/connections',
-      icon: <Shield className="h-4 w-4" />,
-    },
-    {
-      title: language === 'zh' ? '查看事件流' : 'Inspect event stream',
-      description: language === 'zh' ? '审计登录与部署事件。' : 'Audit sign-in and deployment events.',
-      action: language === 'zh' ? '查看' : 'Inspect',
-      href: '/insight',
-      icon: <Terminal className="h-4 w-4" />,
-    },
-  ]
+  const copy = useMemo(() => {
+    if (language === 'zh') {
+      return {
+        tabs: ['主页', '文档', '下载', '开源', '更多服务'],
+        search: '搜索',
+        consoleTitle: 'Cloud-Neutral 控制台',
+        consoleSubtitle: '统一的多云控制界面。',
+        openConsole: '打开控制台',
+        docs: '文档',
+        quickActions: '快捷操作',
+        productMatrix: '产品矩阵',
+        nextSteps: '下一步',
+        resources: '资源',
+        updates: '更新',
+        languageLabel: '语言',
+      }
+    }
+    return {
+      tabs: ['Home', 'Docs', 'Download', 'Open Source', 'More Services'],
+      search: 'Search',
+      consoleTitle: 'Cloud-Neutral Console',
+      consoleSubtitle: 'Unified multi-cloud control surface.',
+      openConsole: 'Open Console',
+      docs: 'Documentation',
+      quickActions: 'Quick actions',
+      productMatrix: 'Product matrix',
+      nextSteps: 'Next steps',
+      resources: 'Resources',
+      updates: 'Updates',
+      languageLabel: 'Language',
+    }
+  }, [language])
 
-  const serviceEntries: LinkCard[] = [
+  const quickActions: CardItem[] = [
     {
-      title: language === 'zh' ? '账户与权限' : 'Accounts & access',
-      description: language === 'zh' ? '身份、组与策略入口。' : 'Identities, groups, and policies.',
-      action: language === 'zh' ? '管理' : 'Manage',
-      href: '/account',
-      icon: <Shield className="h-4 w-4" />,
+      title: language === 'zh' ? '创建项目' : 'Create project',
+      description: language === 'zh' ? '设置新的 Cloud-Neutral 项目。' : 'Set up a new Cloud-Neutral project.',
+      href: '/panel/projects/new',
+      icon: Command,
     },
     {
-      title: language === 'zh' ? '云资源编排' : 'Cloud resources',
-      description: language === 'zh' ? '管理租户与运行环境。' : 'Manage tenants and runtimes.',
-      action: language === 'zh' ? '进入' : 'Open',
-      href: '/cloud_iac',
-      icon: <ServerCog className="h-4 w-4" />,
-    },
-    {
-      title: language === 'zh' ? '交付流水线' : 'Delivery pipelines',
-      description: language === 'zh' ? '查看部署批次与审批。' : 'Review deployments and approvals.',
-      action: language === 'zh' ? '查看' : 'Review',
+      title: language === 'zh' ? '打开控制台' : 'Open console',
+      description: language === 'zh' ? '进入控制台管理所有模块。' : 'Enter the console to manage all modules.',
       href: '/panel',
-      icon: <RefreshCw className="h-4 w-4" />,
+      icon: Shield,
     },
     {
-      title: language === 'zh' ? '知识与文档' : 'Knowledge & docs',
-      description: language === 'zh' ? '访问项目文档与记录。' : 'Access project documents and records.',
-      action: language === 'zh' ? '打开' : 'Open',
-      href: '/docs',
-      icon: <BookOpen className="h-4 w-4" />,
+      title: language === 'zh' ? '通过 GitOps 部署' : 'Deploy via GitOps',
+      description: language === 'zh' ? '连接仓库并同步环境。' : 'Connect repositories and sync environments.',
+      href: '/cloud_iac/gitops',
+      icon: Terminal,
     },
   ]
 
-  const nextSteps: LinkCard[] = [
+  const products: ProductItem[] = [
     {
-      title: language === 'zh' ? '配置环境密钥' : 'Configure environment keys',
-      description: language === 'zh' ? '确保流水线密钥就绪。' : 'Ensure pipeline secrets are ready.',
-      action: language === 'zh' ? '配置' : 'Configure',
-      href: '/panel/settings',
-      icon: <Terminal className="h-4 w-4" />,
+      title: 'XCloudFlow',
+      description: language === 'zh' ? '交付与发布流水线。' : 'Delivery and rollout pipelines.',
+      href: '/panel',
+      icon: LayoutTemplate,
     },
     {
-      title: language === 'zh' ? '同步监控指标' : 'Sync monitoring signals',
-      description: language === 'zh' ? '绑定日志与指标源。' : 'Bind logs and metrics sources.',
-      action: language === 'zh' ? '绑定' : 'Attach',
+      title: 'XStream',
+      description: language === 'zh' ? '事件流与可观测聚合。' : 'Event stream and observability aggregation.',
       href: '/insight',
-      icon: <Globe className="h-4 w-4" />,
+      icon: Network,
     },
     {
-      title: language === 'zh' ? '建立审计基线' : 'Establish audit baseline',
-      description: language === 'zh' ? '设置留存与告警阈值。' : 'Set retention and alert thresholds.',
-      action: language === 'zh' ? '设置' : 'Set up',
-      href: '/insight/audit',
-      icon: <Shield className="h-4 w-4" />,
+      title: 'XScopeHub',
+      description: language === 'zh' ? '资产拓扑与依赖视图。' : 'Asset topology and dependency views.',
+      href: '/cloud_iac',
+      icon: Compass,
+    },
+    {
+      title: 'XControl',
+      description: language === 'zh' ? '身份、访问与策略治理。' : 'Identity, access, and policy governance.',
+      href: '/account',
+      icon: LayoutPanelLeft,
     },
   ]
 
-  const resources: LinkCard[] = [
+  const checklist: ChecklistItem[] = [
     {
-      title: language === 'zh' ? 'API 参考' : 'API reference',
-      description: language === 'zh' ? '使用 REST 与 SDK 调用。' : 'Use REST and SDK entry points.',
-      action: language === 'zh' ? '查看' : 'Read',
+      tag: language === 'zh' ? '身份' : 'Identity',
+      title: language === 'zh' ? '配置身份' : 'Configure identity',
+      description: language === 'zh' ? '接入身份源并定义登录策略。' : 'Connect identity sources and sign-in policies.',
+      href: '/account/connections',
+      icon: ClipboardList,
+    },
+    {
+      tag: language === 'zh' ? '应用' : 'Applications',
+      title: language === 'zh' ? '注册应用' : 'Register an app',
+      description: language === 'zh' ? '创建客户端并配置回调。' : 'Create clients and configure callbacks.',
+      href: '/account/applications',
+      icon: Boxes,
+    },
+    {
+      tag: language === 'zh' ? '部署' : 'Deploy',
+      title: language === 'zh' ? '部署基础设施' : 'Deploy infrastructure',
+      description: language === 'zh' ? '同步 IaC 定义并推送策略。' : 'Sync IaC definitions and push policies.',
+      href: '/cloud_iac',
+      icon: Server,
+    },
+    {
+      tag: language === 'zh' ? '监控' : 'Monitoring',
+      title: language === 'zh' ? '查看监控面板' : 'View monitoring dashboards',
+      description: language === 'zh' ? '聚合指标、日志与追踪视图。' : 'Aggregate metrics, logs, and traces.',
+      href: '/insight',
+      icon: CheckCircle2,
+    },
+  ]
+
+  const resources: CardItem[] = [
+    {
+      title: language === 'zh' ? 'CLI 工具' : 'CLI Tools',
+      description: language === 'zh' ? '使用命令行快速管理资源。' : 'Use the CLI to manage resources quickly.',
+      href: '/docs/cli',
+      icon: Terminal,
+    },
+    {
+      title: language === 'zh' ? '文档中心' : 'Documentation',
+      description: language === 'zh' ? '浏览控制平面与 API 指南。' : 'Explore control plane and API guides.',
+      href: '/docs',
+      icon: BookOpen,
+    },
+    {
+      title: language === 'zh' ? '示例与模板' : 'Examples',
+      description: language === 'zh' ? '复用配置片段与最佳实践。' : 'Reuse configuration snippets and best practices.',
+      href: '/docs/examples',
+      icon: Wand2,
+    },
+    {
+      title: language === 'zh' ? 'API Explorer' : 'API Explorer',
+      description: language === 'zh' ? '交互测试 REST 与 SDK。' : 'Interactively test REST and SDK calls.',
       href: '/docs/api',
-      icon: <FileText className="h-4 w-4" />,
-    },
-    {
-      title: language === 'zh' ? '策略样例库' : 'Policy snippets',
-      description: language === 'zh' ? '复制合规策略模板。' : 'Copy reusable compliance snippets.',
-      action: language === 'zh' ? '浏览' : 'Browse',
-      href: '/docs/policies',
-      icon: <Terminal className="h-4 w-4" />,
-    },
-    {
-      title: language === 'zh' ? '操作手册' : 'Operations handbook',
-      description: language === 'zh' ? '标准故障与恢复流程。' : 'Standard incident and recovery playbooks.',
-      action: language === 'zh' ? '打开' : 'Open',
-      href: '/docs/runbooks',
-      icon: <BookOpen className="h-4 w-4" />,
+      icon: Api,
     },
   ]
 
-  const blogUpdates: LinkCard[] = [
+  const updates: UpdateItem[] = [
     {
-      title: language === 'zh' ? '零信任入口更新' : 'Zero-trust entry update',
-      description: language === 'zh' ? '新的入口策略审计摘要。' : 'New entry policy audit summaries.',
-      action: language === 'zh' ? '查看' : 'View',
-      href: '/blog/zero-trust-entry',
-      icon: <Shield className="h-4 w-4" />,
+      tag: language === 'zh' ? '发布' : 'Release',
+      date: '2025-02-10',
+      title: language === 'zh' ? 'XCloudFlow 批次守护' : 'XCloudFlow batch guardians',
+      description: language === 'zh'
+        ? '为每个批次自动应用回滚与审批模板。'
+        : 'Apply rollback and approval templates automatically to each batch.',
+      href: '/blog/cloudflow-guardians',
+      icon: CheckCircle2,
     },
     {
-      title: language === 'zh' ? '控制平面最佳实践' : 'Control plane patterns',
-      description: language === 'zh' ? '如何分层隔离租户与环境。' : 'Layered isolation across tenants and stages.',
-      action: language === 'zh' ? '阅读' : 'Read',
-      href: '/blog/control-plane-practices',
-      icon: <ServerCog className="h-4 w-4" />,
+      tag: language === 'zh' ? '指南' : 'Guide',
+      date: '2025-01-28',
+      title: language === 'zh' ? '零信任入口蓝图' : 'Zero-trust entry blueprint',
+      description: language === 'zh' ? '统一入口、流量审计与策略推送实践。' : 'Unified entry, traffic audit, and policy push practices.',
+      href: '/blog/zero-trust-blueprint',
+      icon: FileText,
     },
     {
-      title: language === 'zh' ? '流水线可观测性' : 'Pipeline observability',
-      description: language === 'zh' ? '指标、日志与追踪对齐实践。' : 'Align metrics, logs, and traces.',
-      action: language === 'zh' ? '了解' : 'Learn',
-      href: '/blog/pipeline-observability',
-      icon: <RefreshCw className="h-4 w-4" />,
+      tag: 'Blog',
+      date: '2025-01-12',
+      title: language === 'zh' ? '跨云观测路径' : 'Cross-cloud observability paths',
+      description: language === 'zh' ? '在多云环境对齐指标与告警域。' : 'Align metrics and alert domains across clouds.',
+      href: '/blog/cross-cloud-observability',
+      icon: Link2,
     },
   ]
+
+  const productOpenLabel = language === 'zh' ? '打开' : 'Open'
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Navbar />
-      <main className="py-14">
-        <div className="mx-auto flex max-w-5xl flex-col gap-12">
-          <QuickActionsSection label={language === 'zh' ? '快捷操作' : 'Quick actions'} items={quickActions} />
-          <ServiceEntryGrid
-            label={language === 'zh' ? '服务入口' : 'Service entry grid'}
-            items={serviceEntries}
-          />
-          <NextSteps label={language === 'zh' ? '下一步' : 'Next steps'} items={nextSteps} />
-          <Resources label={language === 'zh' ? '资源' : 'Resources'} items={resources} />
-          <BlogUpdates label={language === 'zh' ? '更新' : 'Blog updates'} items={blogUpdates} />
-        </div>
+      <SystemNavbar
+        tabs={copy.tabs}
+        searchLabel={copy.search}
+        languageLabel={copy.languageLabel}
+        currentLanguage={language}
+        onLanguageChange={setLanguage}
+      />
+      <main className="max-w-[1100px] mx-auto px-4 py-10 space-y-10">
+        <section className="space-y-3">
+          <div className="space-y-1">
+            <h1 className="text-xl font-semibold">{copy.consoleTitle}</h1>
+            <p className="text-sm text-slate-500">{copy.consoleSubtitle}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[13px]">
+            <a
+              href="/panel"
+              className="inline-flex items-center gap-2 rounded-[4px] border border-black/[0.07] bg-white px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              <SquareArrowOutUpRight className="h-3.5 w-3.5" aria-hidden />
+              {copy.openConsole}
+            </a>
+            <a
+              href="/docs"
+              className="inline-flex items-center gap-2 rounded-[4px] border border-black/[0.07] bg-white px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              <BookOpen className="h-3.5 w-3.5" aria-hidden />
+              {copy.docs}
+            </a>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.65fr_1fr]">
+          <div className="space-y-3">
+            <SectionTitle label={copy.quickActions} />
+            <div className="space-y-3">
+              {quickActions.map((item) => (
+                <ActionCard key={item.title} {...item} />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <SectionTitle label={copy.productMatrix} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {products.map((item) => (
+                <ProductCard key={item.title} {...item} openLabel={productOpenLabel} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle label={copy.nextSteps} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {checklist.map((item) => (
+              <ChecklistCard key={item.title} {...item} />
+            ))}
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
+          <div className="space-y-3">
+            <SectionTitle label={copy.resources} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {resources.map((item) => (
+                <ActionCard key={item.title} {...item} />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <SectionTitle label={copy.updates} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {updates.map((item) => (
+                <UpdateCard key={item.title} {...item} />
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
-      <FooterMinimalIconsOnly />
+      <ConsoleFooter />
     </div>
   )
 }
 
-type LinkCard = {
+type CardItem = {
   title: string
   description: string
-  action: string
   href: string
-  icon: ReactNode
+  icon: LucideIcon
 }
 
-type SectionProps = {
-  label: string
-  items: LinkCard[]
+type ProductItem = CardItem
+
+interface ProductCardProps extends ProductItem {
+  openLabel: string
 }
 
-function SectionHeader({ label, hint }: { label: string; hint?: string }) {
+interface ChecklistItem extends CardItem {
+  tag: string
+}
+
+interface UpdateItem extends CardItem {
+  tag: string
+  date: string
+}
+
+type NavbarProps = {
+  tabs: string[]
+  searchLabel: string
+  languageLabel: string
+  currentLanguage: 'en' | 'zh'
+  onLanguageChange: (lang: 'en' | 'zh') => void
+}
+
+function SystemNavbar({ tabs, searchLabel, languageLabel, currentLanguage, onLanguageChange }: NavbarProps) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-        <span className="h-2 w-2 rounded-full bg-slate-900" aria-hidden />
-        {label}
+    <header className="border-b border-black/[0.08] bg-white">
+      <div className="mx-auto flex h-10 max-w-[1100px] items-center justify-between px-4 text-[13px] font-semibold text-slate-600">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 text-slate-900">
+            <Globe className="h-4 w-4" aria-hidden />
+            <span className="text-sm">XControl</span>
+          </div>
+          <nav className="flex items-center gap-3">
+            {tabs.map((tab) => (
+              <a key={tab} href="#" className="rounded px-1 py-1 transition hover:text-slate-900 hover:underline">
+                {tab}
+              </a>
+            ))}
+          </nav>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded border border-black/[0.08] px-2 py-1 text-slate-600">
+            <Search className="h-3.5 w-3.5" aria-hidden />
+            <span className="text-[12px]">{searchLabel}</span>
+            <kbd className="rounded border border-black/[0.12] bg-slate-100 px-1 text-[11px] text-slate-700">/</kbd>
+          </div>
+          <div
+            aria-label={languageLabel}
+            className="flex items-center gap-1 rounded border border-black/[0.08] px-2 py-1 text-[12px] text-slate-700"
+          >
+            <Languages className="h-3.5 w-3.5" aria-hidden />
+            <button
+              type="button"
+              onClick={() => onLanguageChange('en')}
+              className={`px-1 ${currentLanguage === 'en' ? 'text-slate-900 underline' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              EN
+            </button>
+            <span className="text-black/30">|</span>
+            <button
+              type="button"
+              onClick={() => onLanguageChange('zh')}
+              className={`px-1 ${currentLanguage === 'zh' ? 'text-slate-900 underline' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              中文
+            </button>
+            <ChevronDown className="h-3 w-3" aria-hidden />
+          </div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+            <UserRound className="h-4 w-4" aria-hidden />
+          </div>
+        </div>
       </div>
-      {hint ? <span className="text-xs text-slate-500">{hint}</span> : null}
+    </header>
+  )
+}
+
+function SectionTitle({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+      <span className="h-2 w-2 rounded-full bg-slate-900" aria-hidden />
+      {label}
     </div>
   )
 }
 
-function QuickActionsSection({ label, items }: SectionProps) {
+function ActionCard({ title, description, href, icon: Icon }: CardItem) {
   return (
-    <section className={sectionCardClass}>
-      <SectionHeader label={label} hint="Task-first" />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <CardLink key={item.title} {...item} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function ServiceEntryGrid({ label, items }: SectionProps) {
-  return (
-    <section className={sectionCardClass}>
-      <SectionHeader label={label} hint="Entry points" />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map((item) => (
-          <CardLink key={item.title} {...item} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function NextSteps({ label, items }: SectionProps) {
-  return (
-    <section className={sectionCardClass}>
-      <SectionHeader label={label} hint="Checklist" />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <CardLink key={item.title} {...item} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function Resources({ label, items }: SectionProps) {
-  return (
-    <section className={sectionCardClass}>
-      <SectionHeader label={label} hint="Docs" />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <CardLink key={item.title} {...item} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function BlogUpdates({ label, items }: SectionProps) {
-  return (
-    <section className={sectionCardClass}>
-      <SectionHeader label={label} hint="Latest" />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <CardLink key={item.title} {...item} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function CardLink({ title, description, action, href, icon }: LinkCard) {
-  return (
-    <a className={itemCardClass} href={href}>
+    <a className={cardBaseClass} href={href}>
       <div className="flex items-start gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-800">
-          {icon}
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+          <Icon className="h-3.5 w-3.5" aria-hidden />
         </span>
         <div className="space-y-1">
-          <div className="text-sm font-semibold text-slate-900">{title}</div>
-          <div className="text-sm text-slate-600">{description}</div>
+          <div className="font-semibold text-slate-900">{title}</div>
+          <p className="text-slate-600">{description}</p>
         </div>
-      </div>
-      <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
-        {action}
-        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
       </div>
     </a>
   )
 }
 
-function FooterMinimalIconsOnly() {
-  const items = [
-    { label: 'Status', href: 'https://status.xcontrol.io', icon: Globe },
-    { label: 'Docs', href: '/docs', icon: BookOpen },
-    { label: 'Changelog', href: '/blog', icon: RefreshCw },
+function ProductCard({ title, description, href, icon: Icon, openLabel }: ProductCardProps) {
+  return (
+    <a className={cardBaseClass} href={href}>
+      <div className="flex items-start gap-3">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <div className="space-y-1">
+          <div className="font-semibold text-slate-900">{title}</div>
+          <p className="text-slate-600">{description}</p>
+          <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-700">
+            {openLabel}
+            <SquareArrowOutUpRight className="h-3.5 w-3.5" aria-hidden />
+          </span>
+        </div>
+      </div>
+    </a>
+  )
+}
+
+function ChecklistCard({ tag, title, description, href, icon: Icon }: ChecklistItem) {
+  return (
+    <a className={cardBaseClass} href={href}>
+      <div className="flex items-start gap-3">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <div className="space-y-1">
+          <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-slate-700">
+            {tag}
+          </span>
+          <div className="font-semibold text-slate-900">{title}</div>
+          <p className="text-slate-600">{description}</p>
+        </div>
+      </div>
+    </a>
+  )
+}
+
+function UpdateCard({ tag, date, title, description, href, icon: Icon }: UpdateItem) {
+  return (
+    <a className={cardBaseClass} href={href}>
+      <div className="flex items-start gap-3">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase text-slate-700">
+            <span className="rounded bg-slate-100 px-2 py-0.5">{tag}</span>
+            <span className="text-slate-500">{date}</span>
+          </div>
+          <div className="font-semibold text-slate-900">{title}</div>
+          <p className="text-slate-600">{description}</p>
+        </div>
+        <SquareArrowOutUpRight className="ml-auto h-4 w-4 text-slate-400" aria-hidden />
+      </div>
+    </a>
+  )
+}
+
+function ConsoleFooter() {
+  const socials = [
+    { label: 'GitHub', icon: Github, href: 'https://github.com' },
+    { label: 'X', icon: Twitter, href: 'https://x.com' },
+    { label: 'LinkedIn', icon: Globe, href: 'https://www.linkedin.com' },
+    { label: 'Discord', icon: Discord, href: 'https://discord.com' },
+    { label: 'YouTube', icon: Youtube, href: 'https://youtube.com' },
   ]
 
   return (
-    <footer className="border-t border-slate-200 bg-slate-900 py-6">
-      <div className="mx-auto flex max-w-5xl items-center justify-center gap-4">
-        {items.map(({ label, href, icon: Icon }) => (
-          <a
-            key={label}
-            href={href}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-200 transition hover:border-slate-500 hover:text-white"
-          >
-            <Icon className="h-5 w-5" aria-hidden />
-            <span className="sr-only">{label}</span>
-          </a>
-        ))}
+    <footer className="mt-10 bg-[#0f121a] text-slate-200">
+      <div className="mx-auto max-w-[1100px] px-4 py-6 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[12px] text-slate-300">
+          <div className="flex items-center gap-2">
+            <a href="#" className="hover:text-white">
+              Privacy
+            </a>
+            <span className="text-slate-500">/</span>
+            <a href="#" className="hover:text-white">
+              Terms
+            </a>
+            <span className="text-slate-500">/</span>
+            <a href="#" className="hover:text-white">
+              Contact
+            </a>
+          </div>
+          <div className="flex items-center gap-3">
+            {socials.map(({ label, icon: Icon, href }) => (
+              <a
+                key={label}
+                href={href}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-100 transition hover:border-white/40 hover:text-white"
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                <span className="sr-only">{label}</span>
+              </a>
+            ))}
+            <button className="inline-flex items-center gap-2 rounded border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:border-white/40">
+              <Globe className="h-4 w-4" aria-hidden />
+              <span>Theme</span>
+              <ChevronDown className="h-3 w-3" aria-hidden />
+            </button>
+          </div>
+        </div>
+        <div className="text-left text-[12px] text-slate-400">© 2025 Cloud-Neutral</div>
       </div>
     </footer>
   )
