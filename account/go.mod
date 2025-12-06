@@ -1,4 +1,4 @@
-module xcontrol/account
+module account
 
 go 1.25.1
 
