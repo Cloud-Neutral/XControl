@@ -1,4 +1,4 @@
-module rag-server
+module xcontrol/rag-server
 
 go 1.25.1
 
